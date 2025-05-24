@@ -1,281 +1,103 @@
-import { useState, useEffect } from 'react';
-import { useSelector } from 'react-redux';
-import { selectCurrentUser } from '../store/slices/authSlice';
-import { Card } from '../components/ui/card';
-import { Button } from '../components/ui/Button';
-import { useForm } from 'react-hook-form';
+import React, { useState } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
+import { selectCurrentUser, setUser } from '../store/slices/authSlice';
+import { Input } from '../components/ui/Input';
 
-interface Service {
-  name: string;
-  price: number;
-  duration: string;
-}
-
-interface CoiffeurProfile {
+interface GalleryImage {
   id: string;
-  name: string;
-  email: string;
-  phone: string;
-  address: string;
-  description: string;
-  services: Service[];
-  mode: ('salon' | 'domicile')[];
-  availability: string[];
-  cancellationPolicy: string;
-  photo?: string;
+  url: string;
 }
 
-const defaultServices = [
-  'Coupe Homme',
-  'Coupe Femme',
-  'Brushing',
-  'Coloration',
-  'Mèches',
-  'Balayage',
-];
-
-const defaultAvailability = [
-  'Lundi',
-  'Mardi',
-  'Mercredi',
-  'Jeudi',
-  'Vendredi',
-  'Samedi',
-];
+const initialGallery: GalleryImage[] = JSON.parse(localStorage.getItem('coiffeur_gallery') || '[]');
 
 const CoiffeurProfileEditPage = () => {
+  const dispatch = useDispatch();
   const user = useSelector(selectCurrentUser);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string>('');
-  const [success, setSuccess] = useState(false);
-  const { register, handleSubmit, setValue } = useForm<CoiffeurProfile>();
+  const [name, setName] = useState(user?.name || '');
+  const [bio, setBio] = useState('Passionné(e) par la coiffure, à votre service !');
+  const [specialties, setSpecialties] = useState('Coupe homme, Brushing, Coloration');
+  const [experience, setExperience] = useState('5');
+  const [diplomas, setDiplomas] = useState('CAP Coiffure');
+  const [address, setAddress] = useState('');
+  const [photo, setPhoto] = useState(user?.photo || '');
+  const [gallery, setGallery] = useState<GalleryImage[]>(initialGallery);
+  const [tarifs, setTarifs] = useState('Coupe: 30€, Brushing: 25€');
+  const [success, setSuccess] = useState('');
 
-  useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        const response = await fetch(
-          `${import.meta.env.VITE_API_URL}/coiffeurs/${user?.id}`
-        );
-        const data = await response.json();
-        
-        // Pré-remplir le formulaire avec les données existantes
-        Object.entries(data).forEach(([key, value]) => {
-          setValue(key as keyof CoiffeurProfile, value);
-        });
-      } catch (error) {
-        setError('Erreur lors du chargement du profil');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (user) {
-      fetchProfile();
-    }
-  }, [user, setValue]);
-
-  const onSubmit = async (data: CoiffeurProfile) => {
-    try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/coiffeurs/${user?.id}`,
-        {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(data),
-        }
-      );
-
-      if (response.ok) {
-        setSuccess(true);
-        setTimeout(() => setSuccess(false), 3000);
-      } else {
-        setError('Erreur lors de la mise à jour du profil');
-      }
-    } catch (error) {
-      setError('Erreur lors de la mise à jour du profil');
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => setPhoto(reader.result as string);
+      reader.readAsDataURL(file);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="animate-pulse">
-          <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
-          <div className="h-4 bg-gray-200 rounded w-2/4 mb-2"></div>
-        </div>
-      </div>
-    );
-  }
+  const handleGalleryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files) {
+      const newImages: GalleryImage[] = Array.from(files).map((file) => {
+        const id = Math.random().toString(36).substr(2, 9);
+        return { id, url: URL.createObjectURL(file) };
+      });
+      setGallery((prev) => {
+        const updated = [...prev, ...newImages];
+        localStorage.setItem('coiffeur_gallery', JSON.stringify(updated));
+        return updated;
+      });
+    }
+  };
+
+  const handleRemoveImage = (id: string) => {
+    setGallery((prev) => {
+      const updated = prev.filter((img) => img.id !== id);
+      localStorage.setItem('coiffeur_gallery', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    dispatch(setUser({
+      id: user.id,
+      name,
+      photo,
+      email: user.email,
+      role: user.role
+    }));
+    setSuccess('Profil mis à jour !');
+  };
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold mb-6">Modifier mon profil</h1>
-
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          {error}
+    <div className="container mx-auto px-4 py-8 max-w-2xl">
+      <h1 className="text-2xl font-bold mb-6">Mon profil professionnel</h1>
+      {success && <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-2 rounded mb-4">{success}</div>}
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="flex flex-col items-center gap-2">
+          <img src={photo || '/default-avatar.png'} alt="Profil" className="w-24 h-24 rounded-full object-cover bg-gray-100" />
+          <input type="file" accept="image/*" onChange={handlePhotoChange} />
         </div>
-      )}
-
-      {success && (
-        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-          Profil mis à jour avec succès
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        <Card className="p-6">
-          {/* Informations de base */}
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Nom commercial
-              </label>
-              <input
-                type="text"
-                className="w-full p-2 border rounded-lg"
-                {...register('name')}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Email
-              </label>
-              <input
-                type="email"
-                className="w-full p-2 border rounded-lg"
-                {...register('email')}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Téléphone
-              </label>
-              <input
-                type="tel"
-                className="w-full p-2 border rounded-lg"
-                {...register('phone')}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Adresse
-              </label>
-              <input
-                type="text"
-                className="w-full p-2 border rounded-lg"
-                {...register('address')}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Description
-              </label>
-              <textarea
-                className="w-full p-2 border rounded-lg"
-                rows={4}
-                {...register('description')}
-              />
-            </div>
-          </div>
-        </Card>
-
-        <Card className="p-6">
-          {/* Mode d'exercice */}
-          <h2 className="text-lg font-semibold mb-4">Mode d'exercice</h2>
-          <div className="space-y-2">
-            <label className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                className="rounded border-gray-300 text-primary focus:ring-primary"
-                value="salon"
-                {...register('mode')}
-              />
-              <span>En salon</span>
-            </label>
-            <label className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                className="rounded border-gray-300 text-primary focus:ring-primary"
-                value="domicile"
-                {...register('mode')}
-              />
-              <span>À domicile</span>
-            </label>
-          </div>
-        </Card>
-
-        <Card className="p-6">
-          {/* Services et tarifs */}
-          <h2 className="text-lg font-semibold mb-4">Services et tarifs</h2>
-          <div className="space-y-4">
-            {defaultServices.map((service, index) => (
-              <div key={service} className="flex items-center gap-4">
-                <input
-                  type="text"
-                  defaultValue={service}
-                  className="flex-1 p-2 border rounded-lg"
-                  {...register(`services.${index}.name`)}
-                />
-                <input
-                  type="number"
-                  placeholder="Prix"
-                  className="w-24 p-2 border rounded-lg"
-                  {...register(`services.${index}.price`)}
-                />
-                <span className="text-gray-600">€</span>
-                <input
-                  type="text"
-                  placeholder="Durée"
-                  className="w-24 p-2 border rounded-lg"
-                  {...register(`services.${index}.duration`)}
-                />
+        <Input label="Nom" value={name} onChange={e => setName(e.target.value)} required />
+        <Input label="Bio / Description" value={bio} onChange={e => setBio(e.target.value)} required />
+        <Input label="Spécialités" value={specialties} onChange={e => setSpecialties(e.target.value)} required />
+        <Input label="Années d'expérience" value={experience} onChange={e => setExperience(e.target.value)} required />
+        <Input label="Diplômes / Certifications" value={diplomas} onChange={e => setDiplomas(e.target.value)} required />
+        <Input label="Adresse du salon (optionnel)" value={address} onChange={e => setAddress(e.target.value)} />
+        <Input label="Tarifs principaux" value={tarifs} onChange={e => setTarifs(e.target.value)} required />
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Galerie de réalisations</label>
+          <input type="file" accept="image/*" multiple onChange={handleGalleryChange} />
+          <div className="grid grid-cols-3 gap-2 mt-2">
+            {gallery.map((img) => (
+              <div key={img.id} className="relative group">
+                <img src={img.url} alt="Réalisation" className="w-full h-24 object-cover rounded" />
+                <button type="button" onClick={() => handleRemoveImage(img.id)} className="absolute top-1 right-1 bg-white/80 rounded-full p-1 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">✕</button>
               </div>
             ))}
           </div>
-        </Card>
-
-        <Card className="p-6">
-          {/* Disponibilités */}
-          <h2 className="text-lg font-semibold mb-4">Disponibilités</h2>
-          <div className="grid grid-cols-2 gap-4">
-            {defaultAvailability.map((day) => (
-              <label key={day} className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  className="rounded border-gray-300 text-primary focus:ring-primary"
-                  value={day}
-                  {...register('availability')}
-                />
-                <span>{day}</span>
-              </label>
-            ))}
-          </div>
-        </Card>
-
-        <Card className="p-6">
-          {/* Politique d'annulation */}
-          <h2 className="text-lg font-semibold mb-4">Politique d'annulation</h2>
-          <textarea
-            className="w-full p-2 border rounded-lg"
-            rows={4}
-            placeholder="Décrivez votre politique d'annulation..."
-            {...register('cancellationPolicy')}
-          />
-        </Card>
-
-        <Button
-          type="submit"
-          className="w-full bg-primary text-white py-3 rounded-lg font-medium hover:bg-primary/90"
-        >
-          Enregistrer les modifications
-        </Button>
+        </div>
+        <button type="submit" className="w-full bg-accent text-white py-2 rounded-lg hover:bg-accent/90 transition-colors">Enregistrer</button>
       </form>
     </div>
   );

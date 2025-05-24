@@ -1,8 +1,19 @@
 import { useSelector } from 'react-redux';
 import { selectCurrentUser } from '../store/slices/authSlice';
+import { selectProfile } from '../store/slices/profileSlice';
+import { mockUsers } from '../mocks/users';
+import { useClientBookings } from '../hooks/useClientBookings';
+import { Link } from 'react-router-dom';
 
 const ClientDashboardPage = () => {
   const user = useSelector(selectCurrentUser);
+  const profile = useSelector(selectProfile);
+  const { getUpcomingBookings } = useClientBookings();
+  const upcoming = getUpcomingBookings();
+  const favoriteIds = (profile?.preferences?.favoriteCoiffeurs || []).map(String);
+  const favorites = favoriteIds
+    .map((id) => mockUsers.find((u) => String(u.id) === id))
+    .filter((u) => !!u);
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -19,12 +30,35 @@ const ClientDashboardPage = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-secondary p-4 rounded-lg">
             <h3 className="font-semibold mb-2">Prochains rendez-vous</h3>
-            <p className="text-gray-600">Aucun rendez-vous prévu</p>
+            {upcoming.length === 0 ? (
+              <p className="text-gray-600">Aucun rendez-vous prévu. <Link to="/client/bookings" className="text-accent underline">Voir mes réservations</Link></p>
+            ) : (
+              <ul className="space-y-2">
+                {upcoming.slice(0, 3).map((b) => (
+                  <li key={b.id} className="flex flex-col border-b pb-2 last:border-b-0 last:pb-0">
+                    <span className="font-medium">{b.service} avec {b.coiffeurName}</span>
+                    <span className="text-sm text-gray-500">{new Date(b.date).toLocaleString()}</span>
+                    <span className="text-xs text-gray-400">Statut : {b.status}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
           <div className="bg-secondary p-4 rounded-lg">
             <h3 className="font-semibold mb-2">Coiffeurs favoris</h3>
-            <p className="text-gray-600">Aucun coiffeur favori</p>
+            {favorites.length === 0 ? (
+              <p className="text-gray-600">Aucun coiffeur favori. <Link to="/client/favorites" className="text-accent underline">Voir mes favoris</Link></p>
+            ) : (
+              <ul className="flex flex-col gap-2">
+                {favorites.slice(0, 3).map((fav) => (
+                  <li key={fav.id} className="flex items-center gap-2">
+                    <img src={fav.picture} alt={fav.name} className="w-8 h-8 rounded-full object-cover" />
+                    <span>{fav.name}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </div>
       </div>

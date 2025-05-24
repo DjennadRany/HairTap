@@ -192,14 +192,14 @@ export const SearchPage: React.FC = () => {
                   photo={result.image}
                   onSelect={() => handleResultClick(result.id)}
                 />
-              ))}
-            </div>
+        ))}
+      </div>
           </div>
         </div>
       )}
     </div>
   );
-};
+}; 
 
 export default function ProtectedSearchPageWrapper() {
   return (

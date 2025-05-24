@@ -4,6 +4,7 @@ import { BookingAggregate } from '../domain/BookingAggregate';
 
 export interface Booking {
   id: string;
+  clientId: string;
   coiffeurId: number;
   coiffeurName: string;
   service: string;

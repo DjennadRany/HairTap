@@ -1,57 +1,195 @@
+import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { idfCoiffeurs, franceCoiffeurs } from '../features/search/domain/mockData';
-import React from 'react';
+import { useSelector } from 'react-redux';
+import { mockUsers } from '../mocks/users';
+import { selectCurrentUser } from '../store/slices/authSlice';
+
+const getGalleryKey = (id: string) => `coiffeur_gallery_${id}`;
+const getProfileKey = (id: string) => `coiffeur_profile_${id}`;
+const getServicesKey = (id: string) => `coiffeur_services_${id}`;
+
+interface Service {
+  name: string;
+  priceHT: number;
+  duration: string;
+  description: string;
+}
+
+const TVA = 0.2;
 
 const CoiffeurProfilePage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const user = useSelector(selectCurrentUser);
+  const isOwner = user && user.id === id && user.role === 'coiffeur';
+  const isClient = user && user.role === 'client';
+  // Charger profil depuis localStorage par ID, sinon mock par ID
+  const localProfile = JSON.parse(localStorage.getItem(getProfileKey(id!)) || 'null');
+  const coiffeur = localProfile || mockUsers.find(u => u.id === id && u.role === 'coiffeur');
+  const initialGallery = isOwner
+    ? JSON.parse(localStorage.getItem(getGalleryKey(id!)) || 'null') || coiffeur?.gallery || []
+    : coiffeur?.gallery || [];
+  const [gallery, setGallery] = useState<string[]>(initialGallery);
+  const [edit, setEdit] = useState(false);
+  // Champs éditables
+  const [bio, setBio] = useState(coiffeur?.bio || '');
+  const [experience, setExperience] = useState(coiffeur?.experience || '');
+  const [diplomas, setDiplomas] = useState(coiffeur?.diplomas || '');
+  const [address, setAddress] = useState(coiffeur?.address || '');
+  const [tarifs, setTarifs] = useState(coiffeur?.tarifs || '');
+  // Prestations (CRUD avancé)
+  const initialServices: Service[] = isOwner
+    ? JSON.parse(localStorage.getItem(getServicesKey(id!)) || 'null') || []
+    : coiffeur?.services || [];
+  const [services, setServices] = useState<Service[]>(initialServices);
+  const [newService, setNewService] = useState<Service>({ name: '', priceHT: 0, duration: '', description: '' });
 
-  const coiffeurId = Number(id);
-  const coiffeur = React.useMemo(() => {
-    return (
-      idfCoiffeurs.find(c => c.id === coiffeurId) ||
-      franceCoiffeurs?.find?.(c => c.id === coiffeurId) ||
-      null
-    );
-  }, [coiffeurId]);
+  const handleAddImages = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files) {
+      const newImages: string[] = Array.from(files).map((file) => URL.createObjectURL(file));
+      setGallery((prev) => {
+        const updated = [...prev, ...newImages];
+        if (isOwner) localStorage.setItem(getGalleryKey(id!), JSON.stringify(updated));
+        return updated;
+      });
+    }
+  };
+
+  React.useEffect(() => {
+    if (isOwner) {
+      localStorage.setItem(getGalleryKey(id!), JSON.stringify(gallery));
+      localStorage.setItem(getServicesKey(id!), JSON.stringify(services));
+    }
+  }, [gallery, services, isOwner, id]);
+
+  // Sauvegarde du profil édité
+  const handleSave = () => {
+    const profile = {
+      ...coiffeur,
+      bio,
+      experience,
+      diplomas,
+      address,
+      tarifs,
+      gallery,
+      services
+    };
+    localStorage.setItem(getProfileKey(id!), JSON.stringify(profile));
+    setEdit(false);
+  };
+
+  const handleAddService = () => {
+    if (!newService.name || !newService.priceHT || !newService.duration) return;
+    setServices([...services, newService]);
+    setNewService({ name: '', priceHT: 0, duration: '', description: '' });
+  };
+
+  const handleRemoveService = (idx: number) => {
+    setServices(services.filter((_, i) => i !== idx));
+  };
 
   if (!coiffeur) {
-    return <div className="p-8 text-center text-lg text-gray-500">Coiffeur introuvable.</div>;
-    }
+    return <div className="container mx-auto px-4 py-8">Coiffeur introuvable.</div>;
+  }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8">
-      <div className="flex flex-col md:flex-row gap-8">
-              <img
-          src={coiffeur.image}
-                alt={coiffeur.name}
-          className="w-40 h-40 rounded-lg object-cover"
-              />
-              <div>
-                <h1 className="text-3xl font-bold">{coiffeur.name}</h1>
-          <div className="flex items-center mt-2">
-            <span className="text-yellow-400">★</span>
-            <span className="ml-1 text-lg">{coiffeur.rating.toFixed(1)}</span>
-            <span className="ml-3 text-gray-500">({coiffeur.reviews} avis)</span>
+    <div className="container mx-auto px-4 py-8 max-w-3xl">
+      <div className="flex flex-col md:flex-row gap-8 items-start mb-8">
+        <img src={coiffeur.picture} alt={coiffeur.name} className="w-32 h-32 rounded-full object-cover border-4 border-accent" />
+        <div className="flex-1">
+          <h1 className="text-3xl font-bold mb-2">{coiffeur.name}</h1>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-yellow-500 font-bold">{coiffeur.rating}★</span>
+            <span className="text-gray-500 text-sm">({coiffeur.reviewsCount} avis)</span>
+          </div>
+          {edit ? (
+            <>
+              <textarea value={bio} onChange={e => setBio(e.target.value)} className="w-full p-2 border rounded mb-2" />
+              <input value={experience} onChange={e => setExperience(e.target.value)} className="p-1 border rounded mb-2 w-full" placeholder="Expérience (années)" />
+              <input value={diplomas} onChange={e => setDiplomas(e.target.value)} className="p-1 border rounded mb-2 w-full" placeholder="Diplômes" />
+              <input value={address} onChange={e => setAddress(e.target.value)} className="p-1 border rounded mb-2 w-full" placeholder="Adresse" />
+              <input value={tarifs} onChange={e => setTarifs(e.target.value)} className="p-1 border rounded mb-2 w-full" placeholder="Tarifs principaux" />
+              <div className="mb-4">
+                <label className="block text-sm font-medium mb-1">Ajouter une prestation</label>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  <input value={newService.name} onChange={e => setNewService({ ...newService, name: e.target.value })} className="p-1 border rounded" placeholder="Nom" />
+                  <input type="number" value={newService.priceHT} onChange={e => setNewService({ ...newService, priceHT: Number(e.target.value) })} className="p-1 border rounded w-24" placeholder="Prix HT" />
+                  <input value={newService.duration} onChange={e => setNewService({ ...newService, duration: e.target.value })} className="p-1 border rounded w-24" placeholder="Durée" />
+                  <input value={newService.description} onChange={e => setNewService({ ...newService, description: e.target.value })} className="p-1 border rounded w-48" placeholder="Description" />
+                  <button type="button" onClick={handleAddService} className="bg-accent text-white px-2 rounded">Ajouter</button>
                 </div>
-          <div className="mt-2 text-gray-600">{coiffeur.address}</div>
-          <div className="mt-4">
-            <h2 className="text-xl font-semibold mb-2">Services proposés</h2>
-            <ul className="list-disc ml-5">
-              {coiffeur.services.map((service, idx) => (
-                <li key={service + idx}>{service}</li>
-              ))}
-            </ul>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  {services.map((s, i) => (
+                    <div key={i} className="bg-accent/10 rounded p-2 flex flex-col gap-1">
+                      <div className="flex justify-between items-center">
+                        <span className="font-semibold">{s.name}</span>
+                        <button type="button" onClick={() => handleRemoveService(i)} className="text-red-500 ml-2">✕</button>
+                      </div>
+                      <span className="text-xs text-gray-500">{s.description}</span>
+                      <span className="text-xs">Prix HT : {s.priceHT}€ | Prix TTC : {(s.priceHT * (1 + TVA)).toFixed(2)}€</span>
+                      <span className="text-xs text-gray-500">Durée : {s.duration}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <button onClick={handleSave} className="bg-green-600 text-white px-4 py-2 rounded mt-2">Enregistrer</button>
+              <button onClick={() => setEdit(false)} className="ml-2 text-gray-500 underline">Annuler</button>
+            </>
+          ) : (
+            <>
+              <p className="text-gray-700 mb-2">{coiffeur.bio}</p>
+              <div className="text-gray-600 text-sm mb-1">Expérience : <span className="font-medium">{coiffeur.experience} ans</span></div>
+              <div className="text-gray-600 text-sm mb-1">Diplômes : <span className="font-medium">{coiffeur.diplomas}</span></div>
+              {coiffeur.address && <div className="text-gray-600 text-sm mb-1">Adresse : <span className="font-medium">{coiffeur.address}</span></div>}
+              <div className="text-gray-600 text-sm mb-1">Tarifs : <span className="font-medium">{coiffeur.tarifs}</span></div>
+              {/* Grille tarifaire moderne */}
+              {services.length > 0 && (
+                <div className="mt-4">
+                  <h2 className="text-lg font-semibold mb-2">Prestations & Tarifs</h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {services.map((s, i) => (
+                      <div key={i} className="bg-white/10 border border-accent rounded-lg p-4 flex flex-col gap-1">
+                        <div className="flex justify-between items-center">
+                          <span className="font-semibold text-accent">{s.name}</span>
+                          <span className="text-lg font-bold">{(s.priceHT * (1 + TVA)).toFixed(2)}€ TTC</span>
             </div>
+                        <span className="text-xs text-gray-500">Prix HT : {s.priceHT}€</span>
+                        <span className="text-xs text-gray-500">Durée : {s.duration}</span>
+                        <span className="text-xs text-gray-500">{s.description}</span>
+                </div>
+              ))}
+                  </div>
+                </div>
+              )}
+              {isOwner && <button onClick={() => setEdit(true)} className="bg-accent text-white px-4 py-2 rounded mt-2">Modifier le profil</button>}
+              {/* Bouton Réserver visible côté client */}
+              {isClient && (
+                <button onClick={() => navigate(`/booking/${id}`)} className="bg-green-600 text-white px-4 py-2 rounded mt-4">Réserver</button>
+              )}
+            </>
+          )}
         </div>
       </div>
-      <div className="mt-8">
-            <button 
-          onClick={() => navigate(`/booking/${coiffeur.id}`)}
-          className="px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90"
-            >
-          Prendre rendez-vous
-            </button>
+      <div className="mb-8">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-xl font-semibold">Galerie de réalisations</h2>
+          {isOwner && (
+            <label className="bg-accent text-white px-4 py-2 rounded-lg font-medium hover:bg-accent/90 cursor-pointer">
+              Ajouter des photos
+              <input type="file" accept="image/*" multiple onChange={handleAddImages} className="hidden" />
+            </label>
+          )}
+        </div>
+        {gallery.length === 0 ? (
+          <p className="text-gray-500">Aucune photo pour le moment.</p>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            {gallery.map((img, i) => (
+              <img key={i} src={img} alt="Réalisation" className="w-full h-40 object-cover rounded-lg shadow" />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

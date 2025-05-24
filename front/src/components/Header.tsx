@@ -2,6 +2,8 @@ import type { FC } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { selectCurrentUser, selectIsAuthenticated, logout } from '../store/slices/authSlice';
+import { useState, useRef, useEffect } from 'react';
+import { getUnreadCount } from '../hooks/useChat';
 
 const Header: FC = () => {
   const user = useSelector(selectCurrentUser);
@@ -9,6 +11,19 @@ const Header: FC = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [unreadCount, setUnreadCount] = useState(isAuthenticated && user ? getUnreadCount(String(user.id)) : 0);
+
+  useEffect(() => {
+    function handleStorage(e: StorageEvent) {
+      if (user && e.key === 'chat_messages') {
+        setUnreadCount(getUnreadCount(String(user.id)));
+      }
+    }
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, [user]);
 
   const handleLogout = () => {
     dispatch(logout());
@@ -25,50 +40,106 @@ const Header: FC = () => {
     }
   };
 
+  // Fermer le dropdown si clic en dehors
+  // (UX pro, évite de laisser le menu ouvert)
+  useState(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  });
+
   return (
     <header className="bg-white shadow-sm">
       <div className="container mx-auto px-4">
         <div className="flex items-center h-16">
-          {/* Logo + menu group */}
+          {/* Logo */}
           <a href="#" onClick={handleLogoClick} className="flex items-center mr-6">
             <span className="text-2xl font-bold text-[#DE6C5C]">TapHair</span>
           </a>
 
-          {/* Menu group (photo, nom, liens) */}
-          {isAuthenticated && (
-            <div className="flex items-center gap-3">
-              {user?.photo && (
-                <img src={user.photo} alt={user.name} className="w-8 h-8 rounded-full object-cover" />
+          {/* Menu principal */}
+          {isAuthenticated && user && (
+            <nav className="flex items-center gap-3">
+              <Link to={user.role === 'client' ? "/client/dashboard" : "/coiffeur/dashboard"} className="text-gray-700 hover:text-primary font-medium">Tableau de bord</Link>
+              <Link to={user.role === 'client' ? "/client/bookings" : "/coiffeur/reservations"} className="text-gray-700 hover:text-primary font-medium">Mes réservations</Link>
+              {user.role === 'client' && (
+                <Link to="/client/favorites" className="text-gray-700 hover:text-primary font-medium">Favoris</Link>
               )}
-              <span className="font-medium text-gray-800">{user?.name}</span>
-              <Link to="/client/dashboard" className="text-gray-700 hover:text-primary font-medium">Tableau de bord</Link>
-              <Link to="/client/bookings" className="text-gray-700 hover:text-primary font-medium">Mes réservations</Link>
-              <Link to="/client/favorites" className="text-gray-700 hover:text-primary font-medium">Favoris</Link>
-              <Link to="/client/profile" className="text-gray-700 hover:text-primary font-medium">Profil</Link>
-            </div>
+              {user.role === 'client' && (
+                <Link to="/client/chat" className="text-gray-700 hover:text-primary font-medium relative">
+                  Messagerie
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-2 -right-3 bg-red-500 text-white text-xs rounded-full px-2 py-0.5 font-bold animate-pulse">
+                      {unreadCount}
+                    </span>
+                  )}
+                </Link>
+              )}
+              {user.role === 'coiffeur' && (
+                <Link to="/coiffeur/chat" className="text-gray-700 hover:text-primary font-medium relative">
+                  Messagerie
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-2 -right-3 bg-red-500 text-white text-xs rounded-full px-2 py-0.5 font-bold animate-pulse">
+                      {unreadCount}
+                    </span>
+                  )}
+                </Link>
+              )}
+            </nav>
           )}
 
-          {/* Spacer pour pousser Déconnexion à droite */}
+          {/* Spacer */}
           <div className="flex-1" />
 
-          {/* Auth / Déconnexion */}
-          <nav className="flex items-center">
-            {!isAuthenticated ? (
-              <Link
-                to="/login"
-                className="bg-[#DE6C5C] text-white px-4 py-2 rounded-lg hover:bg-[#DE6C5C]/90"
-              >
-                Connexion
-              </Link>
-            ) : (
+          {/* User dropdown ou Connexion */}
+          {!isAuthenticated ? (
+            <Link
+              to="/login"
+              className="bg-[#DE6C5C] text-white px-4 py-2 rounded-lg hover:bg-[#DE6C5C]/90"
+            >
+              Connexion
+            </Link>
+          ) : user && (
+            <div className="relative" ref={dropdownRef}>
               <button
-                onClick={handleLogout}
-                className="bg-gray-200 text-gray-800 px-3 py-1 rounded hover:bg-gray-300 transition-colors ml-4"
+                onClick={() => setDropdownOpen((o) => !o)}
+                className="flex items-center gap-2 px-3 py-1 rounded hover:bg-gray-100 transition-colors focus:outline-none"
               >
-                Déconnexion
+                {user.photo && (
+                  <img src={user.photo} alt={user.name} className="w-8 h-8 rounded-full object-cover" />
+                )}
+                <span className="font-medium text-gray-800">{user.name}</span>
+                <svg className={`w-4 h-4 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
               </button>
-            )}
-          </nav>
+              {dropdownOpen && (
+                <div className="absolute right-0 mt-2 w-48 bg-white border rounded-lg shadow-lg z-50">
+                  <ul className="py-1">
+                    <li>
+                      <Link
+                        to={user.role === 'client' ? "/client/profile" : `/coiffeur/${user.id}`}
+                        className="block px-4 py-2 text-gray-700 hover:bg-gray-100"
+                        onClick={() => setDropdownOpen(false)}
+                      >
+                        Voir mon profil
+                      </Link>
+                    </li>
+                    <li>
+                      <button
+                        onClick={handleLogout}
+                        className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100"
+                      >
+                        Déconnexion
+                      </button>
+                    </li>
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </header>

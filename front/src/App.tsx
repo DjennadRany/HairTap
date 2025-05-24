@@ -15,6 +15,9 @@ import ClientProfilePage from './pages/ClientProfilePage';
 import CoiffeurDashboardPage from './pages/CoiffeurDashboardPage';
 import CoiffeurReservationsPage from './pages/CoiffeurReservationsPage';
 import CoiffeurRevenuePage from './pages/CoiffeurRevenuePage';
+import NotFoundPage from './pages/NotFoundPage';
+import { ClientChatPage } from './pages/ClientChatPage';
+import { CoiffeurChatPage } from './pages/CoiffeurChatPage';
 
 function App() {
   return (
@@ -69,6 +72,14 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/client/chat"
+          element={
+            <ProtectedRoute requiredRole="client">
+              <ClientChatPage />
+            </ProtectedRoute>
+          }
+        />
       </Route>
 
       {/* Routes coiffeur avec CoiffeurDashboardLayout */}
@@ -97,7 +108,17 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/coiffeur/chat"
+          element={
+            <ProtectedRoute requiredRole="coiffeur">
+              <CoiffeurChatPage />
+            </ProtectedRoute>
+          }
+        />
       </Route>
+
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
 }

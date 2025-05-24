@@ -1,3 +1,5 @@
+import React from 'react';
+import { Link } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { selectCurrentUser } from '../store/slices/authSlice';
 import { selectProfile } from '../store/slices/profileSlice';
@@ -36,29 +38,28 @@ interface RecentBooking {
   status: 'confirmed' | 'pending' | 'cancelled';
 }
 
-// Données mockées pour l'exemple
-const mockRecentBookings: RecentBooking[] = [
+// MOCKS à remplacer par API plus tard
+const mockStats = {
+  upcoming: 2,
+  revenue: 420,
+  clients: 12,
+  rating: 4.8,
+};
+const mockNextBookings = [
   {
-    id: '1',
-    clientName: 'Sophie Martin',
-    service: 'Coupe + Brushing',
-    date: '2024-03-20 14:00',
-    status: 'confirmed'
+    id: 'b1',
+    client: 'John Client',
+    date: '2024-06-20T10:00',
+    service: 'Coupe',
+    status: 'confirmed',
   },
   {
-    id: '2',
-    clientName: 'Lucas Dubois',
-    service: 'Coupe Homme',
-    date: '2024-03-21 10:30',
-    status: 'pending'
+    id: 'b2',
+    client: 'Alexis Duprez',
+    date: '2024-06-21T14:30',
+    service: 'Brushing',
+    status: 'pending',
   },
-  {
-    id: '3',
-    clientName: 'Emma Bernard',
-    service: 'Coloration',
-    date: '2024-03-21 15:45',
-    status: 'confirmed'
-  }
 ];
 
 const CoiffeurDashboardPage = () => {
@@ -66,74 +67,43 @@ const CoiffeurDashboardPage = () => {
   const profile = useSelector(selectProfile);
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Tableau de bord</h1>
-        <button className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90">
-          Nouvelle réservation
-        </button>
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-2xl font-bold mb-6">Tableau de bord coiffeur</h1>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="bg-white rounded-lg shadow p-6 flex flex-col items-center">
+          <span className="text-3xl font-bold text-accent">{mockStats.revenue}€</span>
+          <span className="text-gray-600 mt-2">Revenus ce mois</span>
       </div>
-
-      {/* Statistiques */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
-          title="Réservations du jour"
-          value="5"
-          icon={<CalendarIcon className="h-6 w-6 text-primary" />}
-        />
-        <StatCard
-          title="Nouveaux clients"
-          value="12"
-          description="+2 cette semaine"
-          icon={<UserIcon className="h-6 w-6 text-primary" />}
-        />
-        <StatCard
-          title="Note moyenne"
-          value="4.8"
-          description="Sur 45 avis"
-          icon={<StarIcon className="h-6 w-6 text-primary" />}
-        />
-        <StatCard
-          title="Revenus du mois"
-          value="2 450€"
-          description="+15% vs mois dernier"
-          icon={<EuroIcon className="h-6 w-6 text-primary" />}
-        />
+        <div className="bg-white rounded-lg shadow p-6 flex flex-col items-center">
+          <span className="text-3xl font-bold">{mockStats.clients}</span>
+          <span className="text-gray-600 mt-2">Clients ce mois</span>
       </div>
-
-      {/* Réservations récentes */}
-      <Card className="p-6">
-        <h2 className="text-xl font-semibold mb-4">Réservations récentes</h2>
-        <div className="space-y-4">
-          {mockRecentBookings.map((booking) => (
-            <div
-              key={booking.id}
-              className="flex items-center justify-between border-b pb-4 last:border-0"
-            >
-              <div>
-                <p className="font-medium">{booking.clientName}</p>
-                <p className="text-sm text-gray-500">{booking.service}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-sm">{new Date(booking.date).toLocaleDateString('fr-FR', {
-                  day: 'numeric',
-                  month: 'short',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                })}</p>
-                <span className={`text-sm px-2 py-1 rounded-full ${
-                  booking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
-                  booking.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                  'bg-red-100 text-red-800'
-                }`}>
-                  {booking.status === 'confirmed' ? 'Confirmé' :
-                   booking.status === 'pending' ? 'En attente' : 'Annulé'}
-                </span>
+        <div className="bg-white rounded-lg shadow p-6 flex flex-col items-center">
+          <span className="text-3xl font-bold">{mockStats.rating}★</span>
+          <span className="text-gray-600 mt-2">Note moyenne</span>
               </div>
             </div>
-          ))}
+      <div className="bg-white rounded-lg shadow p-6">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold">Prochains rendez-vous</h2>
+          <Link to="/coiffeur/reservations" className="text-accent underline">Voir tout</Link>
         </div>
-      </Card>
+        {mockNextBookings.length === 0 ? (
+          <p className="text-gray-600">Aucun rendez-vous à venir.</p>
+        ) : (
+          <ul className="divide-y">
+            {mockNextBookings.map((b) => (
+              <li key={b.id} className="py-3 flex flex-col md:flex-row md:items-center md:justify-between">
+                <div>
+                  <span className="font-medium">{b.service}</span> avec <span className="font-medium">{b.client}</span>
+                  <span className="block text-sm text-gray-500">{new Date(b.date).toLocaleString()}</span>
+                </div>
+                <span className={`mt-2 md:mt-0 px-3 py-1 rounded-full text-xs font-semibold ${b.status === 'confirmed' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>{b.status === 'confirmed' ? 'Confirmé' : 'En attente'}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 };

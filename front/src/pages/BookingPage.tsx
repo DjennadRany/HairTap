@@ -116,6 +116,7 @@ const BookingPage = () => {
     // Créer la réservation dynamiquement
     const booking = {
       id: uuidv4(),
+      clientId: user.id,
       coiffeurId: coiffeur.id ?? 0,
       coiffeurName: coiffeur.name || '',
       service: selectedService.name,
