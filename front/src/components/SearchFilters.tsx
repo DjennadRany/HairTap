@@ -1,4 +1,4 @@
-import React, { type ChangeEvent, useState, useRef, useEffect } from 'react';
+import { type ChangeEvent, useState, useRef, useEffect } from 'react';
 
 export interface SearchFilters {
   service: string;

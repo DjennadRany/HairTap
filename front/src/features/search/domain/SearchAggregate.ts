@@ -92,13 +92,13 @@ export class SearchAggregate {
     
     switch (sortBy) {
       case 'distance':
-        results.sort((a, b) => (a.distance || 0) - (b.distance || 0));
+        results.sort((a: any, b: any) => (a.distance || 0) - (b.distance || 0));
         break;
       case 'rating':
-        results.sort((a, b) => b.rating - a.rating);
+        results.sort((a: any, b: any) => b.rating - a.rating);
         break;
       case 'price':
-        results.sort((a, b) => a.minPrice - b.minPrice);
+        results.sort((a: any, b: any) => a.minPrice - b.minPrice);
         break;
     }
   }
@@ -107,7 +107,7 @@ export class SearchAggregate {
   private applyFilters(): SearchResult[] {
     const { filters, results } = this.state;
 
-    return results.filter(result => {
+    return results.filter((result: any) => {
       // Filtre par mode
       if (filters.mode !== 'both' && !result.mode.includes(filters.mode)) {
         return false;
@@ -125,7 +125,7 @@ export class SearchAggregate {
 
       // Filtre par services
       if (filters.services?.length && 
-          !filters.services.every(service => result.services.includes(service))) {
+          !filters.services.every((service: any) => result.services.includes(service))) {
         return false;
       }
 
