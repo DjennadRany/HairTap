@@ -1,0 +1,61 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "type": "client",
+      "name": "Alexis Duprez",
+      "email": "alexis@example.com",
+      "city": "Paris",
+      "preferences": ["Homme", "Barbe"]
+    },
+    {
+      "id": 2,
+      "type": "coiffeur",
+      "name": "Lina Hair Studio",
+      "email": "lina@studio.fr",
+      "address": "12 rue de Lyon, Paris",
+      "services": [
+        { "name": "Coupe femme", "price": 40 },
+        { "name": "Brushing", "price": 30 }
+      ],
+      "availableAt": ["2025-05-22T10:00", "2025-05-22T14:00"],
+      "mode": ["salon", "domicile"],
+      "rating": 4.8
+    }
+  ],
+  "coiffeurs": [
+    {
+      "id": 1,
+      "userId": 2,
+      "name": "Lina Hair Studio",
+      "bio": "Spécialiste balayage et brushing",
+      "services": ["Brushing", "Coupe femme"],
+      "priceRange": "30-60€",
+      "photos": ["photo1.jpg", "photo2.jpg"],
+      "disponibilites": [
+        "2025-05-22T10:00",
+        "2025-05-22T14:00"
+      ]
+    }
+  ],
+  "bookings": [
+    {
+      "id": 1,
+      "clientId": 1,
+      "coiffeurId": 1,
+      "service": "Brushing",
+      "date": "2025-05-22T10:00",
+      "location": "domicile",
+      "status": "confirmée"
+    }
+  ],
+  "payments": [
+    {
+      "id": 1,
+      "bookingId": 1,
+      "amount": 30,
+      "status": "paid",
+      "stripeRef": "pi_abc123456"
+    }
+  ]
+}

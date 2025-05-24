@@ -1,0 +1,119 @@
+# AUDIT DU PROJET TAPHAIR
+
+## 1. STRUCTURE ACTUELLE (NETTOYÉE)
+
+/src
+├── features/
+│   ├── auth/
+│   │   ├── components/
+│   │   │   └── ProtectedRoute.tsx
+│   │   ├── hooks/
+│   │   │   └── useAuth.ts
+│   │   ├── store/
+│   │   │   └── authSlice.ts
+│   │   └── types/
+│   │       └── index.ts
+│   ├── search/
+│   │   ├── components/
+│   │   │   ├── SearchFilters.tsx
+│   │   │   └── CoiffeurCard.tsx
+│   │   └── types/
+│   │       └── index.ts
+│   └── booking/
+│       └── (à implémenter)
+├── layouts/
+│   ├── PublicLayout/
+│   ├── AuthLayout/
+│   ├── ClientDashboardLayout/
+│   ├── CoiffeurDashboardLayout/
+│   └── ErrorBoundaryLayout/
+├── routes/
+│   ├── ClientRoutes.tsx
+│   └── CoiffeurRoutes.tsx
+├── pages/
+│   ├── client/
+│   │   ├── ClientDashboardPage.tsx
+│   │   ├── SearchPage.tsx
+│   │   ├── BookingPage.tsx
+│   │   ├── ClientReservationsPage.tsx
+│   │   └── ProfileEditPage.tsx
+│   └── coiffeur/
+│       ├── CoiffeurDashboardPage.tsx
+│       ├── CoiffeurProfilePage.tsx
+│       ├── CoiffeurReservationsPage.tsx
+│       ├── CoiffeurRevenuePage.tsx
+│       └── ProfileEditPage.tsx
+└── components/
+    ├── Header.tsx
+    └── Footer.tsx
+
+## 2. DOUBLONS ÉLIMINÉS
+✓ Suppression de /hooks global (déplacé dans features)
+✓ Suppression de /api global (à implémenter dans features)
+✓ Suppression de /types global (déplacé dans features)
+✓ Centralisation des composants de recherche
+✓ Unification de la logique d'authentification
+
+## 3. PROCHAINES ÉTAPES
+
+1. Implémentation des pages :
+   - Créer les pages dans /pages/client et /pages/coiffeur
+   - Implémenter les layouts manquants
+   - Ajouter les tests pour chaque page
+
+2. Features à implémenter :
+   - booking : Gestion des réservations
+   - payment : Intégration Stripe
+   - profile : Gestion des profils
+
+3. Configuration :
+   - Finaliser ShadcnUI
+   - Configurer les tests
+   - Mettre en place le mock API
+
+4. Standards à respecter :
+   - Palette de couleurs : #000000, #FAF1E0, #DE6C5C
+   - TypeScript strict
+   - Tests unitaires
+   - Documentation des composants
+
+## 4. ACTIONS REQUISES
+
+1. Nettoyage:
+   - Supprimer les hooks dupliqués
+   - Centraliser la logique d'authentification
+   - Nettoyer les composants redondants
+
+2. Implementation:
+   - Configurer ShadCN UI
+   - Mettre en place Stripe
+   - Implémenter les tests
+   - Finaliser les layouts manquants
+
+3. Standardisation:
+   - Utiliser la palette de couleurs: #000000, #FAF1E0, #DE6C5C
+   - Implémenter les feature flags
+   - Mettre en place le mock API
+
+## 5. PAGES À IMPLÉMENTER (prompt.json)
+- [✓] HomePage
+- [✗] LoginPage
+- [✗] OnboardingClientPage
+- [✗] OnboardingProPage
+- [✗] ClientDashboardPage
+- [✗] SearchPage
+- [✗] CoiffeurProfilePage
+- [✗] BookingPage
+- [✗] ClientReservationsPage
+- [✗] CoiffeurDashboardPage
+- [✗] ProfileEditPage
+- [✗] CoiffeurReservationsPage
+- [✗] CoiffeurRevenuePage
+- [✗] PaymentPage
+- [✗] 404Page
+
+## 6. ERREURS TYPESCRIPT À CORRIGER
+1. Import des types (verbatimModuleSyntax)
+2. Configuration des paths aliases (@/)
+3. Types manquants pour les composants
+4. Types Redux incomplets 

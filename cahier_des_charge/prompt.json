@@ -1,0 +1,84 @@
+{
+  "project": "Taper",
+  "goal": "Développer la V1 front-end fonctionnelle de l'application Taper en React, en suivant une architecture modulaire, responsive et scalable, conforme aux bonnes pratiques SaaS modernes (Uber, Doctolib, Fresha).",
+  "assets": {
+    "logo": "assets/Logo_TapHair2.png"
+  },
+  "tech_stack": {
+    "framework": "React (Vite)",
+    "state_management": "Redux Toolkit ou Zustand",
+    "routing": "React Router DOM",
+    "ui_kit": "ShadCN UI",
+    "forms": "React Hook Form + Yup",
+    "styling": "TailwindCSS",
+    "auth": "Google Auth (via @react-oauth/google)",
+    "payment": "Stripe Connect (split)",
+    "animation": "Framer Motion",
+    "tests": "Vitest ou Jest",
+    "formatting": "ESLint + Prettier"
+  },
+  "architecture": {
+    "structure": "Feature-based folder",
+    "templates": [
+      "PublicLayout",
+      "AuthLayout",
+      "ClientDashboardLayout",
+      "CoiffeurDashboardLayout",
+      "ErrorBoundaryLayout"
+    ],
+    "pages": [
+      "HomePage",
+      "LoginPage",
+      "OnboardingClientPage",
+      "OnboardingProPage",
+      "ClientDashboardPage",
+      "SearchPage",
+      "CoiffeurProfilePage",
+      "BookingPage",
+      "ClientReservationsPage",
+      "CoiffeurDashboardPage",
+      "ProfileEditPage",
+      "CoiffeurReservationsPage",
+      "CoiffeurRevenuePage",
+      "PaymentPage",
+      "404Page"
+    ],
+    "components": "Créer tous les composants listés dans le fichier 'STRUCTURE COMPLÈTE – V1 FRONTEND.md'. Chaque composant doit être isolé, testé, réutilisable, typé si TypeScript activé, et documenté."
+  },
+  "ui_guidelines": {
+    "responsive": true,
+    "mobile_first": true,
+    "a11y": true,
+    "seo": true,
+    "skeleton_loader": true
+  },
+  "auth_flow": {
+    "new_user": "Rediriger vers onboarding (client ou pro)",
+    "existing_user": "Rediriger vers dashboard selon rôle"
+  },
+  "feature_flags": {
+    "role_based_routing": true,
+    "form_validation": true,
+    "stripe_test_mode": true
+  },
+  "mock_api": {
+    "strategy": "JSON Server ou MirageJS pour simuler les endpoints REST dès le début du projet",
+    "structure": "/mocks/{feature}/data.json"
+  },
+  "branding": {
+    "name": "Taper",
+    "logo": "Afficher le logo dans le header de l'app en utilisant assets/Logo_TapHair2.png",
+    "color_palette": ["#000000", "#FAF1E0", "#DE6C5C"]
+  },
+  "user_stories": "Suivre intégralement le fichier userstory.md pour le développement par étape (US001 à US105 inclus). Chaque page ou composant doit s'appuyer sur au moins une User Story.",
+  "rules": {
+    "coherence_check": "Avant chaque étape de développement, vérifier que les chemins utilisateurs sont cohérents entre eux et correspondent aux User Stories.",
+    "version_control": "Git avec des commits atomiques, branch naming clair : feat/xxx, fix/xxx, chore/xxx.",
+    "env_setup": ".env mocké dès le départ avec clé Google et Stripe"
+  },
+  "output": {
+    "codebase": "Clean, testé, structuré dans src/features, src/components, src/pages",
+    "readme": "README.md avec instructions de setup, build, test",
+    "deployment": "Déploiement en local via Vite, prêt à être mis sur Vercel"
+  }
+}

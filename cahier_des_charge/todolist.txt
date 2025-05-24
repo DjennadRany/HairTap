@@ -1,0 +1,83 @@
+📋 TODOLIST - TAPHAIR FRONTEND V1
+
+🔄 CORRECTIONS PRIORITAIRES (Existant)
+--------------------------------
+1. Correction du système de redirection
+   ⚠️ Problème : State Redux réinitialisé au rafraîchissement
+   ✅ Implémenter la persistance du state avec localStorage/sessionStorage
+   ✅ Corriger le flux de redirection après connexion
+
+2. SearchPage - Corrections
+   ☐ Finaliser les filtres de recherche
+   ☐ Ajouter des loaders pendant le chargement
+   ☐ Améliorer la gestion des états des filtres
+
+3. CoiffeurProfilePage - Améliorations
+   ☐ Corriger la redirection vers la réservation
+   ☐ Ajouter des skeleton loaders
+   ☐ Améliorer la gestion des erreurs
+
+4. BookingPage - Finalisation
+   ☐ Corriger les bugs de redirection
+   ☐ Finaliser le flux de réservation
+   ☐ Ajouter la validation des formulaires
+   ☐ Implémenter les loaders
+
+🏗️ LAYOUTS À IMPLÉMENTER (Pour l'existant)
+--------------------------------
+1. ErrorBoundaryLayout
+   ☐ Créer le composant de base
+   ☐ Intégrer sur les pages existantes
+
+2. PublicLayout
+   ☐ Créer pour les pages publiques existantes
+   ☐ Intégrer la navigation commune
+
+🔧 AMÉLIORATIONS TECHNIQUES
+--------------------------------
+1. Gestion des erreurs
+   ☐ Ajouter ErrorBoundary sur les pages existantes
+   ☐ Implémenter les messages d'erreur utilisateur
+   ☐ Gérer les cas de chargement et d'erreur API
+
+2. Performance
+   ☐ Ajouter des Skeleton loaders sur les pages existantes
+   ☐ Optimiser les renders avec useMemo/useCallback
+   ☐ Implémenter le lazy loading des composants
+
+3. État global
+   ☐ Mettre en place la persistance Redux
+   ☐ Optimiser la gestion des états
+   ☐ Nettoyer les states non utilisés
+
+📝 NOTES
+--------------------------------
+- Ne pas commencer de nouvelles pages
+- Finaliser chaque fonctionnalité existante avant de passer à la suivante
+- Tester chaque correction sur les différents parcours utilisateur
+- Documenter les corrections apportées
+
+🎯 ORDRE DE PRIORITÉ
+--------------------------------
+1. Système de redirection et persistance
+2. Finalisation BookingPage
+3. Corrections SearchPage
+4. Améliorations CoiffeurProfilePage
+5. Implémentation ErrorBoundary
+6. Ajout des Skeleton loaders
+7. Optimisation des performances
+
+État des pages existantes :
+✅ HomePage - Fonctionnelle
+✅ LoginPage - Basique mais fonctionnelle
+🔨 SearchPage - Bugs mineurs
+🔨 CoiffeurProfilePage - Problème de redirection
+❌ BookingPage - Partiellement développée
+✅ CoiffeurReservationsPage - Fonctionnelle
+✅ CoiffeurRevenuePage - Fonctionnelle
+
+Légende :
+✅ Fonctionnel
+🔨 Nécessite des corrections
+❌ À finaliser
+☐ Tâche à faire 

@@ -1,0 +1,6 @@
+{
+  "/api/users": "/users",
+  "/api/coiffeurs": "/coiffeurs",
+  "/api/bookings": "/bookings",
+  "/api/payments": "/payments"
+}

@@ -1,0 +1,55 @@
+{
+  "users": [
+    {
+      "id": "1",
+      "email": "test@example.com",
+      "name": "Test User",
+      "role": "client",
+      "photo": "https://api.dicebear.com/7.x/avataaars/svg?seed=1"
+    },
+    {
+      "id": "2",
+      "email": "coiffeur@example.com",
+      "name": "Lina Hair Studio",
+      "role": "coiffeur",
+      "photo": "https://api.dicebear.com/7.x/avataaars/svg?seed=2"
+    }
+  ],
+  "coiffeurs": [
+    {
+      "id": "2",
+      "name": "Lina Hair Studio",
+      "email": "coiffeur@example.com",
+      "rating": 4.8,
+      "services": ["Coupe femme", "Brushing", "Coloration"],
+      "pricing": {
+        "Coupe femme": 35,
+        "Brushing": 25,
+        "Coloration": 65
+      },
+      "city": "Paris",
+      "mode": ["salon", "domicile"],
+      "availability": [
+        "Lundi: 9h-18h",
+        "Mardi: 9h-18h",
+        "Mercredi: 9h-18h",
+        "Jeudi: 9h-18h",
+        "Vendredi: 9h-18h"
+      ],
+      "photo": "https://api.dicebear.com/7.x/avataaars/svg?seed=2"
+    }
+  ],
+  "bookings": [],
+  "reviews": [],
+  "auth": {
+    "google": {
+      "success": true,
+      "user": {
+        "id": "2",
+        "email": "coiffeur@example.com",
+        "name": "Lina Hair Studio",
+        "photo": "https://api.dicebear.com/7.x/avataaars/svg?seed=2"
+      }
+    }
+  }
+} 

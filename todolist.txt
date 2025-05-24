@@ -1,0 +1,133 @@
+1. Corrections de bugs initiaux
+   ✓ Bug du filtre prix maximum
+   ✓ Problème de redirection après connexion
+   ✓ Page noire sur /client/bookings
+   ✓ Disparition de la barre de menu
+
+2. SearchPage - Optimisations
+   ✓ Optimisation des filtres de recherche
+   ✓ Ajout des loaders pendant le chargement
+   ✓ Amélioration de la gestion des états des filtres
+   ☐ Système de localisation avancé
+
+3. User Stories - Système de Localisation et Navigation
+
+   Epic 1: En tant qu'utilisateur, je veux une expérience de recherche géolocalisée intuitive
+
+   US1: Interface de Carte Interactive
+   - En tant qu'utilisateur
+   - Je veux voir une carte interactive avec les salons et coiffeurs à proximité
+   - Afin de choisir facilement en fonction de la localisation
+   Critères d'acceptation:
+   - Vue carte/liste switchable
+   - Carte interactive avec clusters de marqueurs
+   - Filtres visibles et applicables directement sur la carte
+   - Affichage des informations essentielles au survol des marqueurs
+   - Mode plein écran disponible
+
+   US2: Estimation des Temps de Trajet
+   - En tant que client
+   - Je veux voir le temps de trajet estimé jusqu'au salon ou jusqu'au lieu de RDV
+   - Afin de mieux planifier mon rendez-vous
+   Critères d'acceptation:
+   - Affichage du temps de trajet en voiture/transport/à pied
+   - Mise à jour en temps réel selon le trafic
+   - Possibilité de planifier pour une date/heure future
+   - Intégration avec les apps de navigation (Waze, Maps, etc.)
+
+   US3: Gestion des Zones de Service (Coiffeurs)
+   - En tant que coiffeur
+   - Je veux définir et visualiser ma zone de service pour les prestations à domicile
+   - Afin de gérer efficacement mes déplacements
+   Critères d'acceptation:
+   - Interface de dessin de zone sur la carte
+   - Définition de plusieurs zones avec tarifs différents
+   - Visualisation des temps de trajet entre rendez-vous
+   - Optimisation des itinéraires pour plusieurs RDV
+
+   US4: Navigation en Temps Réel
+   - En tant que client/coiffeur
+   - Je veux suivre en temps réel la position du coiffeur/client
+   - Afin de faciliter les RDV à domicile
+   Critères d'acceptation:
+   - Partage de position en temps réel
+   - Notifications de proximité
+   - Chat intégré pour la coordination
+   - Estimation du temps d'arrivée actualisée
+
+4. Architecture Technique (DDD)
+
+   Domaines:
+   - Location
+     - ValueObjects:
+       - Coordinates (latitude, longitude)
+       - Address (street, city, postalCode, country)
+       - TravelTime (duration, mode)
+       - ServiceArea (polygon, restrictions)
+     - Entities:
+       - Location
+       - Route
+       - ServiceZone
+     - Aggregates:
+       - TravelPlan (combine Route et ServiceZone)
+     
+   - Navigation
+     - Services:
+       - MapService (interface)
+       - RouteService
+       - GeofencingService
+       - RealTimeTrackingService
+     
+   - Scheduling
+     - Services:
+       - AppointmentService
+       - AvailabilityService
+       - RouteOptimizationService
+
+5. Patterns de Design
+
+   - Observer Pattern: Pour les mises à jour en temps réel
+   - Strategy Pattern: Pour les différents modes de navigation
+   - Factory Pattern: Pour la création des services de carte
+   - Command Pattern: Pour les opérations de dessin sur la carte
+   - Decorator Pattern: Pour les différentes couches de la carte
+
+6. Infrastructure Technique
+
+   Choix de la Stack:
+   - Leaflet comme base cartographique (gratuit, open-source)
+   - OpenStreetMap pour les données cartographiques
+   - OSRM pour le calcul d'itinéraires
+   - Socket.io pour le temps réel
+   - Turf.js pour les calculs géospatiaux
+
+   Étapes d'installation:
+   1. Créer un compte OpenStreetMap (gratuit)
+   2. Configurer un serveur OSRM (self-hosted ou service)
+   3. Implémenter le système de websockets
+   4. Mettre en place le stockage des données géospatiales
+
+7. Composants UI
+
+   - MapView
+     - Contrôles de zoom/déplacement
+     - Boutons de changement de vue
+     - Filtres rapides
+     - Mode plein écran
+   
+   - RoutePreview
+     - Temps estimé par mode
+     - Alternatives de trajet
+     - Informations de trafic
+   
+   - ServiceAreaEditor
+     - Outils de dessin
+     - Paramètres de zone
+     - Historique des modifications
+
+8. Prochaines étapes
+   ☐ Configuration de l'infrastructure cartographique
+   ☐ Implémentation de la vue carte/liste
+   ☐ Développement du système de routing
+   ☐ Mise en place du temps réel
+   ☐ Tests de performance et optimisation 
