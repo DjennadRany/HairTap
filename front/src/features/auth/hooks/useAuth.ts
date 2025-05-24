@@ -1,7 +1,6 @@
 import { useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import type { CredentialResponse } from '@react-oauth/google';
-import type { User, AuthState } from '../types';
+import type { AuthState } from '../types';
 
 export const useAuth = () => {
   const dispatch = useDispatch();
@@ -9,7 +8,7 @@ export const useAuth = () => {
     (state: { auth: AuthState }) => state.auth
   );
 
-  const loginWithGoogle = useCallback(async (response: CredentialResponse) => {
+  const loginWithGoogle = useCallback(async (_: any) => {
     try {
       // Implémentation à venir avec l'API
     } catch (error) {
