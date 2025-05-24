@@ -29,6 +29,12 @@ const initialState: ProfileState = {
   error: null,
 };
 
+function saveProfileToLocalStorage(profile: Profile | null) {
+  if (profile) {
+    localStorage.setItem('client_profile', JSON.stringify(profile));
+  }
+}
+
 export const profileSlice = createSlice({
   name: 'profile',
   initialState,
@@ -37,6 +43,7 @@ export const profileSlice = createSlice({
       state.profile = action.payload;
       state.loading = false;
       state.error = null;
+      saveProfileToLocalStorage(action.payload);
     },
     setLoading: (state, action: PayloadAction<boolean>) => {
       state.loading = action.payload;
@@ -51,6 +58,7 @@ export const profileSlice = createSlice({
     ) => {
       if (state.profile) {
         state.profile.preferences = action.payload;
+        saveProfileToLocalStorage(state.profile);
       }
     },
   },
@@ -62,5 +70,17 @@ export const { setProfile, setLoading, setError, updatePreferences } =
 export const selectProfile = (state: RootState) => state.profile.profile;
 export const selectProfileLoading = (state: RootState) => state.profile.loading;
 export const selectProfileError = (state: RootState) => state.profile.error;
+
+export const loadProfileFromLocalStorage = (): Profile | null => {
+  const data = localStorage.getItem('client_profile');
+  if (data) {
+    try {
+      return JSON.parse(data);
+    } catch {
+      return null;
+    }
+  }
+  return null;
+};
 
 export default profileSlice.reducer; 

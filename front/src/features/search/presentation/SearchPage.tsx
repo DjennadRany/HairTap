@@ -10,6 +10,7 @@ import { CoiffeurCard } from '@/components/CoiffeurCard';
 import { idfCoiffeurs } from '../domain/mockData';
 import { point, distance as turfDistance } from '@turf/turf';
 import type { SearchResult as SR } from '../domain/types';
+import { ProtectedRoute } from '../../../components/ProtectedRoute';
 
 export const SearchPage: React.FC = () => {
   const navigate = useNavigate();
@@ -198,4 +199,12 @@ export const SearchPage: React.FC = () => {
       )}
     </div>
   );
-}; 
+};
+
+export default function ProtectedSearchPageWrapper() {
+  return (
+    <ProtectedRoute>
+      <SearchPage />
+    </ProtectedRoute>
+  );
+} 

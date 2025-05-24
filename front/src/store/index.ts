@@ -2,12 +2,22 @@ import { configureStore } from '@reduxjs/toolkit';
 import authReducer from './slices/authSlice';
 import bookingReducer from './slices/bookingSlice';
 import profileReducer from './slices/profileSlice';
+import { loadProfileFromLocalStorage } from './slices/profileSlice';
 
-export const store = configureStore({
+const preloadedProfile = loadProfileFromLocalStorage();
+
+const store = configureStore({
   reducer: {
     auth: authReducer,
     booking: bookingReducer,
     profile: profileReducer,
+  },
+  preloadedState: {
+    profile: {
+      profile: preloadedProfile,
+      loading: false,
+      error: null,
+    },
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

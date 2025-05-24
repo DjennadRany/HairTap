@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { setUser } from '../store/slices/authSlice';
+import { setProfile } from '../store/slices/profileSlice';
 import { selectRedirectUrl, clearRedirectUrl } from '../store/slices/redirectSlice';
 import type { User } from '../mocks/users';
 import type { RootState } from '../store/store';
@@ -30,6 +31,19 @@ export const useAuth = () => {
         role: mockUser.role,
         photo: mockUser.picture
       }));
+
+      // Initialiser le profil client dans le store Redux
+      if (mockUser.role === 'client') {
+        dispatch(setProfile({
+          id: mockUser.id,
+          userId: mockUser.id,
+          role: 'client',
+          preferences: {
+            favoriteCoiffeurs: [],
+            preferredServices: []
+          }
+        }));
+      }
 
       // Gérer la redirection
       if (redirectUrl) {

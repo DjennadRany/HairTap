@@ -1,16 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { selectCurrentUser } from '../store/slices/authSlice';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/Button';
-import { format, addDays, subDays } from 'date-fns';
+import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { mockClientBookings } from '../features/search/domain/mockData';
 import { useNavigate } from 'react-router-dom';
+import { useClientBookings } from '../hooks/useClientBookings';
 
 interface Booking {
   id: string;
-  coiffeurId: string;
+  coiffeurId: number;
   coiffeurName: string;
   service: string;
   date: string;
@@ -25,43 +25,20 @@ interface Booking {
 const ClientBookingsPage = () => {
   const user = useSelector(selectCurrentUser);
   const navigate = useNavigate();
-  const [bookings, setBookings] = useState<Booking[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string>('');
+  const { bookings, loading, error, cancelBooking, setError, getUpcomingBookings, getPastBookings, canCancel } = useClientBookings();
 
   useEffect(() => {
     if (!user) {
       navigate('/login');
-      return;
     }
-    // Simuler un chargement des données
-    const timer = setTimeout(() => {
-      setBookings(mockClientBookings);
-      setLoading(false);
-    }, 1000);
-    return () => clearTimeout(timer);
   }, [user, navigate]);
 
   const handleCancelBooking = async (bookingId: string) => {
     try {
-      // Simuler l'annulation
-      setBookings((prevBookings) =>
-        prevBookings.map((booking) =>
-          booking.id === bookingId
-            ? { ...booking, status: 'cancelled', paymentStatus: 'refunded' }
-            : booking
-        )
-      );
+      cancelBooking(bookingId);
     } catch (error) {
       setError('Erreur lors de l\'annulation de la réservation');
     }
-  };
-
-  const canCancel = (booking: Booking) => {
-    if (booking.status === 'cancelled') return false;
-    const now = new Date();
-    const deadline = new Date(booking.cancellationDeadline);
-    return now < deadline;
   };
 
   const getStatusBadgeClass = (status: Booking['status']) => {
@@ -101,12 +78,8 @@ const ClientBookingsPage = () => {
     );
   }
 
-  const upcomingBookings = bookings.filter(
-    (booking) => new Date(booking.date) > new Date()
-  );
-  const pastBookings = bookings.filter(
-    (booking) => new Date(booking.date) <= new Date()
-  );
+  const upcomingBookings = getUpcomingBookings();
+  const pastBookings = getPastBookings();
 
   return (
     <div className="container mx-auto px-4 py-8">

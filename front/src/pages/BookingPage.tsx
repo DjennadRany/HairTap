@@ -9,6 +9,9 @@ import { fr } from 'date-fns/locale';
 import { loadStripe } from '@stripe/stripe-js';
 import { getAllCoiffeurs } from '../features/search/domain/mockData';
 import { SearchResult } from '../features/search/domain/types';
+import { useClientBookings } from '../hooks/useClientBookings';
+import { v4 as uuidv4 } from 'uuid';
+import Modal from '../components/ui/Modal';
 
 interface Service {
   name: string;
@@ -39,16 +42,31 @@ const BookingPage = () => {
   const [selectedTime, setSelectedTime] = useState<string>('');
   const [bookingMode, setBookingMode] = useState<'salon' | 'domicile'>('salon');
   const [clientAddress, setClientAddress] = useState<string>('');
-  const [error, setError] = useState<string>('');
   const [coiffeur, setCoiffeur] = useState<SearchResult | null>(null);
+  const { addBooking, error: bookingError, setError, bookings } = useClientBookings();
+  const [showConflictModal, setShowConflictModal] = useState(false);
+  const [bookingCount, setBookingCount] = useState(bookings.length);
 
   useEffect(() => {
     // Récupérer le coiffeur par id depuis la source de vérité
     const allCoiffeurs = getAllCoiffeurs();
     const found = allCoiffeurs.find((c) => String(c.id) === String(id));
     setCoiffeur(found || null);
-    setLoading(false);
+        setLoading(false);
   }, [id]);
+
+  // Effet pour gérer la navigation ou la popin selon l'état d'erreur et le nombre de réservations
+  useEffect(() => {
+    if (bookingError && bookingError.includes('déjà une réservation à cette date')) {
+      setShowConflictModal(true);
+    }
+    // Navigation uniquement si une réservation a été ajoutée (bookingCount a augmenté)
+    if (bookings.length > bookingCount) {
+      setBookingCount(bookings.length);
+      navigate('/client/bookings');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bookingError, bookings.length]);
 
   const handleServiceSelect = (service: Service) => {
     setSelectedService(service);
@@ -83,19 +101,34 @@ const BookingPage = () => {
       navigate('/login');
       return;
     }
-
     if (!selectedService || !selectedDate || !selectedTime) {
       setError('Veuillez remplir tous les champs obligatoires');
       return;
     }
-
     if (bookingMode === 'domicile' && !clientAddress) {
       setError('Veuillez fournir une adresse pour la prestation à domicile');
       return;
     }
-
-    // Simuler une réservation réussie
-    navigate('/client/bookings');
+    if (!coiffeur) {
+      setError('Coiffeur introuvable, impossible de réserver.');
+      return;
+    }
+    // Créer la réservation dynamiquement
+    const booking = {
+      id: uuidv4(),
+      coiffeurId: coiffeur.id ?? 0,
+      coiffeurName: coiffeur.name || '',
+      service: selectedService.name,
+      date: `${selectedDate}T${selectedTime}`,
+      price: selectedService.price,
+      status: 'confirmed' as const,
+      mode: bookingMode,
+      address: bookingMode === 'domicile' ? clientAddress : undefined,
+      paymentStatus: 'paid' as const,
+      cancellationDeadline: selectedDate + 'T00:00',
+    };
+    addBooking(booking);
+    // La navigation ou la popin sera gérée par useEffect
   };
 
   if (loading) {
@@ -124,9 +157,9 @@ const BookingPage = () => {
           Réserver avec {coiffeur.name}
         </h1>
 
-        {error && (
+        {bookingError && !showConflictModal && (
           <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-            {error}
+            {bookingError}
           </div>
         )}
 
@@ -215,8 +248,8 @@ const BookingPage = () => {
                         {format(new Date(day.date), 'EEEE d MMMM', { locale: fr })}
                       </button>
                     ))}
-                  </div>
-                </div>
+          </div>
+          </div>
 
                 {/* Horaires */}
                 {selectedDate && (
@@ -226,22 +259,22 @@ const BookingPage = () => {
                     </h3>
                     <div className="grid grid-cols-2 gap-2">
                       {getAvailableSlots().map((time: string) => (
-                        <button
-                          key={time}
+                  <button
+                    key={time}
                           className={`p-2 text-center rounded-lg border ${
                             selectedTime === time
                               ? 'border-primary bg-primary/10'
                               : 'hover:border-gray-300'
                           }`}
                           onClick={() => setSelectedTime(time)}
-                        >
-                          {time}
-                        </button>
+                  >
+                    {time}
+                  </button>
                       ))}
                     </div>
                   </div>
-                )}
-              </div>
+              )}
+            </div>
             </Card>
           )}
 
@@ -279,18 +312,28 @@ const BookingPage = () => {
                 <p className="text-lg font-bold mt-4">
                   Total : {selectedService.price}€
                 </p>
-              </div>
+          </div>
 
               <Button
                 onClick={handleSubmit}
                 className="w-full bg-primary text-white py-3 rounded-lg font-medium hover:bg-primary/90"
               >
-                Confirmer la réservation
+            Confirmer la réservation
               </Button>
             </Card>
           )}
         </div>
       </div>
+      <Modal
+        open={showConflictModal}
+        onClose={() => { setShowConflictModal(false); setError(''); }}
+        title="Créneau déjà réservé"
+        actions={
+          <Button onClick={() => { setShowConflictModal(false); setError(''); }} className="bg-primary text-white">OK</Button>
+        }
+      >
+        Vous avez déjà une réservation à cette date et heure, veuillez annuler l'autre réservation avant de continuer.
+      </Modal>
     </div>
   );
 };

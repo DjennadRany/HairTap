@@ -262,13 +262,13 @@ export const franceCoiffeurs: SearchResult[] = [
 // Fonction pour obtenir tous les coiffeurs
 export const getAllCoiffeurs = (): SearchResult[] => {
   return [...idfCoiffeurs, ...franceCoiffeurs];
-};
+}; 
 
 // Réservations mockées pour le client
 export const mockClientBookings = [
   {
     id: "1",
-    coiffeurId: "2",
+    coiffeurId: 2,
     coiffeurName: "Studio Jean",
     service: "Coupe Homme",
     date: format(addDays(new Date(), 2), 'yyyy-MM-dd\'T\'HH:mm'),
@@ -280,7 +280,7 @@ export const mockClientBookings = [
   },
   {
     id: "2",
-    coiffeurId: "3",
+    coiffeurId: 3,
     coiffeurName: "Sarah Coiffure",
     service: "Coloration",
     date: format(addDays(new Date(), 5), 'yyyy-MM-dd\'T\'HH:mm'),
@@ -293,7 +293,7 @@ export const mockClientBookings = [
   },
   {
     id: "3",
-    coiffeurId: "2",
+    coiffeurId: 2,
     coiffeurName: "Studio Jean",
     service: "Coupe + Barbe",
     date: format(subDays(new Date(), 3), 'yyyy-MM-dd\'T\'HH:mm'),
@@ -305,7 +305,7 @@ export const mockClientBookings = [
   },
   {
     id: "4",
-    coiffeurId: "4",
+    coiffeurId: 4,
     coiffeurName: "Marie Style",
     service: "Coupe Femme",
     date: format(subDays(new Date(), 10), 'yyyy-MM-dd\'T\'HH:mm'),

@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Button } from './ui/Button';
+import FavoriteStar from './FavoriteStar';
 
 interface CoiffeurCardProps {
   id: number;
@@ -28,10 +29,10 @@ export const CoiffeurCard = ({
 }: CoiffeurCardProps) => {
   return (
     <div 
-      className="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow cursor-pointer"
+      className="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow cursor-pointer relative"
       onClick={onSelect}
     >
-      <div className="p-6">
+      <div className="p-6 pb-12">
         <div className="flex items-start justify-between">
           <div className="flex items-center">
             <div className="h-12 w-12 rounded-full overflow-hidden bg-gray-200">
@@ -61,7 +62,6 @@ export const CoiffeurCard = ({
             )}
           </div>
         </div>
-
         <div className="mt-4">
           <div className="flex flex-wrap gap-2">
             {services.map((service, index) => (
@@ -74,7 +74,6 @@ export const CoiffeurCard = ({
             ))}
           </div>
         </div>
-
         <div className="mt-4 flex items-center space-x-2">
           {mode.includes('salon') && (
             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
@@ -86,6 +85,11 @@ export const CoiffeurCard = ({
               À domicile
             </span>
           )}
+        </div>
+      </div>
+      <div className="absolute bottom-3 right-3 z-10">
+        <div className="rounded-full bg-white shadow-lg p-1 flex items-center justify-center">
+          <FavoriteStar coiffeurId={String(id)} size={28} />
         </div>
       </div>
     </div>

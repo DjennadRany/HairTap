@@ -7,6 +7,7 @@ import { PersistGate } from 'redux-persist/integration/react';
 import { store, persistor } from './store/store';
 import App from './App';
 import './index.css';
+import { ClientBookingsProvider } from './hooks/useClientBookings';
 
 // En développement, utilisez l'ID client de test
 const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || 'your-client-id';
@@ -16,9 +17,11 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <Provider store={store}>
       <PersistGate loading={null} persistor={persistor}>
       <GoogleOAuthProvider clientId={googleClientId}>
+          <ClientBookingsProvider>
         <BrowserRouter>
           <App />
         </BrowserRouter>
+          </ClientBookingsProvider>
       </GoogleOAuthProvider>
       </PersistGate>
     </Provider>

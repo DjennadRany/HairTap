@@ -14,6 +14,8 @@ const ClientProfilePage = () => {
   const dispatch = useDispatch();
   const user = useSelector(selectCurrentUser) as AuthUser;
   const [photoPreview, setPhotoPreview] = useState<string>(user?.photo || '');
+  const [success, setSuccess] = useState<string>('');
+  const [errorMsg, setErrorMsg] = useState<string>('');
   const {
     register,
     handleSubmit,
@@ -32,6 +34,8 @@ const ClientProfilePage = () => {
 
   const onSubmit = async (data: ProfileFormData) => {
     try {
+      setSuccess('');
+      setErrorMsg('');
       const payload: any = {
         name: data.name,
         email: data.email,
@@ -41,6 +45,7 @@ const ClientProfilePage = () => {
         if (data.password === data.confirmPassword) {
           payload.password = data.password;
         } else {
+          setErrorMsg('Les mots de passe ne correspondent pas');
           return;
         }
       }
@@ -59,8 +64,9 @@ const ClientProfilePage = () => {
 
       const updatedUser = await response.json();
       dispatch(setUser(updatedUser as AuthUser));
-      // Optionnel: afficher un message de succès
+      setSuccess('Profil mis à jour avec succès !');
     } catch (error) {
+      setErrorMsg('Erreur lors de la mise à jour du profil');
       console.error('Erreur:', error);
     }
   };
@@ -79,15 +85,23 @@ const ClientProfilePage = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold mb-6">Mon profil</h1>
+      {success && (
+        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+          {success}
+        </div>
+      )}
+      {errorMsg && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          {errorMsg}
+        </div>
+      )}
       <form onSubmit={handleSubmit(onSubmit)} className="max-w-md mx-auto">
         <div className="flex flex-col items-center mb-6">
-          {photoPreview && (
-            <img
-              src={photoPreview}
-              alt="Preview"
-              className="w-24 h-24 rounded-full mb-4 object-cover"
-            />
-          )}
+          <img
+            src={photoPreview || '/default-avatar.png'}
+            alt="Preview"
+            className="w-24 h-24 rounded-full mb-4 object-cover bg-gray-100"
+          />
           <input
             type="file"
             accept="image/*"

@@ -17,23 +17,23 @@ const CoiffeurProfilePage = () => {
 
   if (!coiffeur) {
     return <div className="p-8 text-center text-lg text-gray-500">Coiffeur introuvable.</div>;
-  }
+    }
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
       <div className="flex flex-col md:flex-row gap-8">
-        <img
+              <img
           src={coiffeur.image}
-          alt={coiffeur.name}
+                alt={coiffeur.name}
           className="w-40 h-40 rounded-lg object-cover"
-        />
-        <div>
-          <h1 className="text-3xl font-bold">{coiffeur.name}</h1>
+              />
+              <div>
+                <h1 className="text-3xl font-bold">{coiffeur.name}</h1>
           <div className="flex items-center mt-2">
             <span className="text-yellow-400">★</span>
             <span className="ml-1 text-lg">{coiffeur.rating.toFixed(1)}</span>
             <span className="ml-3 text-gray-500">({coiffeur.reviews} avis)</span>
-          </div>
+                </div>
           <div className="mt-2 text-gray-600">{coiffeur.address}</div>
           <div className="mt-4">
             <h2 className="text-xl font-semibold mb-2">Services proposés</h2>
@@ -42,16 +42,16 @@ const CoiffeurProfilePage = () => {
                 <li key={service + idx}>{service}</li>
               ))}
             </ul>
-          </div>
+            </div>
         </div>
       </div>
       <div className="mt-8">
-        <button
+            <button 
           onClick={() => navigate(`/booking/${coiffeur.id}`)}
           className="px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90"
-        >
+            >
           Prendre rendez-vous
-        </button>
+            </button>
       </div>
     </div>
   );
