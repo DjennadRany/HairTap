@@ -7,6 +7,8 @@ import { Button } from '../components/ui/Button';
 import { format, addDays } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { loadStripe } from '@stripe/stripe-js';
+import { getAllCoiffeurs } from '../features/search/domain/mockData';
+import { SearchResult } from '../features/search/domain/types';
 
 interface Service {
   name: string;
@@ -27,45 +29,26 @@ interface Coiffeur {
   cancellationPolicy: string;
 }
 
-// Données mockées
-const mockCoiffeur: Coiffeur = {
-  id: "2",
-  name: "Studio Jean",
-  services: [
-    { name: "Coupe Homme", price: 25, duration: "30 min" },
-    { name: "Coupe + Barbe", price: 35, duration: "45 min" },
-    { name: "Coupe Femme", price: 45, duration: "1h" },
-    { name: "Coloration", price: 65, duration: "1h30" }
-  ],
-  mode: ['salon', 'domicile'],
-  address: "15 rue de la République, Lyon",
-  // Générer des créneaux pour les 7 prochains jours
-  availability: Array.from({ length: 7 }, (_, i) => ({
-    date: format(addDays(new Date(), i), 'yyyy-MM-dd'),
-    slots: ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00', '17:00']
-  })),
-  cancellationPolicy: "Annulation gratuite jusqu'à 24h avant le rendez-vous. Au-delà, le montant total sera dû."
-};
-
 const BookingPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const user = useSelector(selectCurrentUser);
   const [loading, setLoading] = useState(true);
-  const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const [selectedService, setSelectedService] = useState<{ name: string; price: number; duration: string } | null>(null);
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedTime, setSelectedTime] = useState<string>('');
   const [bookingMode, setBookingMode] = useState<'salon' | 'domicile'>('salon');
   const [clientAddress, setClientAddress] = useState<string>('');
   const [error, setError] = useState<string>('');
+  const [coiffeur, setCoiffeur] = useState<SearchResult | null>(null);
 
-  // Simuler un chargement
   useEffect(() => {
-    const timer = setTimeout(() => {
-        setLoading(false);
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, []);
+    // Récupérer le coiffeur par id depuis la source de vérité
+    const allCoiffeurs = getAllCoiffeurs();
+    const found = allCoiffeurs.find((c) => String(c.id) === String(id));
+    setCoiffeur(found || null);
+    setLoading(false);
+  }, [id]);
 
   const handleServiceSelect = (service: Service) => {
     setSelectedService(service);
@@ -78,11 +61,20 @@ const BookingPage = () => {
     setSelectedTime('');
   };
 
+  // Fallbacks pour les propriétés manquantes
+  const coiffeurModes = coiffeur ? ((coiffeur as any).mode || (coiffeur.type ? [coiffeur.type] : ['salon'])) : ['salon'];
+  const coiffeurServices = coiffeur ? (Array.isArray((coiffeur as any).services) && typeof (coiffeur as any).services[0] === 'object'
+    ? (coiffeur as any).services
+    : (coiffeur as any).services?.map((s: string) => ({ name: s, price: coiffeur.price || 0, duration: '30 min' })) || []) : [];
+  const coiffeurAvailability = coiffeur ? ((coiffeur as any).availability || Array.from({ length: 7 }, (_, i) => ({
+    date: format(addDays(new Date(), i), 'yyyy-MM-dd'),
+    slots: ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00', '17:00']
+  }))) : [];
+  const coiffeurCancellation = coiffeur ? ((coiffeur as any).cancellationPolicy || "Annulation gratuite jusqu'à 24h avant le rendez-vous.") : "Annulation gratuite jusqu'à 24h avant le rendez-vous.";
+
   const getAvailableSlots = () => {
     if (!selectedDate) return [];
-    const dayAvailability = mockCoiffeur.availability.find(
-      (a) => a.date === selectedDate
-    );
+    const dayAvailability = coiffeurAvailability.find((a: any) => a.date === selectedDate);
     return dayAvailability?.slots || [];
   };
 
@@ -117,11 +109,19 @@ const BookingPage = () => {
     );
   }
 
+  if (!coiffeur) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center text-red-500 font-semibold">Coiffeur introuvable.</div>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="max-w-3xl mx-auto">
         <h1 className="text-2xl font-bold mb-6">
-          Réserver avec {mockCoiffeur.name}
+          Réserver avec {coiffeur.name}
         </h1>
 
         {error && (
@@ -132,11 +132,11 @@ const BookingPage = () => {
 
         <div className="space-y-6">
           {/* Mode de prestation */}
-          {mockCoiffeur.mode.length > 1 && (
+          {coiffeurModes.length > 1 && (
             <Card className="p-6">
               <h2 className="text-lg font-semibold mb-4">Mode de prestation</h2>
               <div className="flex gap-4">
-                {mockCoiffeur.mode.map((mode) => (
+                {coiffeurModes.map((mode: string) => (
                   <button
                     key={mode}
                     className={`flex-1 p-4 rounded-lg border ${
@@ -144,7 +144,7 @@ const BookingPage = () => {
                         ? 'border-primary bg-primary/10'
                         : 'border-gray-200'
                     }`}
-                    onClick={() => setBookingMode(mode)}
+                    onClick={() => setBookingMode(mode as 'salon' | 'domicile')}
                   >
                     {mode === 'salon' ? 'En salon' : 'À domicile'}
                   </button>
@@ -171,7 +171,7 @@ const BookingPage = () => {
           <Card className="p-6">
             <h2 className="text-lg font-semibold mb-4">Services disponibles</h2>
             <div className="space-y-2">
-              {mockCoiffeur.services.map((service) => (
+              {coiffeurServices.map((service: any) => (
                 <div
                   key={service.name}
                   className={`flex items-center justify-between p-4 border rounded-lg cursor-pointer ${
@@ -202,7 +202,7 @@ const BookingPage = () => {
                     Sélectionnez une date
                   </h3>
                   <div className="space-y-2">
-                    {mockCoiffeur.availability.map((day) => (
+                    {coiffeurAvailability.map((day: any) => (
                       <button
                         key={day.date}
                         className={`w-full p-2 text-left rounded-lg border ${
@@ -215,8 +215,8 @@ const BookingPage = () => {
                         {format(new Date(day.date), 'EEEE d MMMM', { locale: fr })}
                       </button>
                     ))}
-          </div>
-          </div>
+                  </div>
+                </div>
 
                 {/* Horaires */}
                 {selectedDate && (
@@ -225,30 +225,30 @@ const BookingPage = () => {
                       Sélectionnez un horaire
                     </h3>
                     <div className="grid grid-cols-2 gap-2">
-                      {getAvailableSlots().map((time) => (
-                  <button
-                    key={time}
+                      {getAvailableSlots().map((time: string) => (
+                        <button
+                          key={time}
                           className={`p-2 text-center rounded-lg border ${
                             selectedTime === time
                               ? 'border-primary bg-primary/10'
                               : 'hover:border-gray-300'
                           }`}
                           onClick={() => setSelectedTime(time)}
-                  >
-                    {time}
-                  </button>
+                        >
+                          {time}
+                        </button>
                       ))}
                     </div>
                   </div>
-              )}
-            </div>
+                )}
+              </div>
             </Card>
           )}
 
           {/* Politique d'annulation */}
           <Card className="p-6">
             <h2 className="text-lg font-semibold mb-2">Politique d'annulation</h2>
-            <p className="text-gray-600 text-sm">{mockCoiffeur.cancellationPolicy}</p>
+            <p className="text-gray-600 text-sm">{coiffeurCancellation}</p>
           </Card>
 
           {/* Récapitulatif et validation */}
@@ -279,13 +279,13 @@ const BookingPage = () => {
                 <p className="text-lg font-bold mt-4">
                   Total : {selectedService.price}€
                 </p>
-          </div>
+              </div>
 
               <Button
                 onClick={handleSubmit}
                 className="w-full bg-primary text-white py-3 rounded-lg font-medium hover:bg-primary/90"
               >
-            Confirmer la réservation
+                Confirmer la réservation
               </Button>
             </Card>
           )}
