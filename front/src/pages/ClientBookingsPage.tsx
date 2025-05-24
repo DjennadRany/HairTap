@@ -5,6 +5,8 @@ import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/Button';
 import { format, addDays, subDays } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { mockClientBookings } from '../features/search/domain/mockData';
+import { useNavigate } from 'react-router-dom';
 
 interface Booking {
   id: string;
@@ -20,74 +22,25 @@ interface Booking {
   cancellationDeadline: string;
 }
 
-// Données mockées
-const mockBookings: Booking[] = [
-  {
-    id: "1",
-    coiffeurId: "2",
-    coiffeurName: "Studio Jean",
-    service: "Coupe Homme",
-    date: format(addDays(new Date(), 2), 'yyyy-MM-dd\'T\'HH:mm'),
-    price: 25,
-    status: 'confirmed',
-    mode: 'salon',
-    paymentStatus: 'paid',
-    cancellationDeadline: format(addDays(new Date(), 1), 'yyyy-MM-dd\'T\'HH:mm')
-  },
-  {
-    id: "2",
-    coiffeurId: "3",
-    coiffeurName: "Sarah Coiffure",
-    service: "Coloration",
-    date: format(addDays(new Date(), 5), 'yyyy-MM-dd\'T\'HH:mm'),
-    price: 65,
-    status: 'pending',
-    mode: 'domicile',
-    address: "12 rue Victor Hugo, Lyon",
-    paymentStatus: 'pending',
-    cancellationDeadline: format(addDays(new Date(), 4), 'yyyy-MM-dd\'T\'HH:mm')
-  },
-  {
-    id: "3",
-    coiffeurId: "2",
-    coiffeurName: "Studio Jean",
-    service: "Coupe + Barbe",
-    date: format(subDays(new Date(), 3), 'yyyy-MM-dd\'T\'HH:mm'),
-    price: 35,
-    status: 'completed',
-    mode: 'salon',
-    paymentStatus: 'paid',
-    cancellationDeadline: format(subDays(new Date(), 4), 'yyyy-MM-dd\'T\'HH:mm')
-  },
-  {
-    id: "4",
-    coiffeurId: "4",
-    coiffeurName: "Marie Style",
-    service: "Coupe Femme",
-    date: format(subDays(new Date(), 10), 'yyyy-MM-dd\'T\'HH:mm'),
-    price: 45,
-    status: 'cancelled',
-    mode: 'salon',
-    paymentStatus: 'refunded',
-    cancellationDeadline: format(subDays(new Date(), 11), 'yyyy-MM-dd\'T\'HH:mm')
-  }
-];
-
 const ClientBookingsPage = () => {
   const user = useSelector(selectCurrentUser);
+  const navigate = useNavigate();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
 
   useEffect(() => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
     // Simuler un chargement des données
     const timer = setTimeout(() => {
-      setBookings(mockBookings);
+      setBookings(mockClientBookings);
       setLoading(false);
     }, 1000);
-
     return () => clearTimeout(timer);
-  }, []);
+  }, [user, navigate]);
 
   const handleCancelBooking = async (bookingId: string) => {
     try {
@@ -232,6 +185,7 @@ const ClientBookingsPage = () => {
                     </p>
                   </div>
                 )}
+                <Button onClick={() => navigate(`/coiffeur/${booking.coiffeurId}`)} className="ml-2 bg-primary text-white px-4 py-2 rounded hover:bg-primary/90">Voir le coiffeur</Button>
               </Card>
             ))}
           </div>
@@ -290,6 +244,7 @@ const ClientBookingsPage = () => {
                     <p className="mt-2 text-lg font-bold">{booking.price}€</p>
                   </div>
                 </div>
+                <Button onClick={() => navigate(`/coiffeur/${booking.coiffeurId}`)} className="ml-2 bg-primary text-white px-4 py-2 rounded hover:bg-primary/90">Voir le coiffeur</Button>
               </Card>
             ))}
           </div>

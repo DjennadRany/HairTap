@@ -1,4 +1,5 @@
 import { SearchResult } from './types';
+import { format, addDays, subDays } from 'date-fns';
 
 // Coiffeurs en Île-de-France
 export const idfCoiffeurs: SearchResult[] = [
@@ -261,4 +262,57 @@ export const franceCoiffeurs: SearchResult[] = [
 // Fonction pour obtenir tous les coiffeurs
 export const getAllCoiffeurs = (): SearchResult[] => {
   return [...idfCoiffeurs, ...franceCoiffeurs];
-}; 
+};
+
+// Réservations mockées pour le client
+export const mockClientBookings = [
+  {
+    id: "1",
+    coiffeurId: "2",
+    coiffeurName: "Studio Jean",
+    service: "Coupe Homme",
+    date: format(addDays(new Date(), 2), 'yyyy-MM-dd\'T\'HH:mm'),
+    price: 25,
+    status: 'confirmed' as const,
+    mode: 'salon' as const,
+    paymentStatus: 'paid' as const,
+    cancellationDeadline: format(addDays(new Date(), 1), 'yyyy-MM-dd\'T\'HH:mm')
+  },
+  {
+    id: "2",
+    coiffeurId: "3",
+    coiffeurName: "Sarah Coiffure",
+    service: "Coloration",
+    date: format(addDays(new Date(), 5), 'yyyy-MM-dd\'T\'HH:mm'),
+    price: 65,
+    status: 'pending' as const,
+    mode: 'domicile' as const,
+    address: "12 rue Victor Hugo, Lyon",
+    paymentStatus: 'pending' as const,
+    cancellationDeadline: format(addDays(new Date(), 4), 'yyyy-MM-dd\'T\'HH:mm')
+  },
+  {
+    id: "3",
+    coiffeurId: "2",
+    coiffeurName: "Studio Jean",
+    service: "Coupe + Barbe",
+    date: format(subDays(new Date(), 3), 'yyyy-MM-dd\'T\'HH:mm'),
+    price: 35,
+    status: 'completed' as const,
+    mode: 'salon' as const,
+    paymentStatus: 'paid' as const,
+    cancellationDeadline: format(subDays(new Date(), 4), 'yyyy-MM-dd\'T\'HH:mm')
+  },
+  {
+    id: "4",
+    coiffeurId: "4",
+    coiffeurName: "Marie Style",
+    service: "Coupe Femme",
+    date: format(subDays(new Date(), 10), 'yyyy-MM-dd\'T\'HH:mm'),
+    price: 45,
+    status: 'cancelled' as const,
+    mode: 'salon' as const,
+    paymentStatus: 'refunded' as const,
+    cancellationDeadline: format(subDays(new Date(), 11), 'yyyy-MM-dd\'T\'HH:mm')
+  }
+]; 
