@@ -1,5 +1,3 @@
-import { Link } from 'react-router-dom';
-import { Button } from './ui/Button';
 import FavoriteStar from './FavoriteStar';
 
 interface CoiffeurCardProps {
