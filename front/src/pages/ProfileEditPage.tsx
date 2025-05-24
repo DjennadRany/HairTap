@@ -1,7 +1,6 @@
-import { useSelector, useDispatch } from 'react-redux';
+import { useSelector } from 'react-redux';
 import { useForm } from 'react-hook-form';
 import { selectProfile } from '../store/slices/profileSlice';
-import type { Profile } from '../store/slices/profileSlice';
 
 interface ProfileFormData {
   name: string;
@@ -15,7 +14,6 @@ const defaultServices = ['Coupe femme', 'Brushing', 'Coloration'];
 const defaultAvailability = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi'];
 
 const ProfileEditPage = () => {
-  const dispatch = useDispatch();
   const profile = useSelector(selectProfile);
 
   const { register, handleSubmit, formState: { errors } } = useForm<ProfileFormData>({

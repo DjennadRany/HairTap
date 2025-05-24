@@ -18,7 +18,7 @@ export const idfCoiffeurs: SearchResult[] = mockUsers
     image: u.picture
   }));
 
-function getLocationFromAddress(address: string | undefined, idx: number) {
+function getLocationFromAddress(_: string | undefined, idx: number) {
   // Pour la démo, coordonnées fixes par coiffeur, à améliorer si besoin
   const coords = [
     { latitude: 48.8762, longitude: 2.3585 }, // Marie

@@ -115,7 +115,7 @@ export class MapService {
 
     this.clearRoute();
 
-    const routingControl = L.Routing.control({
+    L.Routing.control({
       waypoints: [
         L.latLng(origin.latitude, origin.longitude),
         L.latLng(destination.latitude, destination.longitude)

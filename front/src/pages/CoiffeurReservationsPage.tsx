@@ -1,7 +1,5 @@
-import React from 'react';
 import { useSelector } from 'react-redux';
 import { selectCurrentUser } from '../store/slices/authSlice';
-import { mockUsers } from '../mocks/users';
 import { Map } from '../features/search/presentation/components/Map';
 
 const mockReservations = [
@@ -76,7 +74,18 @@ const CoiffeurReservationsPage = () => {
                     <div className="h-32 w-full rounded overflow-hidden">
                       <Map
                         center={{ latitude: r.lat, longitude: r.lon }}
-                        markers={[{ id: r.id, location: { latitude: r.lat, longitude: r.lon }, type: 'domicile' }]}
+                        markers={[{
+                          id: Number(r.id),
+                          name: r.clientName,
+                          type: 'domicile',
+                          address: r.address,
+                          rating: 5,
+                          reviews: 1,
+                          price: r.price,
+                          location: { latitude: r.lat, longitude: r.lon },
+                          services: [r.service],
+                          image: r.clientPhoto
+                        }]}
                         className="min-h-[120px]"
                       />
                     </div>

@@ -1,4 +1,3 @@
-import React from 'react';
 import type { FC } from 'react';
 import { FaList, FaThLarge } from 'react-icons/fa';
 import 'leaflet.markercluster';

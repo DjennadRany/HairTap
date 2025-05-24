@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
 import { useSelector } from 'react-redux';
+import { useState } from 'react';
 import { selectProfile } from '../store/slices/profileSlice';
 import { mockUsers, User } from '../mocks/users';
 import ListCardToggle from '../components/ListCardToggle';
@@ -10,7 +10,6 @@ const ClientFavoritesPage = () => {
   const profile = useSelector(selectProfile);
   const favoriteIds = (profile?.preferences?.favoriteCoiffeurs || []).map(String);
   const [view, setView] = useState<'grid' | 'list'>('grid');
-  const [message, setMessage] = useState<string>('');
 
   // Mapping ids en string pour cohérence
   const favorites = favoriteIds
@@ -23,11 +22,6 @@ const ClientFavoritesPage = () => {
         <h1 className="text-2xl font-bold">Mes favoris</h1>
         <ListCardToggle view={view} onChange={setView} />
       </div>
-      {message && (
-        <div className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-2 rounded mb-4 text-center">
-          {message}
-        </div>
-      )}
       {favorites.length === 0 ? (
         <p className="text-gray-600">Vous n'avez pas encore de favoris.</p>
       ) : view === 'grid' ? (

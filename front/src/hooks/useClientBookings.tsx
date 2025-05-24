@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
 import { mockClientBookings } from '../features/search/domain/mockData';
 import { BookingAggregate } from '../domain/BookingAggregate';
 

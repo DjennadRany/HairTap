@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { SearchMode, SortOption, SearchResult } from '../domain/types';
+import { SearchMode, SearchResult } from '../domain/types';
 import { getSearchComponentFactory } from '../infrastructure/SearchComponentFactory';
-import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { LocationSearchBar } from '@/components/LocationSearchBar';
 import { SearchFilters } from '@/components/SearchFilters';
 import type { SearchFilters as FiltersType } from '@/components/SearchFilters';
@@ -14,7 +13,6 @@ import { ProtectedRoute } from '../../../components/ProtectedRoute';
 
 export const SearchPage: React.FC = () => {
   const navigate = useNavigate();
-  const isMobile = useMediaQuery('(max-width: 768px)');
   const [showMap, setShowMap] = useState(false); // Par défaut, vue liste
   const [isLoading, setIsLoading] = useState(false);
   // Selected hairdresser on map
@@ -33,16 +31,16 @@ export const SearchPage: React.FC = () => {
     () => Array.from(new Set(idfCoiffeurs.flatMap(r => r.services))),
     []
   );
-  const mobileMode: SearchMode = filters.mode.length === 2 ? 'both' : (filters.mode[0] as SearchMode);
-  // Helper to translate SearchMode to CoiffeurCard mode array
+  // États locaux pour la synchronisation UI
+  const [results, setResults] = useState<SearchResult[]>([]);
+
+  // Helper pour transformer SearchMode en tableau de modes pour CoiffeurCard
   const getCardModes = (type: SearchMode): ('salon' | 'domicile')[] => {
     if (type === 'both') {
       return ['salon', 'domicile'];
     }
-    return [type];
+    return [type as 'salon' | 'domicile'];
   };
-  // États locaux pour la synchronisation UI
-  const [results, setResults] = useState<SearchResult[]>([]);
 
   // Gestionnaires d'événements
   const handleSearch = async () => {

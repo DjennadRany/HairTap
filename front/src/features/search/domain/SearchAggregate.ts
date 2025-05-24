@@ -2,10 +2,19 @@ import { Location } from '@/domain/location/types';
 import {
   SearchFilters,
   SearchResult,
-  SearchState,
   SortOption,
   ViewMode
 } from './types';
+
+interface SearchState {
+  filters: SearchFilters & { mode?: string; priceRange?: [number, number]; minRating?: number; services?: string[]; location?: string };
+  results: SearchResult[];
+  isLoading: boolean;
+  error: string | null;
+  selectedResult: SearchResult | null;
+  viewMode: ViewMode;
+  sortBy: SortOption;
+}
 
 export class SearchAggregate {
   private state: SearchState;
@@ -92,13 +101,15 @@ export class SearchAggregate {
     
     switch (sortBy) {
       case 'distance':
-        results.sort((a, b) => (a.distance || 0) - (b.distance || 0));
+        if (results.length && 'distance' in results[0]) {
+          results.sort((a: any, b: any) => (a.distance || 0) - (b.distance || 0));
+        }
         break;
       case 'rating':
         results.sort((a, b) => b.rating - a.rating);
         break;
       case 'price':
-        results.sort((a, b) => a.minPrice - b.minPrice);
+        results.sort((a, b) => a.price - b.price);
         break;
     }
   }
@@ -107,28 +118,24 @@ export class SearchAggregate {
   private applyFilters(): SearchResult[] {
     const { filters, results } = this.state;
 
-    return results.filter(result => {
-      // Filtre par mode
-      if (filters.mode !== 'both' && !result.mode.includes(filters.mode)) {
+    return results.filter((result: any) => {
+      // Filtre par mode/type
+      if (filters.mode && filters.mode !== 'both' && result.type !== filters.mode) {
         return false;
       }
-
       // Filtre par prix
-      if (filters.maxPrice && result.minPrice > filters.maxPrice) {
+      if (filters.maxPrice && result.price > filters.maxPrice) {
         return false;
       }
-
       // Filtre par note
       if (filters.minRating && result.rating < filters.minRating) {
         return false;
       }
-
       // Filtre par services
       if (filters.services?.length && 
-          !filters.services.every(service => result.services.includes(service))) {
+          !filters.services.every((service: any) => result.services.includes(service))) {
         return false;
       }
-
       return true;
     });
   }
