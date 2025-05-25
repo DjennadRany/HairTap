@@ -2,13 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { selectCurrentUser } from '../store/slices/authSlice';
 import { mockUsers } from '../mocks/users';
-import { useClientBookings } from '../hooks/useClientBookings';
 import { ChatWindow } from '../components/ChatWindow';
 import { getConversations } from '../hooks/useChat';
 
 export const CoiffeurChatPage: React.FC = () => {
   const user = useSelector(selectCurrentUser);
-  const { bookings } = useClientBookings();
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [conversations, setConversations] = useState<any[]>([]);
 

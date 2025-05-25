@@ -1,17 +1,14 @@
 import { useCallback, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
+import { useDispatch } from 'react-redux';
 import { setUser } from '../store/slices/authSlice';
 import { setProfile } from '../store/slices/profileSlice';
-import { selectRedirectUrl, clearRedirectUrl } from '../store/slices/redirectSlice';
 import type { User } from '../mocks/users';
-import type { RootState } from '../store/store';
 
 export const useAuth = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useDispatch();
-  const redirectUrl = useSelector((state: RootState) => state.redirect?.redirectUrl);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -19,10 +16,8 @@ export const useAuth = () => {
     try {
       setIsLoading(true);
       setError(null);
-      
       // Simuler un délai pour montrer le chargement
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
       // Dispatch l'utilisateur dans le store Redux
       dispatch(setUser({
         id: mockUser.id,
@@ -31,7 +26,6 @@ export const useAuth = () => {
         role: mockUser.role,
         photo: mockUser.picture
       }));
-
       // Initialiser le profil client dans le store Redux
       if (mockUser.role === 'client') {
         dispatch(setProfile({
@@ -44,23 +38,16 @@ export const useAuth = () => {
           }
         }));
       }
-
-      // Gérer la redirection
-      if (redirectUrl) {
-        navigate(redirectUrl);
-        dispatch(clearRedirectUrl());
+      // Redirection par défaut selon le rôle
+      if (mockUser.role === 'coiffeur') {
+        navigate('/coiffeur/dashboard');
       } else {
-        // Redirection par défaut selon le rôle
-        if (mockUser.role === 'coiffeur') {
-          navigate('/coiffeur/dashboard');
+        // Si l'utilisateur vient de la page de recherche ou d'une page spécifique
+        const from = location.state?.from;
+        if (from && from !== '/login') {
+          navigate(from);
         } else {
-          // Si l'utilisateur vient de la page de recherche ou d'une page spécifique
-          const from = location.state?.from;
-          if (from && from !== '/login') {
-            navigate(from);
-          } else {
-            navigate('/search');
-          }
+          navigate('/search');
         }
       }
     } catch (err) {
@@ -69,12 +56,10 @@ export const useAuth = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [navigate, dispatch, redirectUrl, location.state]);
+  }, [navigate, dispatch, location.state]);
 
   const logout = useCallback(() => {
     dispatch({ type: 'auth/logout' });
-    // Nettoyer l'URL de redirection au logout
-    dispatch(clearRedirectUrl());
     navigate('/');
   }, [navigate, dispatch]);
 

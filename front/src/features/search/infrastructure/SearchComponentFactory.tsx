@@ -2,7 +2,7 @@ import React from 'react';
 import { SearchMode, SortOption, SearchResult } from '../domain/types';
 import { ResultCard } from '../presentation/components/ResultCard';
 import { Map } from '../presentation/components/Map';
-import { IoFilter, IoLocationSharp, IoSearch } from 'react-icons/io5';
+import { IoSearch } from 'react-icons/io5';
 
 // Types de composants disponibles
 export type SearchComponentType = 

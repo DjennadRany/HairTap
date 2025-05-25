@@ -1,6 +1,5 @@
 import React from 'react';
 import { SearchResult } from '../../domain/types';
-import { formatDistance, formatPrice } from '@/utils/format';
 
 interface ResultCardProps {
   result: SearchResult;
@@ -20,7 +19,6 @@ export const ResultCard: React.FC<ResultCardProps> = ({
     reviews,
     price,
     services,
-    location,
     image
   } = result;
 
@@ -104,7 +102,7 @@ export const ResultCard: React.FC<ResultCardProps> = ({
           <div className="text-sm">
             <span className="text-gray-600">À partir de </span>
             <span className="font-medium text-gray-900">
-              {formatPrice(price)}
+              {price}
             </span>
           </div>
         </div>
