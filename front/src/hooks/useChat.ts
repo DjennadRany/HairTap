@@ -62,8 +62,6 @@ export class ChatAggregate {
     });
     let total = 0;
     conversations.forEach(key => {
-      const [userA, userB] = key.split('-');
-      const otherUserId = userA === currentUserId ? userB : userA;
       const lastRead = readMap[key];
       const msgs = all.filter(m => ChatAggregate.getConversationKey(m.from, m.to) === key && m.to === currentUserId);
       total += msgs.filter(m => !lastRead || new Date(m.date) > new Date(lastRead)).length;
