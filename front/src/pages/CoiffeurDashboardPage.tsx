@@ -1,42 +1,4 @@
-import React from 'react';
 import { Link } from 'react-router-dom';
-import { useSelector } from 'react-redux';
-import { selectCurrentUser } from '../store/slices/authSlice';
-import { selectProfile } from '../store/slices/profileSlice';
-import { Card } from '../components/ui/card';
-import { CalendarIcon, EuroIcon, StarIcon, UserIcon } from 'lucide-react';
-
-interface StatCardProps {
-  title: string;
-  value: string;
-  icon: React.ReactNode;
-  description?: string;
-}
-
-const StatCard = ({ title, value, icon, description }: StatCardProps) => (
-  <Card className="p-6">
-    <div className="flex items-center justify-between">
-      <div>
-        <p className="text-sm font-medium text-gray-600">{title}</p>
-        <h3 className="text-2xl font-bold mt-2">{value}</h3>
-        {description && (
-          <p className="text-sm text-gray-500 mt-1">{description}</p>
-        )}
-      </div>
-      <div className="p-3 bg-primary/10 rounded-full">
-        {icon}
-      </div>
-    </div>
-  </Card>
-);
-
-interface RecentBooking {
-  id: string;
-  clientName: string;
-  service: string;
-  date: string;
-  status: 'confirmed' | 'pending' | 'cancelled';
-}
 
 // MOCKS à remplacer par API plus tard
 const mockStats = {
@@ -63,9 +25,6 @@ const mockNextBookings = [
 ];
 
 const CoiffeurDashboardPage = () => {
-  const user = useSelector(selectCurrentUser);
-  const profile = useSelector(selectProfile);
-
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold mb-6">Tableau de bord coiffeur</h1>
