@@ -4,12 +4,10 @@ const NotFoundPage = () => {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 px-4">
       <div className="max-w-md w-full text-center">
-        <img
-          src="/404-illustration.svg"
-          alt="404 Not Found"
-          className="mx-auto mb-8 w-48 h-48 object-contain"
-          onError={e => (e.currentTarget.style.display = 'none')}
-        />
+        <svg className="mx-auto mb-8 w-48 h-48" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="100" cy="100" r="100" fill="#F3F4F6" />
+          <text x="50%" y="50%" textAnchor="middle" dy=".3em" fontSize="48" fill="#DE6C5C" fontWeight="bold">404</text>
+        </svg>
         <h1 className="text-5xl font-bold text-accent mb-4">404</h1>
         <h2 className="text-2xl font-semibold mb-2">Oups, page introuvable !</h2>
         <p className="text-gray-600 mb-8">

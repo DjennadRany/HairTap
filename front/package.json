@@ -9,7 +9,9 @@
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "test": "vitest",
-    "mock-api": "json-server --watch ./src/mocks/db.json --port 3001"
+    "mock-api": "json-server --watch ./src/mocks/db.json --port 3001",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d dist"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -28,6 +30,7 @@
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "framer-motion": "^10.18.0",
+    "gh-pages": "^6.3.0",
     "leaflet": "^1.9.4",
     "leaflet-routing-machine": "^3.2.12",
     "leaflet.markercluster": "^1.5.3",

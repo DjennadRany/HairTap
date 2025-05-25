@@ -2,14 +2,13 @@ import { useSelector } from 'react-redux';
 import { useState } from 'react';
 import { selectProfile } from '../store/slices/profileSlice';
 import { mockUsers, User } from '../mocks/users';
-import ListCardToggle from '../components/ListCardToggle';
 import { Link } from 'react-router-dom';
 import FavoriteStar from '../components/FavoriteStar';
 
 const ClientFavoritesPage = () => {
   const profile = useSelector(selectProfile);
   const favoriteIds = (profile?.preferences?.favoriteCoiffeurs || []).map(String);
-  const [view, setView] = useState<'grid' | 'list'>('grid');
+  const [view] = useState<'grid' | 'list'>('grid');
 
   // Mapping ids en string pour cohérence
   const favorites = favoriteIds
@@ -20,7 +19,6 @@ const ClientFavoritesPage = () => {
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Mes favoris</h1>
-        <ListCardToggle view={view} onChange={setView} />
       </div>
       {favorites.length === 0 ? (
         <p className="text-gray-600">Vous n'avez pas encore de favoris.</p>

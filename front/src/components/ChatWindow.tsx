@@ -39,12 +39,14 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ currentUserId, otherUser
   })();
 
   return (
-    <div className="flex flex-col h-full border rounded-lg bg-white shadow-md max-w-lg mx-auto">
-      <div className="flex items-center gap-3 p-4 border-b bg-gray-50">
-        <img src={otherUser?.picture} alt={otherUser?.name} className="w-10 h-10 rounded-full" />
-        <span className="font-semibold">{otherUser?.name}</span>
+    <div className="flex flex-col h-full w-full max-w-full border rounded-lg bg-white shadow-md md:h-[80vh] md:max-w-2xl lg:max-w-3xl mx-auto overflow-hidden">
+      {/* Header sticky sur mobile */}
+      <div className="flex items-center gap-3 p-4 border-b bg-gray-50 sticky top-0 z-10">
+        <img src={otherUser?.picture} alt={otherUser?.name} className="w-10 h-10 rounded-full object-cover" />
+        <span className="font-semibold truncate max-w-[60vw] md:max-w-none">{otherUser?.name}</span>
       </div>
-      <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-gray-50">
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto p-2 sm:p-3 space-y-2 bg-gray-50 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
         {messages.map((msg, idx) => {
           const sender = mockUsers.find(u => String(u.id) === msg.from);
           const isMine = msg.from === currentUserId;
@@ -52,14 +54,14 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ currentUserId, otherUser
           const isLast = idx === messages.length - 1;
           return (
             <div
-              key={msg.id}
+              key={msg.id + '-' + idx}
               className={`flex w-full ${isMine ? 'justify-end' : 'justify-start'}`}
             >
               {!isMine && (
-                <img src={sender?.picture} alt={sender?.name} className="w-8 h-8 rounded-full mr-2 self-end" />
+                <img src={sender?.picture} alt={sender?.name} className="w-8 h-8 rounded-full mr-2 self-end object-cover" />
               )}
               <div
-                className={`px-4 py-2 rounded-lg max-w-xs break-words shadow text-sm flex flex-col ${
+                className={`px-3 py-2 rounded-2xl max-w-[85vw] md:max-w-md break-words shadow text-sm flex flex-col ${
                   isMine
                     ? 'bg-primary text-white items-end ml-auto'
                     : 'bg-gray-200 text-gray-900 items-start'
@@ -77,34 +79,40 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ currentUserId, otherUser
                 </div>
               </div>
               {isMine && (
-                <img src={currentUser?.picture} alt={currentUser?.name} className="w-8 h-8 rounded-full ml-2 self-end" />
+                <img src={currentUser?.picture} alt={currentUser?.name} className="w-8 h-8 rounded-full ml-2 self-end object-cover" />
               )}
             </div>
           );
         })}
         <div ref={bottomRef} />
       </div>
-      <form onSubmit={handleSend} className="flex gap-2 p-4 border-t bg-white">
-        <input
-          type="text"
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          className="flex-1 border rounded-lg px-3 py-2 focus:outline-none"
-          placeholder="Écrire un message..."
-        />
-        <button
-          type="submit"
-          className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90"
-        >
-          Envoyer
-        </button>
-        <button
-          type="button"
-          className="ml-2 bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700"
-          onClick={() => setInput('Je souhaite proposer un rendez-vous à cette date : ')}
-        >
-          Proposer un RDV
-        </button>
+      {/* Input et boutons */}
+      <form onSubmit={handleSend} className="flex flex-col sm:flex-row gap-2 p-2 border-t bg-white">
+        <div className="flex-1 flex">
+          <input
+            type="text"
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            className="flex-1 border rounded-lg px-3 py-2 focus:outline-none text-sm md:text-base"
+            placeholder="Écrire un message..."
+            autoComplete="off"
+          />
+        </div>
+        <div className="flex gap-2 mt-2 sm:mt-0">
+          <button
+            type="submit"
+            className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 w-full sm:w-auto text-sm md:text-base"
+          >
+            Envoyer
+          </button>
+          <button
+            type="button"
+            className="bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 w-full sm:w-auto text-sm md:text-base"
+            onClick={() => setInput('Je souhaite proposer un rendez-vous à cette date : ')}
+          >
+            Proposer un RDV
+          </button>
+        </div>
       </form>
     </div>
   );
