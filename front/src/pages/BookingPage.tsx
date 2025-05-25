@@ -6,31 +6,11 @@ import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/Button';
 import { format, addDays } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { loadStripe } from '@stripe/stripe-js';
 import { getAllCoiffeurs } from '../features/search/domain/mockData';
 import { SearchResult } from '../features/search/domain/types';
 import { useClientBookings } from '../hooks/useClientBookings';
-import { v4 as uuidv4 } from 'uuid';
 import Modal from '../components/ui/Modal';
-
-interface Service {
-  name: string;
-  price: number;
-  duration: string;
-}
-
-interface Coiffeur {
-  id: string;
-  name: string;
-  services: Service[];
-  mode: ('salon' | 'domicile')[];
-  address?: string;
-  availability: {
-    date: string;
-    slots: string[];
-  }[];
-  cancellationPolicy: string;
-}
+import { v4 as uuidv4 } from 'uuid';
 
 const BookingPage = () => {
   const { id } = useParams();
@@ -68,7 +48,7 @@ const BookingPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookingError, bookings.length]);
 
-  const handleServiceSelect = (service: Service) => {
+  const handleServiceSelect = (service: { name: string; price: number; duration: string }) => {
     setSelectedService(service);
     setSelectedDate('');
     setSelectedTime('');
