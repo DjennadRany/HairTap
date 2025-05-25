@@ -25,7 +25,7 @@ interface Booking {
 const ClientBookingsPage = () => {
   const user = useSelector(selectCurrentUser);
   const navigate = useNavigate();
-  const { bookings, loading, error, cancelBooking, setError, getUpcomingBookings, getPastBookings, canCancel } = useClientBookings();
+  const { cancelBooking, setError, getUpcomingBookings, getPastBookings, canCancel } = useClientBookings();
 
   useEffect(() => {
     if (!user) {
@@ -67,29 +67,12 @@ const ClientBookingsPage = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="animate-pulse">
-          <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
-          <div className="h-4 bg-gray-200 rounded w-2/4 mb-2"></div>
-        </div>
-      </div>
-    );
-  }
-
   const upcomingBookings = getUpcomingBookings();
   const pastBookings = getPastBookings();
 
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold mb-6">Mes réservations</h1>
-
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          {error}
-        </div>
-      )}
 
       {/* Réservations à venir */}
       <div className="mb-8">
