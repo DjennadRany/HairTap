@@ -78,10 +78,12 @@ const CoiffeurReservationsPage = () => {
                           id: Number(r.id),
                           name: r.clientName,
                           type: 'domicile',
+                          mode: ['domicile'],
                           address: r.address,
                           rating: 5,
                           reviews: 1,
                           price: r.price,
+                          minPrice: r.price,
                           location: { latitude: r.lat, longitude: r.lon },
                           services: [r.service],
                           image: r.clientPhoto

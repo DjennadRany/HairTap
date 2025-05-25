@@ -9,10 +9,12 @@ export const idfCoiffeurs: SearchResult[] = mockUsers
     id: Number(u.id) || idx + 1,
     name: u.name,
     type: 'salon',
+    mode: ['salon', 'domicile'],
     address: u.address || '',
     rating: u.rating || 0,
     reviews: u.reviewsCount || 0,
     price: u.services?.[0]?.priceHT || 40,
+    minPrice: u.services?.[0]?.priceHT || 40,
     location: getLocationFromAddress(u.address, idx),
     services: u.services?.map(s => s.name) || [],
     image: u.picture

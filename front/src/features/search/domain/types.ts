@@ -13,10 +13,13 @@ export interface SearchResult {
   id: number;
   name: string;
   type: SearchMode;
+  mode: SearchMode[];
   address: string;
   rating: number;
   reviews: number;
   price: number;
+  minPrice: number;
+  distance?: number;
   location: Location;
   services: string[];
   image: string;
