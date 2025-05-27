@@ -1,71 +1,57 @@
-import { useSelector } from 'react-redux';
-import { useState } from 'react';
-import { selectProfile } from '../store/slices/profileSlice';
-import { mockUsers, User } from '../mocks/users';
-import ListCardToggle from '../components/ListCardToggle';
-import { Link } from 'react-router-dom';
-import FavoriteStar from '../components/FavoriteStar';
+import { useState, useEffect } from "react";
+import { selectProfile } from "../store/slices/profileSlice";
+import { Link } from "react-router-dom";
+import { useSelector } from "react-redux";
+import { userService } from "../services/api/users";
+import type { User } from "../types/models";
 
-const ClientFavoritesPage = () => {
+export const ClientFavoritesPage = () => {
   const profile = useSelector(selectProfile);
-  const favoriteIds = (profile?.preferences?.favoriteCoiffeurs || []).map(String);
-  const [view, setView] = useState<'grid' | 'list'>('grid');
+  const [favorites, setFavorites] = useState<User[]>([]);
 
-  // Mapping ids en string pour cohérence
-  const favorites = favoriteIds
-    .map((id) => mockUsers.find((u) => String(u.id) === id))
-    .filter((u): u is User => !!u);
+  useEffect(() => {
+    const fetchFavorites = async () => {
+      if (profile?.preferences?.favoriteCoiffeurs?.length) {
+        try {
+          const users = await Promise.all(
+            profile.preferences.favoriteCoiffeurs.map((id: string) => userService.getUser(id))
+          );
+          setFavorites(users);
+        } catch (error) {
+          setFavorites([]);
+        }
+      } else {
+        setFavorites([]);
+      }
+    };
+    fetchFavorites();
+  }, [profile]);
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Mes favoris</h1>
-        <ListCardToggle view={view} onChange={setView} />
-      </div>
+      <h1 className="text-2xl font-bold mb-6">Mes coiffeurs favoris</h1>
       {favorites.length === 0 ? (
-        <p className="text-gray-600">Vous n'avez pas encore de favoris.</p>
-      ) : view === 'grid' ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {favorites.map((user) => (
-            <div key={user.id} className="bg-white rounded-lg shadow p-4 relative">
-              <Link to={`/coiffeur/${user.id}`} className="block">
-                <img
-                  src={user.picture}
-                  alt={user.name}
-                  className="w-full h-40 object-cover rounded-md mb-4"
-                />
-                <h3 className="text-lg font-semibold">{user.name}</h3>
-              </Link>
-              <div className="absolute bottom-3 right-3 z-10">
-                <div className="rounded-full bg-white shadow-lg p-1 flex items-center justify-center">
-                  <FavoriteStar coiffeurId={String(user.id)} size={28} />
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+        <div className="text-gray-500">Aucun favori pour le moment.</div>
       ) : (
-        <ul className="space-y-4">
-          {favorites.map((user) => (
-            <li
-              key={user.id}
-              className="bg-white rounded-lg shadow p-4 flex items-center justify-between relative"
-            >
-              <Link to={`/coiffeur/${user.id}`} className="flex items-center space-x-4">
-                <img
-                  src={user.picture}
-                  alt={user.name}
-                  className="w-16 h-16 object-cover rounded-full"
-                />
-                <h3 className="text-lg font-semibold">{user.name}</h3>
-              </Link>
-              <div className="ml-4">
-                <FavoriteStar coiffeurId={String(user.id)} size={28} />
+        <ul className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {favorites.map((coiffeur) => (
+            <li key={coiffeur._id} className="bg-white rounded-lg shadow p-4 flex items-center gap-4">
+              <img
+                src={coiffeur.photos?.[0] || '/default-avatar.png'}
+                alt={coiffeur.name}
+                className="w-16 h-16 object-cover rounded-full"
+              />
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold">{coiffeur.name}</h3>
+                <p className="text-gray-500">{coiffeur.speciality?.join(', ')}</p>
               </div>
             </li>
           ))}
         </ul>
       )}
+      <div className="mt-8">
+        <Link to="/search" className="text-accent hover:underline">Trouver un nouveau coiffeur</Link>
+      </div>
     </div>
   );
 };

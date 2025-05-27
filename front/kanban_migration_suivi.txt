@@ -1,0 +1,535 @@
+# PROMPT CURSOR – MIGRATION TAPHAIR FULLSTACK
+
+AGIS COMME UN INGÉNIEUR SENIOR FULLSTACK SPÉCIALISÉ EN MIGRATION DE DONNÉES, DOMAIN-DRIVEN DESIGN (DDD), ET CLEAN ARCHITECTURE. TU VAS EXÉCUTER LA MIGRATION DE L’APPLICATION TAPHAIR EN SUIVANT LES INSTRUCTIONS CI-DESSOUS.
+
+# PROMPT CURSOR – MIGRATION TAPHAIR FULLSTACK
+
+AGIS COMME UN INGÉNIEUR SENIOR FULLSTACK SPÉCIALISÉ EN MIGRATION DE DONNÉES, DOMAIN-DRIVEN DESIGN (DDD), ET CLEAN ARCHITECTURE. TU VAS EXÉCUTER LA MIGRATION DE L’APPLICATION TAPHAIR EN SUIVANT LES INSTRUCTIONS CI-DESSOUS.
+
+# OBJECTIF
+Transformer une application React mockée en un système fullstack opérationnel :
+✅ Frontend React connecté à une API REST réelle  
+✅ Backend Node.js connecté à MongoDB  
+✅ Préserver l’UX, les données, et les fonctionnalités telles quelles  
+
+# DIRECTIVES D’EXÉCUTION
+1. Ne modifier **que** les dossiers `/front` et `/back` (pas d’ingérence ailleurs)
+2. Suivre le **plan Kanban ci-dessous** à la lettre
+3. Implémenter une architecture modulaire et propre selon **DDD**
+   - Bounded Contexts, Aggregates, Value Objects, Domain Events
+4. Utiliser une **architecture hexagonale** (domain / app / infra / presentation)
+5. Ajouter les **tests automatiquement** (unitaires, intégration, e2e)
+6. Garantir : 
+   - Zéro perte de données
+   - Zéro régression fonctionnelle
+   - Compatibilité UX absolue
+   - Performance < 200ms par appel API
+   - Code lisible, robuste, documenté
+7. Lorsque tu exécutes des **commandes shell**, toujours :
+   - Remplacer tous les `&&` par `;`
+   - T’assurer que chaque commande s'exécute indépendamment même en cas d'erreur précédente
+
+# INDICATEURS DE RÉUSSITE
+- Migration 100% des données simulées vers MongoDB
+- UX inchangée visuellement et fonctionnellement
+- Tests passés à 100% (front + back)
+- Code propre, découpé selon DDD
+- Documentation complète et à jour
+- Aucun bug, perte ou instabilité post-migration
+
+COMMENCE L’EXÉCUTION IMMÉDIATEMENT EN UTILISANT CE FICHIER COMME SEULE SOURCE DE VÉRITÉ. TU PEUX REFACTO OÙ NÉCESSAIRE POUR GARANTIR LA COHÉRENCE ARCHITECTURALE.
+
+fait super attention !!! a la ou tu est placé dans l'environnement entre le back et le front pour les ligne de commande et 'remplace && par ; dans les ligne de commande'. !!!!
+
+# Fiche de Suivi Kanban Migration Front <-> Back (MongoDB)
+# Projet : TapHair
+# Objectif : Migration des données mock vers MongoDB, connexion front-back, maintien de l'UX, zéro régression
+# Date de début : __/__/____
+# Responsable : ______________
+
+---
+
+## Légende Kanban
+- [ ] À faire (Backlog)
+- [~] En cours (In Progress)
+- [x] Terminé (Done)
+- [!] Point d'attention (Blocked)
+- [N] Note (Note)
+- [R] Review (En révision)
+- [T] Test (En test)
+
+---
+
+## 1. Préparation & Infrastructure
+
+### 1.1 Configuration Environnement
+- [ ] Setup environnement de développement isolé
+- [ ] Configuration variables d'environnement (dev/staging/prod)
+- [ ] Mise en place logging unifié
+- [ ] Configuration CORS et sécurité
+- [ ] Setup monitoring (Prometheus/Grafana)
+
+### 1.2 Architecture DDD
+- [ ] Identification des Bounded Contexts
+- [ ] Définition des Aggregates
+- [ ] Mapping des Domain Events
+- [ ] Identification des Value Objects
+- [ ] Définition des Repositories
+
+### 1.3 CI/CD Pipeline
+- [ ] Configuration GitHub Actions/Jenkins
+- [ ] Setup tests automatisés
+- [ ] Configuration déploiement automatique
+- [ ] Mise en place quality gates
+
+---
+
+## 2. Analyse & Design
+
+### 2.1 Domain Analysis
+- [ ] User Context
+  - [ ] Aggregate Root: User
+  - [ ] Value Objects: Profile, Preferences
+  - [ ] Domain Events: UserCreated, ProfileUpdated
+  - [ ] Repository Interface
+
+- [ ] Booking Context
+  - [ ] Aggregate Root: Booking
+  - [ ] Value Objects: TimeSlot, ServiceDetails
+  - [ ] Domain Events: BookingCreated, BookingCancelled
+  - [ ] Repository Interface
+
+- [ ] Service Context
+  - [ ] Aggregate Root: Service
+  - [ ] Value Objects: Price, Duration
+  - [ ] Domain Events: ServiceCreated, PriceUpdated
+  - [ ] Repository Interface
+
+### 2.2 Schema Design
+- [ ] User Schema
+  - [ ] Core Properties
+  - [ ] Relations
+  - [ ] Indexes
+  - [ ] Validation Rules
+
+- [ ] Booking Schema
+  - [ ] Core Properties
+  - [ ] Relations
+  - [ ] Indexes
+  - [ ] Validation Rules
+
+- [ ] Service Schema
+  - [ ] Core Properties
+  - [ ] Relations
+  - [ ] Indexes
+  - [ ] Validation Rules
+
+### 2.3 API Design
+- [ ] REST Endpoints
+  - [ ] User API
+  - [ ] Booking API
+  - [ ] Service API
+- [ ] GraphQL Schema (si applicable)
+- [ ] API Documentation (OpenAPI/Swagger)
+
+---
+
+## 3. Migration & Data
+
+### 3.1 Data Migration Strategy
+- [ ] Export Strategy
+  - [ ] User Data Export
+  - [ ] Booking Data Export
+  - [ ] Service Data Export
+- [ ] Import Strategy
+  - [ ] Data Validation
+  - [ ] Batch Processing
+  - [ ] Error Handling
+
+### 3.2 Migration Scripts
+- [ ] User Migration
+  - [ ] Data Transformation
+  - [ ] Validation
+  - [ ] Rollback
+- [ ] Booking Migration
+  - [ ] Data Transformation
+  - [ ] Validation
+  - [ ] Rollback
+- [ ] Service Migration
+  - [ ] Data Transformation
+  - [ ] Validation
+  - [ ] Rollback
+
+### 3.3 Data Integrity
+- [ ] Foreign Key Validation
+- [ ] Data Consistency Checks
+- [ ] Index Optimization
+- [ ] Performance Testing
+
+---
+
+## 4. Frontend Refactoring
+
+### 4.1 Domain Layer
+- [ ] User Domain
+  - [ ] Entities
+  - [ ] Value Objects
+  - [ ] Domain Services
+- [ ] Booking Domain
+  - [ ] Entities
+  - [ ] Value Objects
+  - [ ] Domain Services
+- [ ] Service Domain
+  - [ ] Entities
+  - [ ] Value Objects
+  - [ ] Domain Services
+
+### 4.2 Application Layer
+- [ ] User Application
+  - [ ] Commands
+  - [ ] Queries
+  - [ ] Event Handlers
+- [ ] Booking Application
+  - [ ] Commands
+  - [ ] Queries
+  - [ ] Event Handlers
+- [ ] Service Application
+  - [ ] Commands
+  - [ ] Queries
+  - [ ] Event Handlers
+
+### 4.3 Infrastructure Layer
+- [ ] API Clients
+- [ ] State Management
+- [ ] Caching Strategy
+- [ ] Error Handling
+
+### 4.4 Presentation Layer
+- [ ] Components
+  - [ ] User Components
+  - [ ] Booking Components
+  - [ ] Service Components
+- [ ] Pages
+- [ ] Layouts
+- [ ] Navigation
+
+---
+
+## 5. Backend Implementation
+
+### 5.1 Domain Layer
+- [ ] User Domain
+  - [ ] Entities
+  - [ ] Value Objects
+  - [ ] Domain Services
+- [ ] Booking Domain
+  - [ ] Entities
+  - [ ] Value Objects
+  - [ ] Domain Services
+- [ ] Service Domain
+  - [ ] Entities
+  - [ ] Value Objects
+  - [ ] Domain Services
+
+### 5.2 Application Layer
+- [ ] User Application
+  - [ ] Commands
+  - [ ] Queries
+  - [ ] Event Handlers
+- [ ] Booking Application
+  - [ ] Commands
+  - [ ] Queries
+  - [ ] Event Handlers
+- [ ] Service Application
+  - [ ] Commands
+  - [ ] Queries
+  - [ ] Event Handlers
+
+### 5.3 Infrastructure Layer
+- [ ] Repositories
+- [ ] Database Access
+- [ ] External Services
+- [ ] Caching
+
+---
+
+## 6. Testing Strategy
+
+### 6.1 Unit Tests
+- [ ] Domain Tests
+  - [ ] User Domain
+  - [ ] Booking Domain
+  - [ ] Service Domain
+- [ ] Application Tests
+  - [ ] User Application
+  - [ ] Booking Application
+  - [ ] Service Application
+
+### 6.2 Integration Tests
+- [ ] API Tests
+- [ ] Database Tests
+- [ ] External Service Tests
+
+### 6.3 E2E Tests
+- [ ] User Flows
+- [ ] Booking Flows
+- [ ] Service Flows
+
+### 6.4 Performance Tests
+- [ ] Load Testing
+- [ ] Stress Testing
+- [ ] Endurance Testing
+
+---
+
+## 7. Security & Compliance
+
+### 7.1 Authentication & Authorization
+- [ ] JWT Implementation
+- [ ] Role-Based Access Control
+- [ ] OAuth Integration
+- [ ] Session Management
+
+### 7.2 Data Protection
+- [ ] Encryption at Rest
+- [ ] Encryption in Transit
+- [ ] Data Masking
+- [ ] Audit Logging
+
+### 7.3 Security Testing
+- [ ] Penetration Testing
+- [ ] Vulnerability Scanning
+- [ ] Security Audit
+- [ ] Compliance Check
+
+---
+
+## 8. Monitoring & Observability
+
+### 8.1 Logging
+- [ ] Application Logs
+- [ ] Error Logs
+- [ ] Audit Logs
+- [ ] Performance Logs
+
+### 8.2 Metrics
+- [ ] Business Metrics
+- [ ] Technical Metrics
+- [ ] User Metrics
+- [ ] System Metrics
+
+### 8.3 Alerting
+- [ ] Error Alerts
+- [ ] Performance Alerts
+- [ ] Security Alerts
+- [ ] Business Alerts
+
+---
+
+## 9. Documentation
+
+### 9.1 Technical Documentation
+- [ ] Architecture Documentation
+- [ ] API Documentation
+- [ ] Database Schema
+- [ ] Deployment Guide
+
+### 9.2 User Documentation
+- [ ] User Guide
+- [ ] Admin Guide
+- [ ] Troubleshooting Guide
+- [ ] FAQ
+
+### 9.3 Development Documentation
+- [ ] Setup Guide
+- [ ] Coding Standards
+- [ ] Testing Guide
+- [ ] Contribution Guide
+
+---
+
+## 10. Deployment & Operations
+
+### 10.1 Deployment Strategy
+- [ ] Blue-Green Deployment
+- [ ] Canary Releases
+- [ ] Rollback Procedures
+- [ ] Emergency Procedures
+
+### 10.2 Backup & Recovery
+- [ ] Backup Strategy
+- [ ] Recovery Procedures
+- [ ] Disaster Recovery
+- [ ] Business Continuity
+
+### 10.3 Maintenance
+- [ ] Regular Updates
+- [ ] Performance Optimization
+- [ ] Security Patches
+- [ ] Database Maintenance
+
+---
+
+## 11. Kanban Board Status
+
+### Backlog
+- [ ] Tasks pending prioritization
+- [ ] New feature requests
+- [ ] Technical debt items
+
+### Ready for Development
+- [ ] Tasks ready to be picked up
+- [ ] Dependencies resolved
+- [ ] Acceptance criteria defined
+
+### In Progress
+- [ ] Currently being worked on
+- [ ] Blocked items
+- [ ] Items in review
+
+### Testing
+- [ ] Items in QA
+- [ ] Performance testing
+- [ ] Security testing
+
+### Done
+- [ ] Completed items
+- [ ] Deployed to production
+- [ ] Documentation updated
+
+---
+
+## 12. Daily Standup Notes
+
+### Week 1
+- [N] Day 1: ________________________________________________________________
+- [N] Day 2: ________________________________________________________________
+- [N] Day 3: ________________________________________________________________
+- [N] Day 4: ________________________________________________________________
+- [N] Day 5: ________________________________________________________________
+
+### Week 2
+- [N] Day 1: ________________________________________________________________
+- [N] Day 2: ________________________________________________________________
+- [N] Day 3: ________________________________________________________________
+- [N] Day 4: ________________________________________________________________
+- [N] Day 5: ________________________________________________________________
+
+---
+
+## 13. Retrospective & Improvements
+
+### Sprint Retrospectives
+- [N] Sprint 1: ________________________________________________________________
+- [N] Sprint 2: ________________________________________________________________
+- [N] Sprint 3: ________________________________________________________________
+- [N] Sprint 4: ________________________________________________________________
+
+### Continuous Improvement
+- [N] Technical Improvements: ________________________________________________________________
+- [N] Process Improvements: ________________________________________________________________
+- [N] Team Improvements: ________________________________________________________________
+
+---
+
+# Espace pour les notes additionnelles, bugs, et points bloquants
+
+## 14. Priorisation & Dépendances
+
+### 14.1 Priorité Critique (Sprint 1)
+- [ ] Configuration Environnement
+  - [ ] Setup MongoDB
+  - [ ] Configuration CORS
+  - [ ] Variables d'environnement
+- [ ] Migration User
+  - [ ] Schema User
+  - [ ] API User
+  - [ ] Tests User
+
+### 14.2 Priorité Haute (Sprint 2)
+- [ ] Migration Booking
+  - [ ] Schema Booking
+  - [ ] API Booking
+  - [ ] Tests Booking
+- [ ] Authentication
+  - [ ] JWT Setup
+  - [ ] Login/Register
+  - [ ] Tests Auth
+
+### 14.3 Priorité Moyenne (Sprint 3)
+- [ ] Migration Service
+  - [ ] Schema Service
+  - [ ] API Service
+  - [ ] Tests Service
+- [ ] Frontend Refactoring
+  - [ ] Components
+  - [ ] State Management
+  - [ ] Tests Frontend
+
+### 14.4 Priorité Basse (Sprint 4)
+- [ ] Monitoring
+- [ ] Documentation
+- [ ] Performance Optimization
+
+## 15. Validation & Contraintes
+
+### 15.1 Règles de Validation
+- [ ] User
+  - [ ] Email format
+  - [ ] Password strength
+  - [ ] Required fields
+- [ ] Booking
+  - [ ] Date validation
+  - [ ] Time slot availability
+  - [ ] Service compatibility
+- [ ] Service
+  - [ ] Price validation
+  - [ ] Duration limits
+  - [ ] Category rules
+
+### 15.2 Contraintes Métier
+- [ ] Règles de réservation
+  - [ ] Délai minimum
+  - [ ] Délai maximum
+  - [ ] Annulation
+- [ ] Règles de service
+  - [ ] Durée minimale
+  - [ ] Prix minimum
+  - [ ] Disponibilité
+
+### 15.3 Gestion des Erreurs
+- [ ] Scénarios d'erreur
+  - [ ] Connexion perdue
+  - [ ] Timeout
+  - [ ] Validation échouée
+- [ ] Stratégies de retry
+  - [ ] Nombre de tentatives
+  - [ ] Délai entre tentatives
+  - [ ] Conditions de succès
+- [ ] Messages d'erreur
+  - [ ] Format standardisé
+  - [ ] Localisation
+  - [ ] Niveau de détail
+
+## 16. Timeline & Estimation
+
+### 16.1 Sprint 1 (2 semaines)
+- [ ] J1-2: Setup Environnement
+- [ ] J3-5: Migration User
+- [ ] J6-10: Tests & Validation
+
+### 16.2 Sprint 2 (2 semaines)
+- [ ] J1-3: Migration Booking
+- [ ] J4-7: Authentication
+- [ ] J8-10: Tests & Validation
+
+### 16.3 Sprint 3 (2 semaines)
+- [ ] J1-4: Migration Service
+- [ ] J5-8: Frontend Refactoring
+- [ ] J9-10: Tests & Validation
+
+### 16.4 Sprint 4 (2 semaines)
+- [ ] J1-3: Monitoring
+- [ ] J4-6: Documentation
+- [ ] J7-10: Performance & Finalisation
+

@@ -18,19 +18,29 @@ import CoiffeurRevenuePage from './pages/CoiffeurRevenuePage';
 import NotFoundPage from './pages/NotFoundPage';
 import { ClientChatPage } from './pages/ClientChatPage';
 import { CoiffeurChatPage } from './pages/CoiffeurChatPage';
+import AboutPage from './pages/AboutPage';
+import ContactPage from './pages/ContactPage';
+import TermsPage from './pages/TermsPage';
+import PrivacyPage from './pages/PrivacyPage';
+import CookiesPage from './pages/CookiesPage';
 
 function App() {
   return (
     <Routes>
-      {/* Routes publiques avec PublicLayout */}
+      {/* Routes publiques */}
       <Route element={<PublicLayout />}>
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/search" element={<SearchPage />} />
         <Route path="/coiffeur/:id" element={<CoiffeurProfilePage />} />
+        <Route path="/about" element={<AboutPage />} />
+        <Route path="/contact" element={<ContactPage />} />
+        <Route path="/terms" element={<TermsPage />} />
+        <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/cookies" element={<CookiesPage />} />
       </Route>
 
-      {/* Routes client avec ClientDashboardLayout */}
+      {/* Routes client */}
       <Route element={<ClientDashboardLayout />}>
         <Route
           path="/client/dashboard"
@@ -82,7 +92,7 @@ function App() {
         />
       </Route>
 
-      {/* Routes coiffeur avec CoiffeurDashboardLayout */}
+      {/* Routes coiffeur */}
       <Route element={<CoiffeurDashboardLayout />}>
         <Route
           path="/coiffeur/dashboard"
@@ -118,6 +128,7 @@ function App() {
         />
       </Route>
 
+      {/* Route 404 */}
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );

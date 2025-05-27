@@ -3,8 +3,7 @@ import {
   SearchFilters,
   SearchResult,
   SortOption,
-  ViewMode,
-  SearchMode
+  ViewMode
 } from './types';
 
 interface SearchState {
@@ -119,7 +118,7 @@ export class SearchAggregate {
 
     return results.filter(result => {
       // Filtre par mode
-      if (filters.mode && filters.mode !== 'both' && !result.mode.includes(filters.mode as SearchMode)) {
+      if (filters.mode !== 'both' && !result.mode.includes(filters.mode)) {
         return false;
       }
       // Filtre par prix

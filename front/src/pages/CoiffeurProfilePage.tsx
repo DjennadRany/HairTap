@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import { mockUsers } from '../mocks/users';
 import { selectCurrentUser } from '../store/slices/authSlice';
+import { userService } from '../services/api/users';
+import type { User } from '../types/models';
 
 const getGalleryKey = (id: string) => `coiffeur_gallery_${id}`;
 const getProfileKey = (id: string) => `coiffeur_profile_${id}`;
@@ -21,11 +22,21 @@ const CoiffeurProfilePage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const user = useSelector(selectCurrentUser);
-  const isOwner = user && user.id === id && user.role === 'coiffeur';
+  const isOwner = user && user._id === id && user.role === 'coiffeur';
   const isClient = user && user.role === 'client';
-  // Charger profil depuis localStorage par ID, sinon mock par ID
-  const localProfile = JSON.parse(localStorage.getItem(getProfileKey(id!)) || 'null');
-  const coiffeur = localProfile || mockUsers.find(u => u.id === id && u.role === 'coiffeur');
+
+  // Charger le coiffeur depuis l'API
+  const [coiffeur, setCoiffeur] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!id) return;
+    userService.getUser(id)
+      .then(setCoiffeur)
+      .catch(() => setCoiffeur(null))
+      .finally(() => setLoading(false));
+  }, [id]);
+
   const initialGallery = isOwner
     ? JSON.parse(localStorage.getItem(getGalleryKey(id!)) || 'null') || coiffeur?.gallery || []
     : coiffeur?.gallery || [];
@@ -89,19 +100,18 @@ const CoiffeurProfilePage = () => {
     setServices(services.filter((_, i) => i !== idx));
   };
 
-  if (!coiffeur) {
-    return <div className="container mx-auto px-4 py-8">Coiffeur introuvable.</div>;
-  }
+  if (loading) return <div className="container mx-auto px-4 py-8">Chargement...</div>;
+  if (!coiffeur) return <div className="container mx-auto px-4 py-8">Coiffeur introuvable.</div>;
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-3xl">
       <div className="flex flex-col md:flex-row gap-8 items-start mb-8">
-        <img src={coiffeur.picture} alt={coiffeur.name} className="w-32 h-32 rounded-full object-cover border-4 border-accent" />
+        <img src={coiffeur.photos?.[0] || '/default-avatar.png'} alt={coiffeur.name} className="w-32 h-32 rounded-full object-cover border-4 border-accent" />
         <div className="flex-1">
           <h1 className="text-3xl font-bold mb-2">{coiffeur.name}</h1>
           <div className="flex items-center gap-2 mb-2">
             <span className="text-yellow-500 font-bold">{coiffeur.rating}★</span>
-            <span className="text-gray-500 text-sm">({coiffeur.reviewsCount} avis)</span>
+            {/* <span className="text-gray-500 text-sm">({coiffeur.reviewsCount} avis)</span> */}
           </div>
           {edit ? (
             <>
@@ -153,12 +163,12 @@ const CoiffeurProfilePage = () => {
                         <div className="flex justify-between items-center">
                           <span className="font-semibold text-accent">{s.name}</span>
                           <span className="text-lg font-bold">{(s.priceHT * (1 + TVA)).toFixed(2)}€ TTC</span>
-            </div>
+                        </div>
                         <span className="text-xs text-gray-500">Prix HT : {s.priceHT}€</span>
                         <span className="text-xs text-gray-500">Durée : {s.duration}</span>
                         <span className="text-xs text-gray-500">{s.description}</span>
-                </div>
-              ))}
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}

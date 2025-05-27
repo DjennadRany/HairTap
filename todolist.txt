@@ -130,4 +130,20 @@
    ☐ Implémentation de la vue carte/liste
    ☐ Développement du système de routing
    ☐ Mise en place du temps réel
-   ☐ Tests de performance et optimisation 
+   ☐ Tests de performance et optimisation
+
+9. Correction technique front (Sprint en cours)
+   ☐ useClientBookings.tsx (types, accès user, BookingAggregate)
+   ☐ users.ts (mocks, types, propriétés)
+   ☐ ClientBookingsPage.tsx (import Booking, accès, undefined)
+   ☐ ClientFavoritesPage.tsx (props, undefined, minPrice, reviews)
+   ☐ ClientProfilePage.tsx (types, import User)
+   ☐ CoiffeurProfileEditPage.tsx (Service, ajout dynamique, types)
+   ☐ CoiffeurReservationsPage.tsx (Booking, clientName, clientPhoto, types)
+   ☐ CoiffeurCard.tsx (props, types, compatibilité)
+   ☐ Header.tsx (user, types, accès)
+   ☐ SearchPage.tsx (mapping, types, compatibilité)
+   ☐ BookingPage.tsx (Booking, types, mapping)
+   ☐ CoiffeurProfilePage.tsx (types, props, compatibilité)
+   ☐ SignupClientPage.tsx (types, id/_id, mapping)
+   ☐ SignupCoiffeurPage.tsx (types, id/_id, mapping) 

@@ -1,165 +1,72 @@
 import { useState, useEffect, useCallback } from 'react';
-import { mockMessages, MockMessage } from '../mocks/mockMessages';
-import { v4 as uuidv4 } from 'uuid';
-
-const STORAGE_KEY = 'chat_messages';
-const READ_KEY = 'chat_read';
-
-// --- DDD: ChatRepository ---
-export class ChatRepository {
-  static getAllMessages(): MockMessage[] {
-    const local = localStorage.getItem(STORAGE_KEY);
-    if (local) {
-      try {
-        return JSON.parse(local);
-      } catch {}
-    }
-    return mockMessages;
-  }
-
-  static saveAllMessages(messages: MockMessage[]) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
-  }
-
-  static getReadMap(): Record<string, string> {
-    const local = localStorage.getItem(READ_KEY);
-    if (local) {
-      try {
-        return JSON.parse(local);
-      } catch {}
-    }
-    return {};
-  }
-
-  static setRead(conversationKey: string, date: string) {
-    const map = ChatRepository.getReadMap();
-    map[conversationKey] = date;
-    localStorage.setItem(READ_KEY, JSON.stringify(map));
-  }
-}
-
-// --- DDD: ChatAggregate ---
-export class ChatAggregate {
-  static getConversationKey(userA: string, userB: string) {
-    return [userA, userB].sort().join('-');
-  }
-
-  static getMessages(currentUserId: string, otherUserId: string): MockMessage[] {
-    const all = ChatRepository.getAllMessages();
-    return all.filter(
-      m => (m.from === currentUserId && m.to === otherUserId) || (m.from === otherUserId && m.to === currentUserId)
-    );
-  }
-
-  static getUnreadCount(currentUserId: string): number {
-    const all = ChatRepository.getAllMessages();
-    const readMap = ChatRepository.getReadMap();
-    const conversations = new Set<string>();
-    all.forEach(m => {
-      if (m.to === currentUserId) {
-        conversations.add(ChatAggregate.getConversationKey(m.from, m.to));
-      }
-    });
-    let total = 0;
-    conversations.forEach(key => {
-      const lastRead = readMap[key];
-      const msgs = all.filter(m => ChatAggregate.getConversationKey(m.from, m.to) === key && m.to === currentUserId);
-      total += msgs.filter(m => !lastRead || new Date(m.date) > new Date(lastRead)).length;
-    });
-    return total;
-  }
-
-  static getConversations(currentUserId: string): { userId: string; lastMessage: MockMessage | null; unread: number }[] {
-    const all = ChatRepository.getAllMessages();
-    const readMap = ChatRepository.getReadMap();
-    const map = new Map<string, MockMessage[]>();
-    all.forEach(m => {
-      if (m.from === currentUserId || m.to === currentUserId) {
-        const otherId = m.from === currentUserId ? m.to : m.from;
-        const key = ChatAggregate.getConversationKey(currentUserId, otherId);
-        if (!map.has(key)) map.set(key, []);
-        map.get(key)!.push(m);
-      }
-    });
-    return Array.from(map.entries()).map(([key, msgs]) => {
-      const sorted = msgs.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-      const last = sorted[sorted.length - 1] || null;
-      const [userA, userB] = key.split('-');
-      const otherUserId = userA === currentUserId ? userB : userA;
-      const lastRead = readMap[key];
-      const unread = msgs.filter(m => m.to === currentUserId && (!lastRead || new Date(m.date) > new Date(lastRead))).length;
-      return { userId: otherUserId, lastMessage: last, unread };
-    });
-  }
-
-  static markAsRead(currentUserId: string, otherUserId: string, date: string) {
-    const key = ChatAggregate.getConversationKey(currentUserId, otherUserId);
-    ChatRepository.setRead(key, date);
-  }
-
-  static sendMessage(currentUserId: string, otherUserId: string, content: string) {
-    const all = ChatRepository.getAllMessages();
-    const newMsg: MockMessage = {
-      id: uuidv4(),
-      from: currentUserId,
-      to: otherUserId,
-      content,
-      date: new Date().toISOString()
-    };
-    ChatRepository.saveAllMessages([...all, newMsg]);
-    // Déclenche l'événement storage pour tous les onglets
-    localStorage.setItem('chat_messages_update', Date.now().toString());
-  }
-}
+import { chatService, Message, Conversation } from '../services/api/chat';
 
 // --- Hook UI ---
 export function useChat(currentUserId: string, otherUserId: string) {
-  const [messages, setMessages] = useState<MockMessage[]>(() => ChatAggregate.getMessages(currentUserId, otherUserId));
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Recharge les messages à chaque changement de conversation ou update storage
+  // Charger les messages
   useEffect(() => {
-    setMessages(ChatAggregate.getMessages(currentUserId, otherUserId));
-    function handleStorage(e: StorageEvent) {
-      if (e.key === STORAGE_KEY || e.key === 'chat_messages_update') {
-        setMessages(ChatAggregate.getMessages(currentUserId, otherUserId));
+    const fetchMessages = async () => {
+      try {
+        setLoading(true);
+        const data = await chatService.getMessages(otherUserId);
+        setMessages(data);
+        setError(null);
+      } catch (err) {
+        setError('Erreur lors du chargement des messages');
+        console.error('Error fetching messages:', err);
+      } finally {
+        setLoading(false);
       }
-    }
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
-  }, [currentUserId, otherUserId]);
+    };
 
-  // Polling pour single tab (badge et chat instantané même sans storage event)
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setMessages(ChatAggregate.getMessages(currentUserId, otherUserId));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [currentUserId, otherUserId]);
+    fetchMessages();
+  }, [otherUserId]);
 
   // Marquer comme lu à chaque ouverture de conversation
   useEffect(() => {
     if (messages.length > 0) {
       const lastMsg = messages[messages.length - 1];
-      if (lastMsg.to === currentUserId) {
-        ChatAggregate.markAsRead(currentUserId, otherUserId, lastMsg.date);
+      if (lastMsg.to === currentUserId && !lastMsg.read) {
+        chatService.markAsRead(otherUserId).catch(err => {
+          console.error('Error marking messages as read:', err);
+        });
       }
     }
   }, [messages, currentUserId, otherUserId]);
 
-  const sendMessage = useCallback((content: string) => {
-    ChatAggregate.sendMessage(currentUserId, otherUserId, content);
-    setMessages(ChatAggregate.getMessages(currentUserId, otherUserId));
-  }, [currentUserId, otherUserId]);
+  const sendMessage = useCallback(async (content: string) => {
+    try {
+      const newMessage = await chatService.sendMessage(otherUserId, content);
+      setMessages(prev => [...prev, newMessage]);
+    } catch (err) {
+      setError('Erreur lors de l\'envoi du message');
+      console.error('Error sending message:', err);
+    }
+  }, [otherUserId]);
 
-  return { messages, sendMessage };
+  return { messages, loading, error, sendMessage };
 }
 
 // Pour le badge menu
-export function getUnreadCount(currentUserId: string): number {
-  return ChatAggregate.getUnreadCount(currentUserId);
+export async function getUnreadCount(): Promise<number> {
+  try {
+    return await chatService.getUnreadCount();
+  } catch (err) {
+    console.error('Error getting unread count:', err);
+    return 0;
+  }
 }
 
 // Pour la liste des conversations (sidebar, etc.)
-export function getConversations(currentUserId: string) {
-  return ChatAggregate.getConversations(currentUserId);
+export async function getConversations(): Promise<Conversation[]> {
+  try {
+    return await chatService.getConversations();
+  } catch (err) {
+    console.error('Error getting conversations:', err);
+    return [];
+  }
 } 

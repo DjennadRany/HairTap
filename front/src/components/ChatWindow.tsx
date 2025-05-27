@@ -1,6 +1,9 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { useChat } from '../hooks/useChat';
-import { mockUsers } from '../mocks/users';
+import { useSelector } from 'react-redux';
+import { selectCurrentUser } from '../store/slices/authSlice';
+import { coiffeurService } from '../services/api/coiffeurs';
+import { Coiffeur } from '../services/api/coiffeurs';
 
 interface ChatWindowProps {
   currentUserId: string;
@@ -8,12 +11,24 @@ interface ChatWindowProps {
 }
 
 export const ChatWindow: React.FC<ChatWindowProps> = ({ currentUserId, otherUserId }) => {
-  const { messages, sendMessage } = useChat(currentUserId, otherUserId);
+  const { messages, loading, error, sendMessage } = useChat(currentUserId, otherUserId);
   const [input, setInput] = useState('');
+  const [otherUser, setOtherUser] = useState<Coiffeur | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const currentUser = useSelector(selectCurrentUser);
 
-  const currentUser = mockUsers.find(u => String(u.id) === String(currentUserId));
-  const otherUser = mockUsers.find(u => String(u.id) === String(otherUserId));
+  useEffect(() => {
+    const fetchOtherUser = async () => {
+      try {
+        const user = await coiffeurService.getCoiffeur(otherUserId);
+        setOtherUser(user);
+      } catch (err) {
+        console.error('Error fetching other user:', err);
+      }
+    };
+
+    fetchOtherUser();
+  }, [otherUserId]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -27,28 +42,39 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ currentUserId, otherUser
     }
   };
 
-  // Pour affichage du nom et pastille 'nouveau'
-  const lastReadDate = (() => {
-    const local = localStorage.getItem('chat_read');
-    if (!local) return null;
-    try {
-      const map = JSON.parse(local);
-      const key = [currentUserId, otherUserId].sort().join('-');
-      return map[key] || null;
-    } catch { return null; }
-  })();
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-full text-red-500">
+        {error}
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full border rounded-lg bg-white shadow-md max-w-lg mx-auto">
       <div className="flex items-center gap-3 p-4 border-b bg-gray-50">
-        <img src={otherUser?.picture} alt={otherUser?.name} className="w-10 h-10 rounded-full" />
+        <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-200">
+          {otherUser?.photos && otherUser.photos.length > 0 ? (
+            <img src={otherUser.photos[0]} alt={otherUser.name} className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-accent text-white text-xl font-bold">
+              {otherUser?.name?.[0]}
+            </div>
+          )}
+        </div>
         <span className="font-semibold">{otherUser?.name}</span>
       </div>
       <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-gray-50">
         {messages.map((msg, idx) => {
-          const sender = mockUsers.find(u => String(u.id) === msg.from);
           const isMine = msg.from === currentUserId;
-          const isUnread = !lastReadDate || new Date(msg.date) > new Date(lastReadDate);
           const isLast = idx === messages.length - 1;
           return (
             <div
@@ -56,7 +82,15 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ currentUserId, otherUser
               className={`flex w-full ${isMine ? 'justify-end' : 'justify-start'}`}
             >
               {!isMine && (
-                <img src={sender?.picture} alt={sender?.name} className="w-8 h-8 rounded-full mr-2 self-end" />
+                <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-200 mr-2 self-end">
+                  {otherUser?.photos && otherUser.photos.length > 0 ? (
+                    <img src={otherUser.photos[0]} alt={otherUser.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-accent text-white text-sm font-bold">
+                      {otherUser?.name?.[0]}
+                    </div>
+                  )}
+                </div>
               )}
               <div
                 className={`px-4 py-2 rounded-lg max-w-xs break-words shadow text-sm flex flex-col ${
@@ -66,8 +100,10 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ currentUserId, otherUser
                 }`}
               >
                 <div className="flex items-center gap-2 mb-1">
-                  <span className={`font-semibold ${!isMine && (isUnread || isLast) ? 'text-accent font-bold' : ''}`}>{isMine ? 'Moi' : sender?.name}</span>
-                  {!isMine && isUnread && (
+                  <span className={`font-semibold ${!isMine && (msg.read === false || isLast) ? 'text-accent font-bold' : ''}`}>
+                    {isMine ? 'Moi' : otherUser?.name}
+                  </span>
+                  {!isMine && !msg.read && (
                     <span className="ml-1 bg-red-500 text-white text-[10px] rounded-full px-2 py-0.5 font-bold">Nouveau</span>
                   )}
                 </div>
@@ -77,7 +113,15 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ currentUserId, otherUser
                 </div>
               </div>
               {isMine && (
-                <img src={currentUser?.picture} alt={currentUser?.name} className="w-8 h-8 rounded-full ml-2 self-end" />
+                <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-200 ml-2 self-end">
+                  {currentUser?.photo ? (
+                    <img src={currentUser.photo} alt={currentUser.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-accent text-white text-sm font-bold">
+                      {currentUser?.name?.[0]}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           );
