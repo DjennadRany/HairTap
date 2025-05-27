@@ -1,43 +1,69 @@
-import React from 'react';
-import { useSelector, useDispatch } from 'react-redux';
-import { selectProfile, updatePreferences } from '../store/slices/profileSlice';
+import React, { useState, useEffect } from 'react';
+import { favoriteService } from '../services/api/favorites';
+import { useAuth } from '../hooks/useAuth';
 
 interface FavoriteStarProps {
-  coiffeurId: string | number;
+  coiffeurId: string;
   size?: number;
+  onToggle?: (isFavorite: boolean) => void;
 }
 
-const FavoriteStar: React.FC<FavoriteStarProps> = ({ coiffeurId, size = 24 }) => {
-  const dispatch = useDispatch();
-  const profile = useSelector(selectProfile);
-  const idStr = String(coiffeurId);
-  const favoriteIds = (profile?.preferences?.favoriteCoiffeurs || []).map(String);
-  const isFavorite = favoriteIds.includes(idStr);
+const FavoriteStar: React.FC<FavoriteStarProps> = ({ coiffeurId, size = 24, onToggle }) => {
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const { isAuthenticated } = useAuth();
 
-  console.log('FavoriteStar:', { favoriteIds, idStr, isFavorite });
+  useEffect(() => {
+    const checkFavorite = async () => {
+      if (isAuthenticated) {
+        try {
+          const isFav = await favoriteService.isFavorite(coiffeurId);
+          setIsFavorite(isFav);
+        } catch (error) {
+          console.error('Error checking favorite status:', error);
+        }
+      }
+    };
 
-  const handleToggle = (e: React.MouseEvent) => {
+    checkFavorite();
+  }, [coiffeurId, isAuthenticated]);
+
+  const handleToggle = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    let newFavorites;
-    if (isFavorite) {
-      newFavorites = favoriteIds.filter((fav: string) => fav !== idStr);
-    } else {
-      newFavorites = [...favoriteIds, idStr];
+    
+    if (!isAuthenticated) {
+      // Rediriger vers la page de connexion ou afficher une notification
+      return;
     }
-    dispatch(
-      updatePreferences({
-        favoriteCoiffeurs: newFavorites,
-        preferredServices: profile?.preferences?.preferredServices || []
-      })
-    );
+
+    setIsLoading(true);
+    try {
+      if (isFavorite) {
+        await favoriteService.removeFavorite(coiffeurId);
+        setIsFavorite(false);
+      } else {
+        await favoriteService.addFavorite(coiffeurId);
+        setIsFavorite(true);
+      }
+      onToggle?.(!isFavorite);
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <button
       onClick={handleToggle}
-      className={`focus:outline-none ${isFavorite ? 'text-yellow-400' : 'text-gray-300'} hover:text-yellow-500 transition-colors`}
+      disabled={isLoading || !isAuthenticated}
+      className={`focus:outline-none transition-colors ${
+        isFavorite 
+          ? 'text-yellow-400 hover:text-yellow-500' 
+          : 'text-gray-300 hover:text-gray-400'
+      } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
       aria-label={isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
-      title={isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+      title={!isAuthenticated ? 'Connectez-vous pour ajouter aux favoris' : isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
       style={{ fontSize: size }}
       type="button"
     >

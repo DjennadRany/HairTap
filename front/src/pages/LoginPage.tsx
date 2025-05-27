@@ -1,10 +1,17 @@
-import type { FC } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { mockUsers } from '../mocks/users';
 
-const LoginPage: FC = () => {
-  const { loginAsMock, isLoading, error } = useAuth();
+const LoginPage = () => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const { login, isLoading, error } = useAuth();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await login({ email, password });
+    // La redirection est déjà gérée dans le hook useAuth
+  };
 
   return (
     <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center bg-[#FAF1E0]">
@@ -12,33 +19,50 @@ const LoginPage: FC = () => {
         <div className="text-center">
           <h2 className="text-3xl font-bold text-[#000000]">Connexion</h2>
           <p className="mt-2 text-gray-600">
-            Choisissez un compte de démonstration
+            Connectez-vous à votre compte
           </p>
           {error && (
             <p className="mt-2 text-red-600 text-sm">{error}</p>
           )}
         </div>
 
-        <div className="space-y-4">
-          {mockUsers.map(user => (
-            <button
-              key={user.id}
-              onClick={() => loginAsMock(user)}
-              disabled={isLoading}
-              className="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <img
-                className="h-8 w-8 rounded-full mr-3"
-                src={user.picture}
-                alt={user.name}
-              />
-              <div className="text-left">
-                <p className="font-medium">{user.name}</p>
-                <p className="text-sm text-gray-500">{user.email}</p>
-              </div>
-            </button>
-          ))}
-        </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+              Email
+            </label>
+            <input
+              type="email"
+              id="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#DE6C5C] focus:ring-[#DE6C5C]"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+              Mot de passe
+            </label>
+            <input
+              type="password"
+              id="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#DE6C5C] focus:ring-[#DE6C5C]"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#DE6C5C] hover:bg-[#DE6C5C]/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#DE6C5C] disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isLoading ? 'Connexion...' : 'Se connecter'}
+          </button>
+        </form>
 
         <div className="text-center text-sm">
           <span className="text-gray-600">Pas encore de compte ?</span>{' '}

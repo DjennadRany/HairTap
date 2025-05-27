@@ -1,33 +1,45 @@
 import type { FC } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { selectCurrentUser, selectIsAuthenticated, logout } from '../store/slices/authSlice';
 import { useState, useRef, useEffect } from 'react';
 import { getUnreadCount } from '../hooks/useChat';
+import { logout } from '../store/slices/authSlice';
+import type { RootState } from '../store/store';
 
 const Header: FC = () => {
-  const user = useSelector(selectCurrentUser);
-  const isAuthenticated = useSelector(selectIsAuthenticated);
+  const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const [unreadCount, setUnreadCount] = useState(isAuthenticated && user ? getUnreadCount(String(user.id)) : 0);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
-    function handleStorage(e: StorageEvent) {
-      if (user && e.key === 'chat_messages') {
-        setUnreadCount(getUnreadCount(String(user.id)));
+    const fetchUnreadCount = async () => {
+      if (isAuthenticated) {
+        try {
+          const count = await getUnreadCount();
+          setUnreadCount(count);
+        } catch (error) {
+          console.error('Error fetching unread count:', error);
+        }
       }
-    }
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
-  }, [user]);
+    };
 
-  const handleLogout = () => {
-    dispatch(logout());
-    navigate('/');
+    fetchUnreadCount();
+    const interval = setInterval(fetchUnreadCount, 30000); // Rafraîchir toutes les 30 secondes
+
+    return () => clearInterval(interval);
+  }, [isAuthenticated]);
+
+  const handleLogout = async () => {
+    try {
+      dispatch(logout());
+      navigate('/');
+    } catch (error) {
+      console.error('Error during logout:', error);
+    }
   };
 
   // Logo TapHair : /search si connecté, / sinon
@@ -41,8 +53,7 @@ const Header: FC = () => {
   };
 
   // Fermer le dropdown si clic en dehors
-  // (UX pro, évite de laisser le menu ouvert)
-  useState(() => {
+  useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setDropdownOpen(false);
@@ -50,7 +61,7 @@ const Header: FC = () => {
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  });
+  }, []);
 
   return (
     <header className="bg-white shadow-sm">
@@ -58,36 +69,40 @@ const Header: FC = () => {
         <div className="flex items-center h-16">
           {/* Logo */}
           <a href="#" onClick={handleLogoClick} className="flex items-center mr-6">
-            <span className="text-2xl font-bold text-[#DE6C5C]">TapHair</span>
+            <span className="text-2xl font-bold text-accent">TapHair</span>
           </a>
 
           {/* Menu principal */}
           {isAuthenticated && user && (
             <nav className="flex items-center gap-3">
-              <Link to={user.role === 'client' ? "/client/dashboard" : "/coiffeur/dashboard"} className="text-gray-700 hover:text-primary font-medium">Tableau de bord</Link>
-              <Link to={user.role === 'client' ? "/client/bookings" : "/coiffeur/reservations"} className="text-gray-700 hover:text-primary font-medium">Mes réservations</Link>
-              {user.role === 'client' && (
-                <Link to="/client/favorites" className="text-gray-700 hover:text-primary font-medium">Favoris</Link>
-              )}
-              {user.role === 'client' && (
-                <Link to="/client/chat" className="text-gray-700 hover:text-primary font-medium relative">
-                  Messagerie
-                  {unreadCount > 0 && (
-                    <span className="absolute -top-2 -right-3 bg-red-500 text-white text-xs rounded-full px-2 py-0.5 font-bold animate-pulse">
-                      {unreadCount}
-                    </span>
-                  )}
-                </Link>
-              )}
-              {user.role === 'coiffeur' && (
-                <Link to="/coiffeur/chat" className="text-gray-700 hover:text-primary font-medium relative">
-                  Messagerie
-                  {unreadCount > 0 && (
-                    <span className="absolute -top-2 -right-3 bg-red-500 text-white text-xs rounded-full px-2 py-0.5 font-bold animate-pulse">
-                      {unreadCount}
-                    </span>
-                  )}
-                </Link>
+              {user.role === 'client' ? (
+                <>
+                  <Link to="/client/dashboard" className="text-gray-700 hover:text-accent font-medium">Tableau de bord</Link>
+                  <Link to="/client/bookings" className="text-gray-700 hover:text-accent font-medium">Mes réservations</Link>
+                  <Link to="/client/favorites" className="text-gray-700 hover:text-accent font-medium">Favoris</Link>
+                  <Link to="/client/chat" className="text-gray-700 hover:text-accent font-medium relative">
+                    Messagerie
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-2 -right-3 bg-red-500 text-white text-xs rounded-full px-2 py-0.5 font-bold animate-pulse">
+                        {unreadCount}
+                      </span>
+                    )}
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Link to="/coiffeur/dashboard" className="text-gray-700 hover:text-accent font-medium">Tableau de bord</Link>
+                  <Link to="/coiffeur/reservations" className="text-gray-700 hover:text-accent font-medium">Réservations</Link>
+                  <Link to="/coiffeur/revenue" className="text-gray-700 hover:text-accent font-medium">Revenus</Link>
+                  <Link to="/coiffeur/chat" className="text-gray-700 hover:text-accent font-medium relative">
+                    Messagerie
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-2 -right-3 bg-red-500 text-white text-xs rounded-full px-2 py-0.5 font-bold animate-pulse">
+                        {unreadCount}
+                      </span>
+                    )}
+                  </Link>
+                </>
               )}
             </nav>
           )}
@@ -99,20 +114,20 @@ const Header: FC = () => {
           {!isAuthenticated ? (
             <Link
               to="/login"
-              className="bg-[#DE6C5C] text-white px-4 py-2 rounded-lg hover:bg-[#DE6C5C]/90"
+              className="bg-accent text-white px-4 py-2 rounded-lg hover:bg-accent/90 transition-colors"
             >
               Connexion
             </Link>
-          ) : user && (
+          ) : (
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setDropdownOpen((o) => !o)}
                 className="flex items-center gap-2 px-3 py-1 rounded hover:bg-gray-100 transition-colors focus:outline-none"
               >
-                {user.photo && (
-                  <img src={user.photo} alt={user.name} className="w-8 h-8 rounded-full object-cover" />
-                )}
-                <span className="font-medium text-gray-800">{user.name}</span>
+                <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center">
+                  <span className="text-accent font-medium">U</span>
+                </div>
+                <span className="font-medium text-gray-800">Mon compte</span>
                 <svg className={`w-4 h-4 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
               </button>
               {dropdownOpen && (
@@ -120,7 +135,7 @@ const Header: FC = () => {
                   <ul className="py-1">
                     <li>
                       <Link
-                        to={user.role === 'client' ? "/client/profile" : `/coiffeur/${user.id}`}
+                        to={user?.role === 'client' ? '/client/profile' : '/coiffeur/profile'}
                         className="block px-4 py-2 text-gray-700 hover:bg-gray-100"
                         onClick={() => setDropdownOpen(false)}
                       >

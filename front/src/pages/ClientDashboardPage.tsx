@@ -1,9 +1,11 @@
 import { useSelector } from 'react-redux';
 import { selectCurrentUser } from '../store/slices/authSlice';
 import { selectProfile } from '../store/slices/profileSlice';
-import { mockUsers } from '../mocks/users';
 import { useClientBookings } from '../hooks/useClientBookings';
 import { Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { userService } from '../services/api/users';
+import type { User } from '../types/models';
 
 const ClientDashboardPage = () => {
   const user = useSelector(selectCurrentUser);
@@ -11,9 +13,25 @@ const ClientDashboardPage = () => {
   const { getUpcomingBookings } = useClientBookings();
   const upcoming = getUpcomingBookings();
   const favoriteIds = (profile?.preferences?.favoriteCoiffeurs || []).map(String);
-  const favorites = favoriteIds
-    .map((id) => mockUsers.find((u) => String(u.id) === id))
-    .filter((u) => !!u);
+  const [favorites, setFavorites] = useState<User[]>([]);
+
+  useEffect(() => {
+    const fetchFavorites = async () => {
+      if (favoriteIds.length) {
+        try {
+          const users = await Promise.all(
+            favoriteIds.map((id: string) => userService.getUser(id))
+          );
+          setFavorites(users);
+        } catch (error) {
+          setFavorites([]);
+        }
+      } else {
+        setFavorites([]);
+      }
+    };
+    fetchFavorites();
+  }, [favoriteIds]);
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -35,8 +53,8 @@ const ClientDashboardPage = () => {
             ) : (
               <ul className="space-y-2">
                 {upcoming.slice(0, 3).map((b) => (
-                  <li key={b.id} className="flex flex-col border-b pb-2 last:border-b-0 last:pb-0">
-                    <span className="font-medium">{b.service} avec {b.coiffeurName}</span>
+                  <li key={b._id} className="flex flex-col border-b pb-2 last:border-b-0 last:pb-0">
+                    <span className="font-medium">{b.service} avec {b.coiffeur}</span>
                     <span className="text-sm text-gray-500">{new Date(b.date).toLocaleString()}</span>
                     <span className="text-xs text-gray-400">Statut : {b.status}</span>
                   </li>
@@ -52,8 +70,8 @@ const ClientDashboardPage = () => {
             ) : (
               <ul className="flex flex-col gap-2">
                 {favorites.slice(0, 3).map((fav) => (
-                  <li key={fav.id} className="flex items-center gap-2">
-                    <img src={fav.picture} alt={fav.name} className="w-8 h-8 rounded-full object-cover" />
+                  <li key={fav._id} className="flex items-center gap-2">
+                    <img src={fav.photos?.[0] || '/default-avatar.png'} alt={fav.name} className="w-8 h-8 rounded-full object-cover" />
                     <span>{fav.name}</span>
                   </li>
                 ))}

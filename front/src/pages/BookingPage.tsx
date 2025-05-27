@@ -6,11 +6,12 @@ import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/Button';
 import { format, addDays } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { getAllCoiffeurs } from '../features/search/domain/mockData';
 import { SearchResult } from '../features/search/domain/types';
 import { useClientBookings } from '../hooks/useClientBookings';
 import Modal from '../components/ui/Modal';
 import { v4 as uuidv4 } from 'uuid';
+import { userService } from '../services/api/users';
+import type { User } from '../types/models';
 
 const BookingPage = () => {
   const { id } = useParams();
@@ -22,30 +23,27 @@ const BookingPage = () => {
   const [selectedTime, setSelectedTime] = useState<string>('');
   const [bookingMode, setBookingMode] = useState<'salon' | 'domicile'>('salon');
   const [clientAddress, setClientAddress] = useState<string>('');
-  const [coiffeur, setCoiffeur] = useState<SearchResult | null>(null);
+  const [coiffeur, setCoiffeur] = useState<User | null>(null);
   const { addBooking, error: bookingError, setError, bookings } = useClientBookings();
   const [showConflictModal, setShowConflictModal] = useState(false);
   const [bookingCount, setBookingCount] = useState(bookings.length);
 
   useEffect(() => {
-    // Récupérer le coiffeur par id depuis la source de vérité
-    const allCoiffeurs = getAllCoiffeurs();
-    const found = allCoiffeurs.find((c) => String(c.id) === String(id));
-    setCoiffeur(found || null);
-        setLoading(false);
+    if (!id) return;
+    userService.getUser(id).then((found) => {
+      setCoiffeur(found || null);
+      setLoading(false);
+    });
   }, [id]);
 
-  // Effet pour gérer la navigation ou la popin selon l'état d'erreur et le nombre de réservations
   useEffect(() => {
     if (bookingError && bookingError.includes('déjà une réservation à cette date')) {
       setShowConflictModal(true);
     }
-    // Navigation uniquement si une réservation a été ajoutée (bookingCount a augmenté)
     if (bookings.length > bookingCount) {
       setBookingCount(bookings.length);
       navigate('/client/bookings');
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookingError, bookings.length]);
 
   const handleServiceSelect = (service: { name: string; price: number; duration: string }) => {
@@ -59,16 +57,15 @@ const BookingPage = () => {
     setSelectedTime('');
   };
 
-  // Fallbacks pour les propriétés manquantes
-  const coiffeurModes = coiffeur ? ((coiffeur as any).mode || (coiffeur.type ? [coiffeur.type] : ['salon'])) : ['salon'];
-  const coiffeurServices = coiffeur ? (Array.isArray((coiffeur as any).services) && typeof (coiffeur as any).services[0] === 'object'
-    ? (coiffeur as any).services
-    : (coiffeur as any).services?.map((s: string) => ({ name: s, price: coiffeur.price || 0, duration: '30 min' })) || []) : [];
-  const coiffeurAvailability = coiffeur ? ((coiffeur as any).availability || Array.from({ length: 7 }, (_, i) => ({
+  const coiffeurModes = coiffeur ? (coiffeur.mode || ['salon']) : ['salon'];
+  const coiffeurServices = coiffeur ? (Array.isArray(coiffeur.services) && typeof coiffeur.services[0] === 'object'
+    ? coiffeur.services
+    : []) : [];
+  const coiffeurAvailability = coiffeur ? (coiffeur.availability || Array.from({ length: 7 }, (_, i) => ({
     date: format(addDays(new Date(), i), 'yyyy-MM-dd'),
     slots: ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00', '17:00']
   }))) : [];
-  const coiffeurCancellation = coiffeur ? ((coiffeur as any).cancellationPolicy || "Annulation gratuite jusqu'à 24h avant le rendez-vous.") : "Annulation gratuite jusqu'à 24h avant le rendez-vous.";
+  const coiffeurCancellation = coiffeur ? (coiffeur.cancellationPolicy || "Annulation gratuite jusqu'à 24h avant le rendez-vous.") : "Annulation gratuite jusqu'à 24h avant le rendez-vous.";
 
   const getAvailableSlots = () => {
     if (!selectedDate) return [];
@@ -95,21 +92,21 @@ const BookingPage = () => {
     }
     // Créer la réservation dynamiquement
     const booking = {
-      id: uuidv4(),
-      clientId: user.id,
-      coiffeurId: coiffeur.id ?? 0,
-      coiffeurName: coiffeur.name || '',
+      _id: uuidv4(),
+      client: user._id,
+      coiffeur: coiffeur._id,
       service: selectedService.name,
       date: `${selectedDate}T${selectedTime}`,
-      price: selectedService.price,
+      duration: selectedService.duration,
       status: 'confirmed' as const,
       mode: bookingMode,
       address: bookingMode === 'domicile' ? clientAddress : undefined,
       paymentStatus: 'paid' as const,
-      cancellationDeadline: selectedDate + 'T00:00',
+      price: selectedService.price,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
     addBooking(booking);
-    // La navigation ou la popin sera gérée par useEffect
   };
 
   if (loading) {

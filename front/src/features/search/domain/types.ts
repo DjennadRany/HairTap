@@ -10,19 +10,35 @@ export type SortOption = 'distance' | 'rating' | 'price';
 
 // Interfaces principales
 export interface SearchResult {
-  id: number;
+  id: string;
   name: string;
   type: SearchMode;
-  mode: SearchMode[];
-  address: string;
+  address: {
+    street: string;
+    city: string;
+    postalCode: string;
+    coordinates: {
+      lat: number;
+      lng: number;
+    };
+  };
   rating: number;
   reviews: number;
-  price: number;
-  minPrice: number;
-  distance?: number;
-  location: Location;
-  services: string[];
-  image: string;
+  priceRange: string;
+  speciality: string[];
+  photos: string[];
+  workingHours: {
+    [key: string]: {
+      start: string;
+      end: string;
+    };
+  };
+  description: string;
+  email: string;
+  phone: string;
+  role: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface SearchFilters {
@@ -30,13 +46,15 @@ export interface SearchFilters {
   maxPrice?: number;
   minRating?: number;
   services?: string[];
+  city?: string;
+  date?: string;
 }
 
 // Props des composants
 export interface MapViewProps {
   center: Location;
   markers: SearchResult[];
-  onMarkerClick?: (id: number) => void;
+  onMarkerClick?: (id: string) => void;
   showRoute?: boolean;
   origin?: Location;
   destination?: Location;
@@ -56,7 +74,7 @@ export interface FilterPanelProps {
 
 export interface ResultListProps {
   results: SearchResult[];
-  onResultClick: (id: number) => void;
+  onResultClick: (id: string) => void;
   isLoading?: boolean;
   viewMode: ViewMode;
 }

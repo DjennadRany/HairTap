@@ -5,28 +5,35 @@ import 'leaflet.markercluster';
 interface ListCardToggleProps {
   view: 'grid' | 'list';
   onChange: (view: 'grid' | 'list') => void;
+  className?: string;
 }
 
-const ListCardToggle: FC<ListCardToggleProps> = ({ view, onChange }) => {
+const ListCardToggle: FC<ListCardToggleProps> = ({ view, onChange, className = '' }) => {
   return (
-    <div className="inline-flex p-1 bg-gray-200 rounded-full">
+    <div className={`inline-flex p-1 bg-gray-100 rounded-full shadow-sm ${className}`}>
       <button
         type="button"
         onClick={() => onChange('grid')}
-        className={`p-2 rounded-full ${
-          view === 'grid' ? 'bg-blue-500 text-white' : 'text-gray-600'
+        className={`p-2 rounded-full transition-colors duration-200 ${
+          view === 'grid' 
+            ? 'bg-accent text-white shadow-sm' 
+            : 'text-gray-600 hover:bg-gray-200'
         }`}
+        title="Vue en grille"
       >
-        <FaThLarge />
+        <FaThLarge className="w-4 h-4" />
       </button>
       <button
         type="button"
         onClick={() => onChange('list')}
-        className={`p-2 rounded-full ${
-          view === 'list' ? 'bg-blue-500 text-white' : 'text-gray-600'
+        className={`p-2 rounded-full transition-colors duration-200 ${
+          view === 'list' 
+            ? 'bg-accent text-white shadow-sm' 
+            : 'text-gray-600 hover:bg-gray-200'
         }`}
+        title="Vue en liste"
       >
-        <FaList />
+        <FaList className="w-4 h-4" />
       </button>
     </div>
   );

@@ -1,39 +1,9 @@
 import { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
-import { mockClientBookings } from '../features/search/domain/mockData';
-import { BookingAggregate } from '../domain/BookingAggregate';
-
-export interface Booking {
-  id: string;
-  clientId: string;
-  coiffeurId: number;
-  coiffeurName: string;
-  service: string;
-  date: string;
-  price: number;
-  status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
-  mode: 'salon' | 'domicile';
-  address?: string;
-  paymentStatus: 'pending' | 'paid' | 'refunded';
-  cancellationDeadline: string;
-}
+import { bookingService, Booking } from '../services/api/bookings';
+import { useSelector } from 'react-redux';
+import { selectCurrentUser } from '../store/slices/authSlice';
 
 const STORAGE_KEY = 'client_bookings';
-
-function getInitialBookings(): Booking[] {
-  const local = localStorage.getItem(STORAGE_KEY);
-  if (local) {
-    try {
-      const parsed = JSON.parse(local);
-      console.log('[useClientBookings] Chargement depuis localStorage:', parsed);
-      return parsed;
-    } catch {
-      console.log('[useClientBookings] Erreur parsing localStorage, fallback mock');
-      return mockClientBookings;
-    }
-  }
-  console.log('[useClientBookings] Fallback mock (pas de localStorage)');
-  return mockClientBookings;
-}
 
 interface ClientBookingsContextType {
   bookings: Booking[];
@@ -50,44 +20,75 @@ interface ClientBookingsContextType {
 const ClientBookingsContext = createContext<ClientBookingsContextType | undefined>(undefined);
 
 export const ClientBookingsProvider = ({ children }: { children: ReactNode }) => {
-  const [bookings, setBookings] = useState<Booking[]>(getInitialBookings());
-  const [loading] = useState(false);
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
+  const user = useSelector(selectCurrentUser);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(bookings));
-  }, [bookings]);
+    if (!user) return; // NE PAS FETCH SI PAS CONNECTÉ
+    const fetchBookings = async () => {
+      try {
+        setLoading(true);
+        const data = await bookingService.getClientBookings();
+        setBookings(data);
+        setError('');
+      } catch (err) {
+        setError('Erreur lors du chargement des réservations');
+        console.error('Error fetching bookings:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchBookings();
+  }, [user]);
 
-  const addBooking = useCallback((booking: Booking) => {
-    if (BookingAggregate.hasClientConflict(bookings, booking)) {
-      setError('Vous avez déjà une réservation à cette date et heure, veuillez annuler l\'autre réservation avant de continuer.');
-      return;
+  const addBooking = useCallback(async (booking: Booking) => {
+    try {
+      const newBooking = await bookingService.createBooking({
+        coiffeur: booking.coiffeur,
+        service: booking.service,
+        date: booking.date,
+        mode: booking.mode,
+        address: booking.address,
+        notes: booking.notes
+      });
+      setBookings(prev => [newBooking, ...prev]);
+      setError('');
+    } catch (err) {
+      setError('Erreur lors de la création de la réservation');
+      console.error('Error creating booking:', err);
     }
-    setBookings((prev) => [booking, ...prev]);
-  }, [bookings]);
+  }, []);
 
-  const cancelBooking = useCallback((bookingId: string) => {
-    setBookings((prev) =>
-      prev.map((b) =>
-        b.id === bookingId
-          ? { ...b, status: 'cancelled', paymentStatus: 'refunded' }
-          : b
-      )
-    );
+  const cancelBooking = useCallback(async (bookingId: string) => {
+    try {
+      const updatedBooking = await bookingService.cancelBooking(bookingId, 'Annulé par le client');
+      setBookings(prev =>
+        prev.map(b => b._id === bookingId ? updatedBooking : b)
+      );
+      setError('');
+    } catch (err) {
+      setError('Erreur lors de l\'annulation de la réservation');
+      console.error('Error cancelling booking:', err);
+    }
   }, []);
 
   const getUpcomingBookings = useCallback(() => {
     const now = new Date();
-    return bookings.filter((b) => BookingAggregate.isUpcoming(b, now));
+    return bookings.filter(b => new Date(b.date) > now && b.status !== 'cancelled');
   }, [bookings]);
 
   const getPastBookings = useCallback(() => {
     const now = new Date();
-    return bookings.filter((b) => BookingAggregate.isPast(b, now));
+    return bookings.filter(b => new Date(b.date) <= now || b.status === 'cancelled');
   }, [bookings]);
 
   const canCancel = useCallback((booking: Booking) => {
-    return BookingAggregate.canCancel(booking);
+    const bookingDate = new Date(booking.date);
+    const now = new Date();
+    const hoursUntilBooking = (bookingDate.getTime() - now.getTime()) / (1000 * 60 * 60);
+    return hoursUntilBooking >= 24 && booking.status === 'pending';
   }, []);
 
   return (

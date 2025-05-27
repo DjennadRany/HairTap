@@ -1,23 +1,42 @@
 import { type ChangeEvent, useState, useRef, useEffect } from 'react';
+import { serviceService } from '../services/api/services';
 
 export interface SearchFilters {
   service: string;
   mode: ('salon' | 'domicile')[];
   priceRange: [number, number];
   rating: number;
+  speciality?: string[];
+  city?: string;
+  date?: string;
 }
 
 interface SearchFiltersProps {
   filters: SearchFilters;
   onFilterChange: (filters: SearchFilters) => void;
   isLoading?: boolean;
-  serviceOptions: string[];
 }
 
-export const SearchFilters = ({ filters, onFilterChange, isLoading = false, serviceOptions }: SearchFiltersProps) => {
+export const SearchFilters = ({ filters, onFilterChange, isLoading = false }: SearchFiltersProps) => {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [skipFilter, setSkipFilter] = useState(false);
+  const [serviceOptions, setServiceOptions] = useState<string[]>([]);
   const wrapperRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const fetchServices = async () => {
+      try {
+        const services = await serviceService.getServices();
+        const uniqueServices = [...new Set(services.map(s => s.name))];
+        setServiceOptions(uniqueServices);
+      } catch (err) {
+        console.error('Error fetching services:', err);
+      }
+    };
+
+    fetchServices();
+  }, []);
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
@@ -27,17 +46,29 @@ export const SearchFilters = ({ filters, onFilterChange, isLoading = false, serv
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
   const filteredServiceOptions = skipFilter
     ? serviceOptions
     : filters.service
       ? serviceOptions.filter(opt => opt.toLowerCase().includes(filters.service.toLowerCase()))
       : serviceOptions;
+
   const handleChange = (e: ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
     const { name, value } = e.target;
     if (name === 'priceRange') {
       onFilterChange({
         ...filters,
         priceRange: [0, parseInt(value)]
+      });
+    } else if (name === 'date') {
+      onFilterChange({
+        ...filters,
+        date: value
+      });
+    } else if (name === 'city') {
+      onFilterChange({
+        ...filters,
+        city: value
       });
     } else {
       onFilterChange({
@@ -88,6 +119,35 @@ export const SearchFilters = ({ filters, onFilterChange, isLoading = false, serv
             ))}
           </ul>
         )}
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Ville
+        </label>
+        <input
+          type="text"
+          name="city"
+          value={filters.city || ''}
+          onChange={handleChange}
+          placeholder="Entrez une ville"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
+          disabled={isLoading}
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Date
+        </label>
+        <input
+          type="date"
+          name="date"
+          value={filters.date || ''}
+          onChange={handleChange}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
+          disabled={isLoading}
+        />
       </div>
 
       <div>
