@@ -5,17 +5,20 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 export default async (req, res, next) => {
   try {
-    // Récupérer le token du header
-    const token = req.header('Authorization')?.replace('Bearer ', '');
+    // Récupérer le token du header (insensible à la casse, supporte 'bearer' ou 'Bearer')
+    const authHeader = req.headers.authorization || req.headers.Authorization;
+    let token = null;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.split(' ')[1];
+    }
     if (!token) {
       return res.status(401).json({ message: 'Accès non autorisé' });
     }
 
     // Vérifier le token
     const decoded = jwt.verify(token, JWT_SECRET);
-    
-    // Récupérer l'utilisateur
-    const user = await User.findById(decoded.id);
+    // Récupérer l'utilisateur sans le mot de passe
+    const user = await User.findById(decoded.id).select('-password');
     if (!user) {
       return res.status(401).json({ message: 'Utilisateur non trouvé' });
     }

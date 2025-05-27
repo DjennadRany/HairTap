@@ -7,17 +7,19 @@ import { SearchFilters, type SearchFilters as SearchFiltersType } from '../../..
 import { CoiffeurCard } from '../../../components/CoiffeurCard';
 import { point, distance as turfDistance } from '@turf/turf';
 import { ProtectedRoute } from '../../../components/ProtectedRoute';
-import { coiffeurService, type Coiffeur } from '@/services/api/coiffeurs';
+import { coiffeurService } from '@/services/api/coiffeurs';
 import { Map } from '../../../components/Map';
 import { useGeolocation } from '../../../hooks/useGeolocation';
+import { useCoiffeursWithServices } from '@/hooks/useCoiffeursWithServices';
+import { User, Service } from '@/types/models';
 
 export const SearchPage: React.FC = () => {
   const navigate = useNavigate();
   const { location, error: locationError } = useGeolocation();
   const [showMap, setShowMap] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [selectedResults, setSelectedResults] = useState<Coiffeur[]>([]);
-  const [results, setResults] = useState<Coiffeur[]>([]);
+  const { coiffeurs, loading, error } = useCoiffeursWithServices();
+  const [selectedResults, setSelectedResults] = useState<(User & { services: Service[] })[]>([]);
+  const [results, setResults] = useState<(User & { services: Service[] })[]>([]);
 
   const [filters, setFilters] = useState<SearchFiltersType>({
     service: '',
@@ -31,40 +33,40 @@ export const SearchPage: React.FC = () => {
   const [center, setCenter] = useState<{ latitude: number; longitude: number }>({ latitude: 48.8566, longitude: 2.3522 });
   const [radius, setRadius] = useState<number>(10);
 
-  const handleSearch = async () => {
-    setLoading(true);
-    try {
-      const searchResults = await coiffeurService.searchCoiffeurs({
-        service: filters.service,
-        speciality: filters.mode,
-        priceRange: filters.priceRange.map(p => p.toString()),
-        city: filters.city,
-        date: filters.date
-      });
-
-      // Filtrer par distance si la géolocalisation est disponible
-      let filteredResults = searchResults;
-      if (location) {
-        filteredResults = searchResults.filter(coiffeur => {
-          if (!coiffeur.address.coordinates) return true;
-          const distance = calculateDistance(
-            location.latitude,
-            location.longitude,
-            coiffeur.address.coordinates.lat,
-            coiffeur.address.coordinates.lng
-          );
-          return distance <= 50; // 50km max
-        });
-      }
-
-      setResults(filteredResults);
-      setSelectedResults(filteredResults);
-    } catch (error) {
-      console.error('Erreur lors de la recherche:', error);
-    } finally {
-      setLoading(false);
+  // Filtrage local selon les filtres et la géolocalisation
+  useEffect(() => {
+    let filtered = coiffeurs;
+    // Filtres simples
+    if (filters.service) {
+      filtered = filtered.filter(c => c.services.some(s => s.name === filters.service));
     }
-  };
+    if (filters.mode && filters.mode.length > 0) {
+      filtered = filtered.filter(c => Array.isArray(c.speciality) && filters.mode.every(m => c.speciality?.includes(m)));
+    }
+    if (filters.priceRange) {
+      filtered = filtered.filter(c => c.services.some(s => s.price >= filters.priceRange[0] && s.price <= filters.priceRange[1]));
+    }
+    if (filters.city) {
+      const cityFilter = typeof filters.city === 'string' ? filters.city : '';
+      filtered = filtered.filter(c => c.address?.city && c.address.city.toLowerCase().includes(cityFilter.toLowerCase()));
+    }
+    // Filtres avancés (note, date, etc. à ajouter si besoin)
+    // Filtre géolocalisation
+    if (location) {
+      filtered = filtered.filter(coiffeur => {
+        if (!coiffeur.address?.coordinates) return true;
+        const distance = calculateDistance(
+          location.latitude,
+          location.longitude,
+          coiffeur.address.coordinates.lat,
+          coiffeur.address.coordinates.lng
+        );
+        return distance <= 50; // 50km max
+      });
+    }
+    setResults(filtered);
+    setSelectedResults(filtered);
+  }, [coiffeurs, filters, location]);
 
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
     const R = 6371; // Rayon de la Terre en km
@@ -78,13 +80,9 @@ export const SearchPage: React.FC = () => {
     return R * c;
   };
 
-  const handleCoiffeurClick = (coiffeur: Coiffeur) => {
+  const handleCoiffeurClick = (coiffeur: User & { services: Service[] }) => {
     navigate(`/coiffeur/${coiffeur._id}`);
   };
-
-  useEffect(() => {
-    handleSearch();
-  }, [filters, location]);
 
   const componentFactory = getSearchComponentFactory();
 
@@ -98,7 +96,7 @@ export const SearchPage: React.FC = () => {
             isLoading={loading}
           />
           <button
-            onClick={handleSearch}
+            onClick={() => {}}
             disabled={loading}
             className="w-full mt-4 bg-accent text-white py-2 px-4 rounded-md hover:bg-accent-dark disabled:opacity-50"
           >
@@ -119,10 +117,12 @@ export const SearchPage: React.FC = () => {
             </button>
           </div>
 
+          {error && <div className="text-red-500">{error}</div>}
+
           {showMap ? (
             <Map
               coiffeurs={selectedResults}
-              userLocation={location}
+              userLocation={location || undefined}
               onCoiffeurClick={handleCoiffeurClick}
             />
           ) : (

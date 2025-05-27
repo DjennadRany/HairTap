@@ -58,11 +58,11 @@ export const ClientChatPage: React.FC = () => {
             const lastMsg = conv.lastMessage;
             const isUnread = conv.unread > 0;
             return (
-              <li
+            <li
                 key={coiffeur._id}
                 className={`flex items-center gap-3 p-2 rounded cursor-pointer hover:bg-gray-100 ${selectedCoiffeurId === coiffeur._id ? 'bg-primary/10' : ''}`}
                 onClick={() => setSelectedCoiffeurId(coiffeur._id)}
-              >
+            >
                 <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-200">
                   {coiffeur.photos && coiffeur.photos.length > 0 ? (
                     <img src={coiffeur.photos[0]} alt={coiffeur.name} className="w-full h-full object-cover" />
@@ -83,7 +83,7 @@ export const ClientChatPage: React.FC = () => {
                     </span>
                   )}
                 </div>
-              </li>
+            </li>
             );
           })}
         </ul>

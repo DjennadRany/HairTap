@@ -8,7 +8,7 @@ const bookingSchema = new mongoose.Schema({
   },
   coiffeur: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Coiffeur',
+    ref: 'User',
     required: true
   },
   service: {

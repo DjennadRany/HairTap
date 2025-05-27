@@ -32,7 +32,7 @@ export const CoiffeurCard = ({ coiffeur, onClick, userLocation }: CoiffeurCardPr
     : null;
 
   return (
-    <div
+    <div 
       onClick={onClick}
       className="bg-white rounded-lg shadow-md overflow-hidden cursor-pointer hover:shadow-lg transition-shadow"
     >
@@ -45,8 +45,8 @@ export const CoiffeurCard = ({ coiffeur, onClick, userLocation }: CoiffeurCardPr
         <div className="absolute top-2 right-2 bg-white rounded-full px-2 py-1 flex items-center">
           <StarIcon className="h-4 w-4 text-yellow-400" />
           <span className="ml-1 text-sm font-medium">{coiffeur.rating.toFixed(1)}</span>
-        </div>
-      </div>
+              </div>
+            </div>
 
       <div className="p-4">
         <h3 className="text-lg font-semibold mb-2">{coiffeur.name}</h3>
@@ -57,31 +57,31 @@ export const CoiffeurCard = ({ coiffeur, onClick, userLocation }: CoiffeurCardPr
             <span className="ml-2">
               • {distance.toFixed(1)} km
             </span>
-          )}
+            )}
         </div>
 
         <div className="flex flex-wrap gap-2 mb-3">
           {coiffeur.speciality.map((spec, index) => (
-            <span
-              key={index}
+              <span
+                key={index}
               className="bg-accent/10 text-accent text-xs px-2 py-1 rounded-full"
-            >
+              >
               {spec}
-            </span>
-          ))}
-        </div>
+              </span>
+            ))}
+          </div>
 
         <div className="flex items-center justify-between">
           <div className="flex items-center">
             <span className="text-sm font-medium">{coiffeur.priceRange}</span>
-          </div>
+        </div>
           <div className="flex items-center space-x-1">
             {coiffeur.mode.includes('salon') && (
               <span className="text-xs bg-gray-100 px-2 py-1 rounded">Salon</span>
-            )}
+          )}
             {coiffeur.mode.includes('domicile') && (
               <span className="text-xs bg-gray-100 px-2 py-1 rounded">Domicile</span>
-            )}
+          )}
           </div>
         </div>
       </div>

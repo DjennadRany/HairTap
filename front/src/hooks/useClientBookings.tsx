@@ -26,7 +26,8 @@ export const ClientBookingsProvider = ({ children }: { children: ReactNode }) =>
   const user = useSelector(selectCurrentUser);
 
   useEffect(() => {
-    if (!user) return; // NE PAS FETCH SI PAS CONNECTÉ
+    const token = localStorage.getItem('token');
+    if (!user || !token) return; // NE PAS FETCH SI PAS CONNECTÉ OU PAS DE TOKEN
     const fetchBookings = async () => {
       try {
         setLoading(true);

@@ -153,11 +153,11 @@ export function useAuth(): AuthHook {
   const logout = useCallback(async () => {
     try {
       await authService.logout();
-      dispatch({ type: 'auth/logout' });
+    dispatch({ type: 'auth/logout' });
       localStorage.removeItem('token');
       setIsAuthenticated(false);
       setUserState(null);
-      navigate('/');
+    navigate('/');
     } catch (err) {
       console.error('Erreur lors de la déconnexion:', err);
     }
