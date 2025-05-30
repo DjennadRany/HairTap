@@ -93,14 +93,18 @@ const BookingPage = () => {
     // Créer la réservation dynamiquement
     const booking = {
       _id: uuidv4(),
-      client: user._id,
+      client: user.id,
       coiffeur: coiffeur._id,
       service: selectedService.name,
       date: `${selectedDate}T${selectedTime}`,
-      duration: selectedService.duration,
+      duration: Number(selectedService.duration),
       status: 'confirmed' as const,
       mode: bookingMode,
-      address: bookingMode === 'domicile' ? clientAddress : undefined,
+      address: bookingMode === 'domicile' ? {
+        street: clientAddress,
+        city: '',
+        postalCode: ''
+      } : undefined,
       paymentStatus: 'paid' as const,
       price: selectedService.price,
       createdAt: new Date().toISOString(),
