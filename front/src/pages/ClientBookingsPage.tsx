@@ -7,20 +7,7 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
 import { useClientBookings } from '../hooks/useClientBookings';
-
-interface Booking {
-  id: string;
-  coiffeurId: number;
-  coiffeurName: string;
-  service: string;
-  date: string;
-  price: number;
-  status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
-  mode: 'salon' | 'domicile';
-  address?: string;
-  paymentStatus: 'pending' | 'paid' | 'refunded';
-  cancellationDeadline: string;
-}
+import { Booking } from '../types/models';
 
 const ClientBookingsPage = () => {
   const user = useSelector(selectCurrentUser);
@@ -49,6 +36,8 @@ const ClientBookingsPage = () => {
         return 'bg-yellow-100 text-yellow-800';
       case 'cancelled':
         return 'bg-red-100 text-red-800';
+      case 'completed':
+        return 'bg-blue-100 text-blue-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -80,22 +69,22 @@ const ClientBookingsPage = () => {
         {upcomingBookings.length > 0 ? (
           <div className="space-y-4">
             {upcomingBookings.map((booking) => (
-              <Card key={booking.id} className="p-6">
+              <Card key={booking._id} className="p-6">
                 <div className="flex justify-between items-start">
                   <div>
                     <h3 className="font-semibold text-lg mb-2">
-                      {booking.coiffeurName}
+                      {typeof booking.coiffeur === 'object' && booking.coiffeur !== null ? (booking.coiffeur as any).name : booking.coiffeur}
                     </h3>
-                    <p className="text-gray-600">{booking.service}</p>
                     <p className="text-gray-600">
-                      {format(new Date(booking.date), 'EEEE d MMMM yyyy à HH:mm', {
-                        locale: fr,
-                      })}
+                      {typeof booking.service === 'object' && booking.service !== null ? (booking.service as any).name : booking.service}
+                    </p>
+                    <p className="text-gray-600">
+                      {format(new Date(booking.date), 'EEEE d MMMM yyyy à HH:mm', { locale: fr })}
                     </p>
                     {booking.mode === 'domicile' && booking.address && (
-                      <p className="text-gray-600 mt-2">
-                        Adresse : {booking.address}
-                      </p>
+                      <div className="text-gray-600 mt-2">
+                        Adresse : {booking.address.street}, {booking.address.city}, {booking.address.postalCode}
+                      </div>
                     )}
                   </div>
                   <div className="text-right">
@@ -108,6 +97,8 @@ const ClientBookingsPage = () => {
                         ? 'Confirmé'
                         : booking.status === 'pending'
                         ? 'En attente'
+                        : booking.status === 'completed'
+                        ? 'Terminé'
                         : 'Annulé'}
                     </span>
                     <span
@@ -127,21 +118,20 @@ const ClientBookingsPage = () => {
                 {canCancel(booking) && (
                   <div className="mt-4">
                     <Button
-                      onClick={() => handleCancelBooking(booking.id)}
+                      onClick={() => handleCancelBooking(booking._id)}
                       className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
                     >
                       Annuler la réservation
                     </Button>
-                    <p className="text-sm text-gray-500 mt-2">
-                      Annulation possible jusqu'au{' '}
-                      {format(
-                        new Date(booking.cancellationDeadline),
-                        'dd/MM/yyyy HH:mm'
-                      )}
-                    </p>
+                    {/* Affichage d'une date d'annulation si disponible */}
+                    {booking.cancellationReason && (
+                      <p className="text-sm text-gray-500 mt-2">
+                        Raison d'annulation : {booking.cancellationReason}
+                      </p>
+                    )}
                   </div>
                 )}
-                <Button onClick={() => navigate(`/coiffeur/${booking.coiffeurId}`)} className="ml-2 bg-primary text-white px-4 py-2 rounded hover:bg-primary/90">Voir le coiffeur</Button>
+                <Button onClick={() => navigate(`/coiffeur/${typeof booking.coiffeur === 'object' && booking.coiffeur !== null ? (booking.coiffeur as any)._id : booking.coiffeur}`)} className="ml-2 bg-primary text-white px-4 py-2 rounded hover:bg-primary/90">Voir le coiffeur</Button>
               </Card>
             ))}
           </div>
@@ -156,22 +146,22 @@ const ClientBookingsPage = () => {
         {pastBookings.length > 0 ? (
           <div className="space-y-4">
             {pastBookings.map((booking) => (
-              <Card key={booking.id} className="p-6">
+              <Card key={booking._id} className="p-6">
                 <div className="flex justify-between items-start">
                   <div>
                     <h3 className="font-semibold text-lg mb-2">
-                      {booking.coiffeurName}
+                      {typeof booking.coiffeur === 'object' && booking.coiffeur !== null ? (booking.coiffeur as any).name : booking.coiffeur}
                     </h3>
-                    <p className="text-gray-600">{booking.service}</p>
                     <p className="text-gray-600">
-                      {format(new Date(booking.date), 'EEEE d MMMM yyyy à HH:mm', {
-                        locale: fr,
-                      })}
+                      {typeof booking.service === 'object' && booking.service !== null ? (booking.service as any).name : booking.service}
+                    </p>
+                    <p className="text-gray-600">
+                      {format(new Date(booking.date), 'EEEE d MMMM yyyy à HH:mm', { locale: fr })}
                     </p>
                     {booking.mode === 'domicile' && booking.address && (
-                      <p className="text-gray-600 mt-2">
-                        Adresse : {booking.address}
-                      </p>
+                      <div className="text-gray-600 mt-2">
+                        Adresse : {booking.address.street}, {booking.address.city}, {booking.address.postalCode}
+                      </div>
                     )}
                   </div>
                   <div className="text-right">
@@ -200,7 +190,7 @@ const ClientBookingsPage = () => {
                     <p className="mt-2 text-lg font-bold">{booking.price}€</p>
                   </div>
                 </div>
-                <Button onClick={() => navigate(`/coiffeur/${booking.coiffeurId}`)} className="ml-2 bg-primary text-white px-4 py-2 rounded hover:bg-primary/90">Voir le coiffeur</Button>
+                <Button onClick={() => navigate(`/coiffeur/${typeof booking.coiffeur === 'object' && booking.coiffeur !== null ? (booking.coiffeur as any)._id : booking.coiffeur}`)} className="ml-2 bg-primary text-white px-4 py-2 rounded hover:bg-primary/90">Voir le coiffeur</Button>
               </Card>
             ))}
           </div>
