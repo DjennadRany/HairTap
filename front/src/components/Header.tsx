@@ -15,6 +15,13 @@ const Header: FC = () => {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [unreadCount, setUnreadCount] = useState(0);
 
+  const isUserValid =
+    isAuthenticated &&
+    user &&
+    user._id &&
+    user.email &&
+    (user.role === 'client' || user.role === 'coiffeur');
+
   useEffect(() => {
     const fetchUnreadCount = async () => {
       if (isAuthenticated) {
@@ -22,27 +29,20 @@ const Header: FC = () => {
           const count = await getUnreadCount();
           setUnreadCount(count);
         } catch (error) {
-          console.error('Error fetching unread count:', error);
+          setUnreadCount(0);
         }
       }
     };
-
     fetchUnreadCount();
-    const interval = setInterval(fetchUnreadCount, 30000); // Rafraîchir toutes les 30 secondes
-
+    const interval = setInterval(fetchUnreadCount, 30000);
     return () => clearInterval(interval);
   }, [isAuthenticated]);
 
   const handleLogout = async () => {
-    try {
-      dispatch(logout());
-      navigate('/');
-    } catch (error) {
-      console.error('Error during logout:', error);
-    }
+    dispatch(logout());
+    navigate('/');
   };
 
-  // Logo TapHair : /search si connecté, / sinon
   const handleLogoClick = (e: React.MouseEvent) => {
     e.preventDefault();
     if (isAuthenticated) {
@@ -52,7 +52,6 @@ const Header: FC = () => {
     }
   };
 
-  // Fermer le dropdown si clic en dehors
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -71,9 +70,8 @@ const Header: FC = () => {
           <a href="#" onClick={handleLogoClick} className="flex items-center mr-6">
             <span className="text-2xl font-bold text-accent">TapHair</span>
           </a>
-
           {/* Menu principal */}
-          {isAuthenticated && user && (
+          {isUserValid && (
             <nav className="flex items-center gap-3">
               {user.role === 'client' ? (
                 <>
@@ -106,12 +104,9 @@ const Header: FC = () => {
               )}
             </nav>
           )}
-
-          {/* Spacer */}
           <div className="flex-1" />
-
           {/* User dropdown ou Connexion */}
-          {!isAuthenticated ? (
+          {!isUserValid ? (
             <Link
               to="/login"
               className="bg-accent text-white px-4 py-2 rounded-lg hover:bg-accent/90 transition-colors"
@@ -160,5 +155,4 @@ const Header: FC = () => {
     </header>
   );
 };
-
 export default Header; 

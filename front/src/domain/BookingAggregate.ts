@@ -1,4 +1,26 @@
-import { Booking } from '../hooks/useClientBookings';
+interface Booking {
+  _id: string;
+  client: string;
+  coiffeur: string;
+  coiffeurId?: string;
+  service: string;
+  date: string;
+  duration: number;
+  price: number;
+  status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
+  mode: 'salon' | 'domicile';
+  address?: {
+    street: string;
+    city: string;
+    postalCode: string;
+  };
+  paymentStatus: 'pending' | 'paid' | 'refunded';
+  notes?: string;
+  cancellationReason?: string;
+  cancellationDeadline?: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export class BookingAggregate {
   static isUpcoming(booking: Booking, now: Date = new Date()): boolean {
@@ -28,6 +50,7 @@ export class BookingAggregate {
 
   static canCancel(booking: Booking, now: Date = new Date()): boolean {
     if (booking.status === 'cancelled') return false;
+    if (!booking.cancellationDeadline) return true; // Si pas de deadline, on peut annuler
     const deadline = new Date(booking.cancellationDeadline);
     return now < deadline;
   }

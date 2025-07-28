@@ -1,63 +1,81 @@
 export interface User {
-  _id: string;
+  _id: string; // Ajouté pour le front (toujours utilisé dans le code)
   name: string;
   email: string;
   role: 'user' | 'admin' | 'coiffeur';
   photo: string;
+  bio?: string;
   phone?: string;
   address?: {
     street: string;
     city: string;
     postalCode: string;
-    coordinates?: {
+    coordinates: {
       lat: number;
       lng: number;
     };
   };
-  speciality?: string[];
-  rating?: number;
-  priceRange?: '€' | '€€' | '€€€';
+  siren?: string;
+  sirenStatus?: 'pending' | 'verified' | 'none';
+  sirenVerificationDate?: Date;
+  specialities?: string[];
+  rating: number;
+  totalRatings: number;
+  workingMode?: ('salon' | 'domicile' | 'both')[];
   workingHours?: {
     [key: string]: {
       start: string;
       end: string;
+      isAvailable: boolean;
     };
   };
-  description?: string;
-  photos?: string[];
-  mode?: ('salon' | 'domicile')[];
-  availability?: { date: string; slots: string[] }[];
-  cancellationPolicy?: string;
-  bio?: string;
-  experience?: string;
-  diplomas?: string;
-  tarifs?: string;
-  favorites?: string[];
+  travelRadius?: number;
+  services?: Service[];
+  gallery?: GalleryImage[];
+  likes?: number;
+  socialPosts?: SocialPost[];
   preferences?: {
     notifications: {
       email: boolean;
       sms: boolean;
+      push: boolean;
     };
     language: 'fr' | 'en';
     theme: 'light' | 'dark';
+    privacy: {
+      showPhone: boolean;
+      showAddress: boolean;
+    };
   };
-  services?: Service[];
-  gallery?: string[];
-  createdAt: string;
-  updatedAt: string;
+  stats?: {
+    totalBookings: number;
+    completedBookings: number;
+    cancelledBookings: number;
+    averageRating: number;
+    profileViews: number;
+  };
+  lastLogin?: Date;
+  loginHistory?: Array<{
+    date: Date;
+    ip: string;
+    device: string;
+  }>;
+  isBlocked?: boolean;
+  blockedUsers?: string[];
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface Service {
-  _id: string;
   name: string;
   description: string;
-  price: number;
   duration: number;
-  category: 'coupe' | 'coloration' | 'coiffure' | 'soin' | 'barbe' | 'autre';
-  coiffeur: string;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
+  priceHT: number;
+  image?: string;
+  tags: string[];
+  isTemporary?: boolean;
+  startDate?: Date;
+  endDate?: Date;
 }
 
 export interface Booking {
@@ -90,4 +108,23 @@ export interface Review {
   comment: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface GalleryImage {
+  url: string;
+  description: string;
+  isVerified: boolean;
+}
+
+export interface SocialPost {
+  content: string;
+  images: string[];
+  hashtags: string[];
+  createdAt: Date;
+  likes: number;
+  comments: Array<{
+    userId: string;
+    content: string;
+    createdAt: Date;
+  }>;
 } 

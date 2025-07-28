@@ -41,6 +41,7 @@ export const SearchPage: React.FC = () => {
         city: filters.city,
         date: filters.date
       });
+      console.log('Résultats recherche coiffeurs:', searchResults);
 
       // Filtrer par distance si la géolocalisation est disponible
       let filteredResults = searchResults;
@@ -118,6 +119,10 @@ export const SearchPage: React.FC = () => {
               {showMap ? 'Voir la liste' : 'Voir la carte'}
             </button>
           </div>
+
+          {results.length === 0 && !loading && (
+            <div className="text-center text-gray-500">Aucun coiffeur trouvé.</div>
+          )}
 
           {showMap ? (
             <Map

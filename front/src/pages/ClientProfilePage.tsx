@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { useSelector, useDispatch } from 'react-redux';
 import { selectCurrentUser, setUser, User as AuthUser } from '../store/slices/authSlice';
+import { useParams } from 'react-router-dom';
+import { userService } from '../services/api/users';
+import type { User as UserModel } from '../types/models';
 
 interface ProfileFormData {
   name: string;
@@ -12,19 +15,28 @@ interface ProfileFormData {
 
 const ClientProfilePage = () => {
   const dispatch = useDispatch();
-  const user = useSelector(selectCurrentUser) as AuthUser;
+  const { id: paramId } = useParams();
+  const user = useSelector(selectCurrentUser) as UserModel | null;
+  const id = paramId || user?._id;
   const [photoPreview, setPhotoPreview] = useState<string>(user?.photo || '');
   const [success, setSuccess] = useState<string>('');
   const [errorMsg, setErrorMsg] = useState<string>('');
+  const [profile, setProfile] = useState<UserModel | null>(null);
+
+  const defaultName = profile?.name || user?.name || '';
+  const defaultEmail = profile?.email || user?.email || '';
+  const defaultPhoto = profile?.photo || user?.photo || '';
+
   const {
     register,
     handleSubmit,
     watch,
     formState: { errors },
+    reset,
   } = useForm<ProfileFormData>({
     defaultValues: {
-      name: user?.name || '',
-      email: user?.email || '',
+      name: defaultName,
+      email: defaultEmail,
       password: '',
       confirmPassword: '',
     },
@@ -36,6 +48,10 @@ const ClientProfilePage = () => {
     try {
       setSuccess('');
       setErrorMsg('');
+      if (!id) {
+        setErrorMsg("Impossible de retrouver l'utilisateur.");
+        return;
+      }
       const payload: any = {
         name: data.name,
         email: data.email,
@@ -49,21 +65,18 @@ const ClientProfilePage = () => {
           return;
         }
       }
-
-      const response = await fetch(`http://localhost:3001/users/${user.id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        throw new Error('Erreur lors de la mise à jour du profil');
-      }
-
-      const updatedUser = await response.json();
-      dispatch(setUser(updatedUser as AuthUser));
+      const updatedUser = await userService.updateUser(id, payload);
+      // Ne jamais mapper admin côté front
+      let mappedRole: 'client' | 'coiffeur' = 'client';
+      if (updatedUser.role === 'coiffeur') mappedRole = 'coiffeur';
+      // Si jamais admin, fallback sur client
+      dispatch(setUser({
+        _id: updatedUser._id,
+        name: updatedUser.name,
+        email: updatedUser.email,
+        role: mappedRole,
+        photo: updatedUser.photo
+      }));
       setSuccess('Profil mis à jour avec succès !');
     } catch (error) {
       setErrorMsg('Erreur lors de la mise à jour du profil');
@@ -82,6 +95,22 @@ const ClientProfilePage = () => {
     }
   };
 
+  useEffect(() => {
+    if (!id || typeof id !== 'string') return;
+    userService.getUser(id)
+      .then((data) => {
+        setProfile(data);
+        reset({
+          name: data.name,
+          email: data.email,
+          password: '',
+          confirmPassword: '',
+        });
+        setPhotoPreview(data.photo || '');
+      })
+      .catch(() => setProfile(null));
+  }, [id, reset]);
+
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold mb-6">Mon profil</h1>
@@ -98,7 +127,7 @@ const ClientProfilePage = () => {
       <form onSubmit={handleSubmit(onSubmit)} className="max-w-md mx-auto">
         <div className="flex flex-col items-center mb-6">
           <img
-            src={photoPreview || '/default-avatar.png'}
+            src={photoPreview || defaultPhoto || '/default-avatar.png'}
             alt="Preview"
             className="w-24 h-24 rounded-full mb-4 object-cover bg-gray-100"
           />
@@ -168,6 +197,9 @@ const ClientProfilePage = () => {
           </button>
         </div>
       </form>
+      {Array.isArray(profile?.services) && profile.services.map((service, idx) => (
+        <div key={idx}>{typeof service === 'object' && service !== null && 'name' in service ? (typeof service.name === 'string' ? service.name : String(service.name)) : String(service)}</div>
+      ))}
     </div>
   );
 };

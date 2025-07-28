@@ -2,13 +2,35 @@ import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 
 const ServiceSchema = new mongoose.Schema({
-  name: String,
-  priceHT: Number,
-  duration: String,
-  description: String
+  name: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  description: {
+    type: String,
+    trim: true
+  },
+  duration: {
+    type: Number, // en minutes
+    required: true
+  },
+  priceHT: {
+    type: Number,
+    required: true
+  },
+  image: String,
+  tags: [String],
+  isTemporary: {
+    type: Boolean,
+    default: false
+  },
+  startDate: Date,
+  endDate: Date
 });
 
 const userSchema = new mongoose.Schema({
+  // Informations de base
   name: {
     type: String,
     required: [true, 'Please provide a name'],
@@ -25,7 +47,7 @@ const userSchema = new mongoose.Schema({
   password: {
     type: String,
     required: [true, 'Please provide a password'],
-    minlength: 6,
+    minlength: 8,
     select: false
   },
   googleId: {
@@ -38,9 +60,15 @@ const userSchema = new mongoose.Schema({
     enum: ['user', 'admin', 'coiffeur'],
     default: 'user'
   },
+  
+  // Profil public
   photo: {
     type: String,
     default: 'default-avatar.png'
+  },
+  bio: {
+    type: String,
+    maxlength: 400
   },
   phone: {
     type: String,
@@ -55,43 +83,89 @@ const userSchema = new mongoose.Schema({
       lng: Number
     }
   },
+  
   // Champs spécifiques aux coiffeurs
-  speciality: [String],
+  siren: {
+    type: String,
+    sparse: true
+  },
+  sirenStatus: {
+    type: String,
+    enum: ['pending', 'verified', 'none'],
+    default: 'none'
+  },
+  sirenVerificationDate: Date,
+  specialities: [String],
   rating: {
     type: Number,
     default: 0
   },
-  priceRange: {
+  totalRatings: {
+    type: Number,
+    default: 0
+  },
+  workingMode: [{
     type: String,
-    enum: ['€', '€€', '€€€']
-  },
+    enum: ['salon', 'domicile', 'both']
+  }],
   workingHours: {
-    monday: { start: String, end: String },
-    tuesday: { start: String, end: String },
-    wednesday: { start: String, end: String },
-    thursday: { start: String, end: String },
-    friday: { start: String, end: String },
-    saturday: { start: String, end: String },
-    sunday: { start: String, end: String }
+    monday: { start: String, end: String, isAvailable: Boolean },
+    tuesday: { start: String, end: String, isAvailable: Boolean },
+    wednesday: { start: String, end: String, isAvailable: Boolean },
+    thursday: { start: String, end: String, isAvailable: Boolean },
+    friday: { start: String, end: String, isAvailable: Boolean },
+    saturday: { start: String, end: String, isAvailable: Boolean },
+    sunday: { start: String, end: String, isAvailable: Boolean }
   },
-  description: String,
-  photos: [String],
-  mode: [{ type: String, enum: ['salon', 'domicile'] }],
-  availability: [
-    {
-      date: String,
-      slots: [String]
+  travelRadius: {
+    type: Number, // en km
+    default: 10
+  },
+  services: [ServiceSchema],
+  gallery: [{
+    url: String,
+    description: String,
+    isVerified: {
+      type: Boolean,
+      default: false
     }
-  ],
-  cancellationPolicy: { type: String, default: "Annulation gratuite jusqu'à 24h avant le rendez-vous." },
-  bio: String,
-  experience: String,
-  diplomas: String,
-  tarifs: String,
+  }],
+  
+  // Social & Engagement
+  likes: {
+    type: Number,
+    default: 0
+  },
   favorites: [{
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Coiffeur'
+    ref: 'User'
   }],
+  socialPosts: [{
+    content: String,
+    images: [String],
+    hashtags: [String],
+    createdAt: {
+      type: Date,
+      default: Date.now
+    },
+    likes: {
+      type: Number,
+      default: 0
+    },
+    comments: [{
+      userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+      },
+      content: String,
+      createdAt: {
+        type: Date,
+        default: Date.now
+      }
+    }]
+  }],
+  
+  // Préférences & Paramètres
   preferences: {
     notifications: {
       email: {
@@ -101,6 +175,10 @@ const userSchema = new mongoose.Schema({
       sms: {
         type: Boolean,
         default: false
+      },
+      push: {
+        type: Boolean,
+        default: true
       }
     },
     language: {
@@ -112,8 +190,60 @@ const userSchema = new mongoose.Schema({
       type: String,
       enum: ['light', 'dark'],
       default: 'light'
+    },
+    privacy: {
+      showPhone: {
+        type: Boolean,
+        default: false
+      },
+      showAddress: {
+        type: Boolean,
+        default: true
+      }
     }
   },
+  
+  // Statistiques & Performance
+  stats: {
+    totalBookings: {
+      type: Number,
+      default: 0
+    },
+    completedBookings: {
+      type: Number,
+      default: 0
+    },
+    cancelledBookings: {
+      type: Number,
+      default: 0
+    },
+    averageRating: {
+      type: Number,
+      default: 0
+    },
+    profileViews: {
+      type: Number,
+      default: 0
+    }
+  },
+  
+  // Sécurité & Conformité
+  lastLogin: Date,
+  loginHistory: [{
+    date: Date,
+    ip: String,
+    device: String
+  }],
+  isBlocked: {
+    type: Boolean,
+    default: false
+  },
+  blockedUsers: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }],
+  
+  // Timestamps
   createdAt: {
     type: Date,
     default: Date.now
@@ -121,9 +251,7 @@ const userSchema = new mongoose.Schema({
   updatedAt: {
     type: Date,
     default: Date.now
-  },
-  services: [ServiceSchema],
-  gallery: [String]
+  }
 }, {
   timestamps: true
 });
@@ -132,15 +260,17 @@ const userSchema = new mongoose.Schema({
 userSchema.index({ email: 1 });
 userSchema.index({ googleId: 1 });
 userSchema.index({ role: 1 });
+userSchema.index({ 'address.coordinates': '2dsphere' });
+userSchema.index({ siren: 1 });
 
-// Hash password before saving (ACTIVÉ)
+// Hash password before saving
 userSchema.pre('save', async function(next) {
   if (!this.isModified('password')) return next();
   this.password = await bcrypt.hash(this.password, 12);
   next();
 });
 
-// Compare password method (PROD)
+// Compare password method
 userSchema.methods.comparePassword = async function(candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
 };
@@ -155,23 +285,23 @@ userSchema.methods.isAdmin = function() {
   return this.role === 'admin';
 };
 
-// Méthode pour ajouter un coiffeur aux favoris
-userSchema.methods.addFavorite = async function(coiffeurId) {
-  if (!this.favorites.includes(coiffeurId)) {
-    this.favorites.push(coiffeurId);
+// Méthode pour bloquer un utilisateur
+userSchema.methods.blockUser = async function(userId) {
+  if (!this.blockedUsers.includes(userId)) {
+    this.blockedUsers.push(userId);
     await this.save();
   }
 };
 
-// Méthode pour retirer un coiffeur des favoris
-userSchema.methods.removeFavorite = async function(coiffeurId) {
-  this.favorites = this.favorites.filter(id => id.toString() !== coiffeurId.toString());
+// Méthode pour débloquer un utilisateur
+userSchema.methods.unblockUser = async function(userId) {
+  this.blockedUsers = this.blockedUsers.filter(id => id.toString() !== userId.toString());
   await this.save();
 };
 
-// Méthode pour vérifier si un coiffeur est dans les favoris
-userSchema.methods.hasFavorite = function(coiffeurId) {
-  return this.favorites.some(id => id.toString() === coiffeurId.toString());
+// Méthode pour vérifier si un utilisateur est bloqué
+userSchema.methods.isUserBlocked = function(userId) {
+  return this.blockedUsers.some(id => id.toString() === userId.toString());
 };
 
 // Middleware pour mettre à jour le champ updatedAt

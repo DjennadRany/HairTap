@@ -20,6 +20,8 @@ import authRoutes from './routes/auth.js';
 import bookingRoutes from './routes/bookings.js';
 import serviceRoutes from './routes/services.js';
 import chatRoutes from './routes/chat.js';
+import favoriteRoutes from './routes/favorites.js';
+import reviewRoutes from './routes/reviews.js';
 
 const envPath = path.resolve(process.cwd(), '.env');
 console.log('[DEBUG] .env path:', envPath, 'Exists:', fs.existsSync(envPath));
@@ -81,6 +83,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/services', serviceRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/favorites', favoriteRoutes);
+app.use('/api/reviews', reviewRoutes);
 
 // Error Handling
 app.use(errorHandler);

@@ -1,44 +1,17 @@
 import express from 'express';
 import User from '../models/User.js';
-import Booking from '../models/Booking.js';
+import Service from '../models/Service.js';
 import auth from '../middleware/auth.js';
-import { validateCoiffeur, validateFile } from '../middleware/validate.js';
 
 const router = express.Router();
 
-// Récupérer tous les coiffeurs avec filtres
+// Récupérer tous les coiffeurs
 router.get('/', async (req, res) => {
   try {
-    const { city, speciality, priceRange, date } = req.query;
-    const query = { role: 'coiffeur' };
-
-    if (city) {
-      query['address.city'] = new RegExp(city, 'i');
-    }
-
-    if (speciality) {
-      const specialities = Array.isArray(speciality) ? speciality : [speciality];
-      query.speciality = { $in: specialities };
-    }
-
-    if (priceRange) {
-      const ranges = Array.isArray(priceRange) ? priceRange : [priceRange];
-      query.priceRange = { $in: ranges };
-    }
-
-    // Si une date est spécifiée, vérifier les disponibilités
-    if (date) {
-      const searchDate = new Date(date);
-      const dayOfWeek = searchDate.toLocaleLowerCase();
-      query[`workingHours.${dayOfWeek}.start`] = { $exists: true, $ne: '' };
-    }
-
-    const coiffeurs = await User.find(query)
-      .select('-password')
-      .sort({ rating: -1 });
+    const coiffeurs = await User.find({ role: 'coiffeur' }).select('-password');
     res.json(coiffeurs);
   } catch (error) {
-    console.error('Get all coiffeurs error:', error);
+    console.error('Get coiffeurs error:', error);
     res.status(500).json({ message: 'Erreur lors de la récupération des coiffeurs' });
   }
 });
@@ -46,14 +19,10 @@ router.get('/', async (req, res) => {
 // Récupérer un coiffeur par ID
 router.get('/:id', async (req, res) => {
   try {
-    const coiffeur = await User.findById(req.params.id)
-      .select('-password')
-      .populate('services');
-    
+    const coiffeur = await User.findById(req.params.id).select('-password');
     if (!coiffeur) {
-      return res.status(404).json({ message: 'Coiffeur non trouvé' });
+      return res.status(404).json({ message: 'Coiffeur introuvable' });
     }
-
     res.json(coiffeur);
   } catch (error) {
     console.error('Get coiffeur error:', error);
@@ -61,168 +30,183 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Récupérer les coiffeurs favoris
-router.post('/favorites', auth, async (req, res) => {
+// Récupérer les services d'un coiffeur
+router.get('/:id/services', async (req, res) => {
   try {
-    const { coiffeurIds } = req.body;
-    if (!Array.isArray(coiffeurIds)) {
-      return res.status(400).json({ message: 'Liste de coiffeurs invalide' });
+    const services = await Service.find({
+      coiffeur: req.params.id,
+      isActive: true
+    }).sort({ createdAt: -1 });
+
+    res.json(services);
+  } catch (error) {
+    console.error('Get coiffeur services error:', error);
+    res.status(500).json({ message: 'Erreur lors de la récupération des services' });
+  }
+});
+
+// Ajouter un service pour un coiffeur
+router.post('/:id/services', auth, async (req, res) => {
+  try {
+    const { name, description, duration, price, category, keywords, examplePhotos } = req.body;
+
+    if (!name || !description || !duration || !price || !category) {
+      return res.status(400).json({ message: 'Tous les champs sont requis' });
     }
 
-    const coiffeurs = await User.find({
-      _id: { $in: coiffeurIds }
-    }).select('-password');
+    const newService = new Service({
+      name,
+      description,
+      duration: parseInt(duration),
+      price: parseFloat(price),
+      category,
+      keywords: keywords || [],
+      examplePhotos: examplePhotos || [],
+      coiffeur: req.params.id,
+      isActive: true,
+      likes: 0
+    });
 
-    res.json(coiffeurs);
+    const savedService = await newService.save();
+    res.status(201).json(savedService);
   } catch (error) {
-    console.error('Get favorites error:', error);
-    res.status(500).json({ message: 'Erreur lors de la récupération des coiffeurs favoris' });
+    console.error('Add service error:', error);
+    res.status(500).json({ message: 'Erreur lors de l\'ajout du service' });
   }
 });
 
-// Prochains rendez-vous (dashboard coiffeur)
-router.get('/:id/bookings/upcoming', auth, async (req, res) => {
+// Modifier un service
+router.put('/:id/services/:serviceId', auth, async (req, res) => {
   try {
-    const now = new Date();
-    const bookings = await Booking.find({
-      coiffeurId: req.params.id,
-      date: { $gte: now },
-      status: { $in: ['pending', 'confirmed'] }
-    }).sort({ date: 1 });
-    res.json(bookings);
+    const { name, description, duration, price, category, keywords, examplePhotos } = req.body;
+
+    if (!name || !description || !duration || !price || !category) {
+      return res.status(400).json({ message: 'Tous les champs sont requis' });
+    }
+
+    const service = await Service.findOne({
+      _id: req.params.serviceId,
+      coiffeur: req.params.id
+    });
+
+    if (!service) {
+      return res.status(404).json({ message: 'Service introuvable' });
+    }
+
+    service.name = name;
+    service.description = description;
+    service.duration = parseInt(duration);
+    service.price = parseFloat(price);
+    service.category = category;
+    service.keywords = keywords || [];
+    service.examplePhotos = examplePhotos || [];
+
+    const updatedService = await service.save();
+    res.json(updatedService);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Update service error:', error);
+    res.status(500).json({ message: 'Erreur lors de la modification du service' });
   }
 });
 
-// Statistiques dashboard coiffeur
-router.get('/:id/stats', auth, async (req, res) => {
+// Supprimer un service
+router.delete('/:id/services/:serviceId', auth, async (req, res) => {
   try {
-    const coiffeurId = req.params.id;
-    const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    
-    const bookings = await Booking.find({ coiffeurId });
-    const revenue = bookings
-      .filter(b => b.status === 'confirmed' && b.date >= startOfMonth)
-      .reduce((acc, b) => acc + (b.price || 0), 0);
-    
-    const clients = new Set(
-      bookings
-        .filter(b => b.date >= startOfMonth)
-        .map(b => String(b.clientId))
-    ).size;
-    
-    const rating = 4.8; // TODO: Implémenter le calcul réel des notes
-    const upcoming = bookings.filter(b => b.status === 'confirmed' && b.date >= now).length;
-    
-    res.json({ revenue, clients, rating, upcoming });
+    const service = await Service.findOne({
+      _id: req.params.serviceId,
+      coiffeur: req.params.id
+    });
+
+    if (!service) {
+      return res.status(404).json({ message: 'Service introuvable' });
+    }
+
+    await Service.findByIdAndDelete(req.params.serviceId);
+    res.json({ message: 'Service supprimé avec succès' });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Delete service error:', error);
+    res.status(500).json({ message: 'Erreur lors de la suppression du service' });
   }
 });
 
-// Mettre à jour le profil d'un coiffeur
-router.patch('/:id', auth, validateCoiffeur, async (req, res) => {
+// Toggle like sur un service
+router.post('/:id/services/:serviceId/like', auth, async (req, res) => {
+  try {
+    const service = await Service.findById(req.params.serviceId);
+    
+    if (!service) {
+      return res.status(404).json({ message: 'Service introuvable' });
+    }
+
+    // Vérifier si l'utilisateur a déjà liké ce service
+    const userLiked = service.likedBy && service.likedBy.includes(req.user.id);
+    
+    if (userLiked) {
+      // Unlike
+      service.likes = Math.max(0, service.likes - 1);
+      service.likedBy = service.likedBy.filter(id => id !== req.user.id);
+    } else {
+      // Like
+      service.likes = service.likes + 1;
+      if (!service.likedBy) service.likedBy = [];
+      service.likedBy.push(req.user.id);
+    }
+
+    await service.save();
+    
+    res.json({ 
+      likes: service.likes, 
+      isLiked: !userLiked 
+    });
+  } catch (error) {
+    console.error('Toggle service like error:', error);
+    res.status(500).json({ message: 'Erreur lors du like/unlike' });
+  }
+});
+
+// Synchroniser les images des services avec la galerie
+router.post('/:id/sync-gallery', auth, async (req, res) => {
   try {
     const coiffeur = await User.findById(req.params.id);
     if (!coiffeur) {
-      return res.status(404).json({ message: 'Coiffeur non trouvé' });
+      return res.status(404).json({ message: 'Coiffeur introuvable' });
     }
 
-    // Vérifier que le coiffeur est bien celui qui fait la requête
+    // Vérifier que l'utilisateur est le coiffeur
     if (coiffeur._id.toString() !== req.user.id) {
       return res.status(403).json({ message: 'Non autorisé' });
     }
 
-    const updates = req.body;
-    Object.keys(updates).forEach(key => {
-      if (key !== 'password' && key !== '_id' && key !== 'role') {
-        coiffeur[key] = updates[key];
+    // Récupérer tous les services du coiffeur
+    const services = await Service.find({ coiffeur: req.params.id, isActive: true });
+    
+    // Extraire toutes les images des services
+    const serviceImages = [];
+    services.forEach(service => {
+      if (service.examplePhotos && service.examplePhotos.length > 0) {
+        service.examplePhotos.forEach(photo => {
+          serviceImages.push({
+            url: photo,
+            description: `Photo d'exemple - ${service.name}`,
+            isVerified: true,
+            source: 'service',
+            serviceId: service._id
+          });
+        });
       }
     });
 
-    const updatedCoiffeur = await coiffeur.save();
-    res.json(updatedCoiffeur);
+    // Mettre à jour la galerie du coiffeur
+    coiffeur.gallery = serviceImages;
+    await coiffeur.save();
+
+    res.json({ 
+      message: 'Galerie synchronisée', 
+      galleryCount: serviceImages.length 
+    });
   } catch (error) {
-    console.error('Update coiffeur error:', error);
-    res.status(400).json({ message: 'Erreur lors de la mise à jour du coiffeur' });
-  }
-});
-
-// Mettre à jour la photo de profil
-router.post('/:id/photo', auth, validateFile, async (req, res) => {
-  try {
-    const coiffeur = await User.findById(req.params.id);
-    if (!coiffeur) {
-      return res.status(404).json({ message: 'Coiffeur non trouvé' });
-    }
-
-    // Vérifier que le coiffeur est bien celui qui fait la requête
-    if (coiffeur._id.toString() !== req.user.id) {
-      return res.status(403).json({ message: 'Non autorisé' });
-    }
-
-    coiffeur.photo = req.file.path;
-    const updatedCoiffeur = await coiffeur.save();
-    res.json(updatedCoiffeur);
-  } catch (error) {
-    console.error('Update photo error:', error);
-    res.status(400).json({ message: 'Erreur lors de la mise à jour de la photo' });
-  }
-});
-
-// Mettre à jour les disponibilités
-router.patch('/:id/availability', auth, async (req, res) => {
-  try {
-    const coiffeur = await User.findById(req.params.id);
-    if (!coiffeur) {
-      return res.status(404).json({ message: 'Coiffeur non trouvé' });
-    }
-
-    // Vérifier que le coiffeur est bien celui qui fait la requête
-    if (coiffeur._id.toString() !== req.user.id) {
-      return res.status(403).json({ message: 'Non autorisé' });
-    }
-
-    const { availability } = req.body;
-    if (!availability || typeof availability !== 'object') {
-      return res.status(400).json({ message: 'Disponibilités invalides' });
-    }
-
-    coiffeur.availability = availability;
-    const updatedCoiffeur = await coiffeur.save();
-    res.json(updatedCoiffeur);
-  } catch (error) {
-    console.error('Update availability error:', error);
-    res.status(400).json({ message: 'Erreur lors de la mise à jour des disponibilités' });
-  }
-});
-
-// Mettre à jour les services
-router.patch('/:id/services', auth, validateCoiffeur, async (req, res) => {
-  try {
-    const coiffeur = await User.findById(req.params.id);
-    if (!coiffeur) {
-      return res.status(404).json({ message: 'Coiffeur non trouvé' });
-    }
-
-    // Vérifier que le coiffeur est bien celui qui fait la requête
-    if (coiffeur._id.toString() !== req.user.id) {
-      return res.status(403).json({ message: 'Non autorisé' });
-    }
-
-    const { services } = req.body;
-    if (!Array.isArray(services)) {
-      return res.status(400).json({ message: 'Liste de services invalide' });
-    }
-
-    coiffeur.services = services;
-    const updatedCoiffeur = await coiffeur.save();
-    res.json(updatedCoiffeur);
-  } catch (error) {
-    console.error('Update services error:', error);
-    res.status(400).json({ message: 'Erreur lors de la mise à jour des services' });
+    console.error('Sync gallery error:', error);
+    res.status(500).json({ message: 'Erreur lors de la synchronisation de la galerie' });
   }
 });
 

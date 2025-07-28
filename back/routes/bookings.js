@@ -14,7 +14,6 @@ router.get('/client', auth, async (req, res) => {
     }
     const bookings = await Booking.find({ client: req.user.id })
       .populate('coiffeur', 'name photo rating')
-      .populate('service', 'name price duration')
       .sort({ date: -1 });
     res.json(bookings);
   } catch (error) {
@@ -26,14 +25,30 @@ router.get('/client', auth, async (req, res) => {
 // Récupérer toutes les réservations d'un coiffeur
 router.get('/coiffeur', auth, async (req, res) => {
   try {
+    console.log('DEBUG /api/bookings/coiffeur req.user:', req.user);
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ message: 'Non authentifié (coiffeur)' });
+    }
     const bookings = await Booking.find({ coiffeur: req.user.id })
       .populate('client', 'name photo')
-      .populate('service', 'name price duration')
       .sort({ date: -1 });
     res.json(bookings);
   } catch (error) {
     console.error('Get coiffeur bookings error:', error);
-    res.status(500).json({ message: 'Erreur lors de la récupération des réservations' });
+    res.status(500).json({ message: 'Erreur lors de la récupération des réservations', error: error.message });
+  }
+});
+
+// Récupérer toutes les réservations d'un coiffeur spécifique
+router.get('/coiffeur/:coiffeurId', auth, async (req, res) => {
+  try {
+    const bookings = await Booking.find({ coiffeur: req.params.coiffeurId })
+      .populate('client', 'name photo')
+      .sort({ date: -1 });
+    res.json(bookings);
+  } catch (error) {
+    console.error('Get coiffeur bookings error:', error);
+    res.status(500).json({ message: 'Erreur lors de la récupération des réservations', error: error.message });
   }
 });
 
@@ -42,8 +57,7 @@ router.get('/:id', auth, async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id)
       .populate('client', 'name photo')
-      .populate('coiffeur', 'name photo rating')
-      .populate('service', 'name price duration');
+      .populate('coiffeur', 'name photo rating');
 
     if (!booking) {
       return res.status(404).json({ message: 'Réservation non trouvée' });
@@ -63,36 +77,54 @@ router.get('/:id', auth, async (req, res) => {
 });
 
 // Créer une nouvelle réservation
-router.post('/', auth, validateBooking, async (req, res) => {
+router.post('/', auth, async (req, res) => {
   try {
-    const { coiffeur, service, date, address, notes } = req.body;
-
-    // Vérifier que l'utilisateur est bien le client
-    if (req.user.role !== 'client') {
-      return res.status(403).json({ message: 'Seuls les clients peuvent créer des réservations' });
-    }
-
-    const booking = new Booking({
-      client: req.user.id,
+    const {
       coiffeur,
       service,
       date,
+      duration,
+      price,
+      mode,
+      address,
+      notes
+    } = req.body;
+
+    // Validation des données requises
+    if (!coiffeur || !service || !date || !duration || !price || !mode) {
+      return res.status(400).json({ 
+        message: 'Données manquantes pour créer la réservation' 
+      });
+    }
+
+    // Créer la réservation
+    const booking = new Booking({
+      client: req.user.id,
+      coiffeur,
+      service, // On stocke le nom du service pour l'instant
+      date: new Date(date),
+      duration,
+      price,
+      mode,
       address,
       notes,
       status: 'pending',
       paymentStatus: 'pending'
     });
 
-    const savedBooking = await booking.save();
-    const populatedBooking = await Booking.findById(savedBooking._id)
-      .populate('client', 'name photo')
-      .populate('coiffeur', 'name photo rating')
-      .populate('service', 'name price duration');
+    await booking.save();
+    
+    // Populate les références pour la réponse
+    await booking.populate('client', 'name email');
+    await booking.populate('coiffeur', 'name email');
 
-    res.status(201).json(populatedBooking);
+    res.status(201).json(booking);
   } catch (error) {
     console.error('Create booking error:', error);
-    res.status(400).json({ message: 'Erreur lors de la création de la réservation' });
+    res.status(500).json({ 
+      message: 'Erreur lors de la création de la réservation',
+      error: error.message 
+    });
   }
 });
 
@@ -120,38 +152,79 @@ router.patch('/:id/status', auth, validateBooking, async (req, res) => {
 });
 
 // Annuler une réservation
-router.patch('/:id/cancel', auth, async (req, res) => {
+router.post('/:id/cancel', auth, async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id);
     if (!booking) {
-      return res.status(404).json({ message: 'Réservation non trouvée' });
+      return res.status(404).json({ message: 'Réservation introuvable' });
     }
 
-    // Vérifier que l'utilisateur est bien le client ou le coiffeur
-    if (booking.client.toString() !== req.user.id && 
-        booking.coiffeur.toString() !== req.user.id) {
+    // Vérifier que l'utilisateur peut annuler cette réservation
+    if (booking.client.toString() !== req.user.id && booking.coiffeur.toString() !== req.user.id) {
       return res.status(403).json({ message: 'Non autorisé' });
     }
 
-    // Vérifier le délai d'annulation (24h avant)
-    const bookingDate = new Date(booking.date);
-    const now = new Date();
-    const hoursUntilBooking = (bookingDate - now) / (1000 * 60 * 60);
-
-    if (hoursUntilBooking < 24) {
-      return res.status(400).json({ 
-        message: 'Impossible d\'annuler une réservation moins de 24h avant' 
-      });
-    }
-
     booking.status = 'cancelled';
-    const updatedBooking = await booking.save();
-    res.json(updatedBooking);
+    booking.cancellationReason = req.body.reason || 'Annulé par l\'utilisateur';
+    booking.updatedAt = new Date();
+    await booking.save();
+
+    res.json(booking);
   } catch (error) {
     console.error('Cancel booking error:', error);
-    res.status(400).json({ message: 'Erreur lors de l\'annulation de la réservation' });
+    res.status(500).json({ message: 'Erreur lors de l\'annulation de la réservation' });
   }
 });
+
+// Confirmer une réservation
+router.post('/:id/confirm', auth, async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) {
+      return res.status(404).json({ message: 'Réservation introuvable' });
+    }
+
+    // Vérifier que l'utilisateur est le coiffeur
+    if (booking.coiffeur.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Seuls les coiffeurs peuvent confirmer les réservations' });
+    }
+
+    booking.status = 'confirmed';
+    booking.updatedAt = new Date();
+    await booking.save();
+
+    res.json(booking);
+  } catch (error) {
+    console.error('Confirm booking error:', error);
+    res.status(500).json({ message: 'Erreur lors de la confirmation de la réservation' });
+  }
+});
+
+// Terminer une réservation
+router.post('/:id/complete', auth, async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) {
+      return res.status(404).json({ message: 'Réservation introuvable' });
+    }
+
+    // Vérifier que l'utilisateur est le coiffeur
+    if (booking.coiffeur.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Seuls les coiffeurs peuvent terminer les réservations' });
+    }
+
+    booking.status = 'completed';
+    booking.updatedAt = new Date();
+    await booking.save();
+
+    res.json(booking);
+  } catch (error) {
+    console.error('Complete booking error:', error);
+    res.status(500).json({ message: 'Erreur lors de la finalisation de la réservation' });
+  }
+});
+
+// Supprimer une réservation
 
 // Mettre à jour le statut de paiement
 router.patch('/:id/payment', auth, validateBooking, async (req, res) => {

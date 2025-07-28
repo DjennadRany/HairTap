@@ -7,6 +7,7 @@ import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import { SearchPage } from './features/search/presentation/SearchPage';
 import CoiffeurProfilePage from './pages/CoiffeurProfilePage';
+import ClientServicesPage from './pages/ClientServicesPage';
 import BookingPage from './pages/BookingPage';
 import ClientBookingsPage from './pages/ClientBookingsPage';
 import ClientDashboardPage from './pages/ClientDashboardPage';
@@ -15,6 +16,7 @@ import ClientProfilePage from './pages/ClientProfilePage';
 import CoiffeurDashboardPage from './pages/CoiffeurDashboardPage';
 import CoiffeurReservationsPage from './pages/CoiffeurReservationsPage';
 import CoiffeurRevenuePage from './pages/CoiffeurRevenuePage';
+import CoiffeurProfileEditPage from './pages/CoiffeurProfileEditPage';
 import NotFoundPage from './pages/NotFoundPage';
 import { ClientChatPage } from './pages/ClientChatPage';
 import { CoiffeurChatPage } from './pages/CoiffeurChatPage';
@@ -33,13 +35,13 @@ function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/search" element={<SearchPage />} />
         <Route path="/coiffeur/:id" element={<CoiffeurProfilePage />} />
+        <Route path="/coiffeur/:coiffeurId/services" element={<ClientServicesPage />} />
         <Route path="/about" element={<AboutPage />} />
         <Route path="/contact" element={<ContactPage />} />
         <Route path="/terms" element={<TermsPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/cookies" element={<CookiesPage />} />
       </Route>
-
       {/* Routes client */}
       <Route element={<ClientDashboardLayout />}>
         <Route
@@ -91,7 +93,6 @@ function App() {
           }
         />
       </Route>
-
       {/* Routes coiffeur */}
       <Route element={<CoiffeurDashboardLayout />}>
         <Route
@@ -99,6 +100,14 @@ function App() {
           element={
             <ProtectedRoute requiredRole="coiffeur">
               <CoiffeurDashboardPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/coiffeur/profile"
+          element={
+            <ProtectedRoute requiredRole="coiffeur">
+              <CoiffeurProfileEditPage />
             </ProtectedRoute>
           }
         />
@@ -127,7 +136,6 @@ function App() {
           }
         />
       </Route>
-
       {/* Route 404 */}
       <Route path="*" element={<NotFoundPage />} />
     </Routes>

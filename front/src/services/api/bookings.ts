@@ -43,38 +43,51 @@ export interface UpdateBookingData {
 }
 
 export const bookingService = {
-  async getBookings(): Promise<Booking[]> {
-    const response = await api.get<Booking[]>('/bookings');
+  // Récupérer les réservations du client connecté
+  getClientBookings: async () => {
+    const response = await api.get('/bookings/client');
     return response.data;
   },
 
-  async getBooking(id: string): Promise<Booking> {
-    const response = await api.get<Booking>(`/bookings/${id}`);
+  // Récupérer les réservations d'un coiffeur
+  getCoiffeurBookings: async (coiffeurId: string) => {
+    const response = await api.get(`/bookings/coiffeur/${coiffeurId}`);
     return response.data;
   },
 
-  async createBooking(data: CreateBookingData): Promise<Booking> {
-    const response = await api.post<Booking>('/bookings', data);
+  // Créer une nouvelle réservation
+  createBooking: async (bookingData: any) => {
+    const response = await api.post('/bookings', bookingData);
     return response.data;
   },
 
-  async updateBooking(id: string, data: UpdateBookingData): Promise<Booking> {
-    const response = await api.patch<Booking>(`/bookings/${id}`, data);
+  // Mettre à jour une réservation
+  updateBooking: async (bookingId: string, bookingData: any) => {
+    const response = await api.put(`/bookings/${bookingId}`, bookingData);
     return response.data;
   },
 
-  async cancelBooking(id: string, reason: string): Promise<Booking> {
-    const response = await api.post<Booking>(`/bookings/${id}/cancel`, { reason });
+  // Annuler une réservation
+  cancelBooking: async (bookingId: string, reason: string) => {
+    const response = await api.post(`/bookings/${bookingId}/cancel`, { reason });
     return response.data;
   },
 
-  async getClientBookings(): Promise<Booking[]> {
-    const response = await api.get<Booking[]>('/bookings/client');
+  // Confirmer une réservation
+  confirmBooking: async (bookingId: string) => {
+    const response = await api.post(`/bookings/${bookingId}/confirm`);
     return response.data;
   },
 
-  async getCoiffeurBookings(): Promise<Booking[]> {
-    const response = await api.get<Booking[]>('/bookings/coiffeur');
+  // Terminer une réservation
+  completeBooking: async (bookingId: string) => {
+    const response = await api.post(`/bookings/${bookingId}/complete`);
+    return response.data;
+  },
+
+  // Supprimer une réservation
+  deleteBooking: async (bookingId: string) => {
+    const response = await api.delete(`/bookings/${bookingId}`);
     return response.data;
   }
 }; 

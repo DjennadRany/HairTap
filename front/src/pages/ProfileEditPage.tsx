@@ -1,6 +1,7 @@
 import { useSelector } from 'react-redux';
 import { useForm } from 'react-hook-form';
 import { selectProfile } from '../store/slices/profileSlice';
+import { userService } from '../services/api/users';
 
 interface ProfileFormData {
   name: string;
@@ -28,26 +29,17 @@ const ProfileEditPage = () => {
 
   const onSubmit = async (data: ProfileFormData) => {
     try {
-      const response = await fetch(`http://localhost:3001/coiffeurs/${profile?.id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: data.name,
-          professionalInfo: {
-            location: data.location,
-            services: data.services,
-            pricing: data.pricing,
-            availability: data.availability
-          }
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Erreur lors de la mise à jour du profil');
-      }
-
+      const payload: any = {
+        name: data.name,
+        professionalInfo: {
+          location: data.location,
+          services: data.services,
+          pricing: data.pricing,
+          availability: data.availability
+        }
+      };
+      if (!profile?.id) return;
+      const updatedUser = await userService.updateUser(profile.id, payload);
       // TODO: Dispatch update profile success
     } catch (error) {
       console.error('Erreur:', error);

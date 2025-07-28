@@ -3,204 +3,309 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { selectCurrentUser } from '../store/slices/authSlice';
 import { userService } from '../services/api/users';
+import { reviewService } from '../services/api/reviews';
 import type { User } from '../types/models';
-
-const getGalleryKey = (id: string) => `coiffeur_gallery_${id}`;
-const getProfileKey = (id: string) => `coiffeur_profile_${id}`;
-const getServicesKey = (id: string) => `coiffeur_services_${id}`;
-
-interface Service {
-  name: string;
-  priceHT: number;
-  duration: string;
-  description: string;
-}
-
-const TVA = 0.2;
+import { FaStar, FaMapMarkerAlt, FaClock, FaPhone, FaEnvelope, FaHeart, FaHeartBroken } from 'react-icons/fa';
+import { MdVerified } from 'react-icons/md';
+import ServicesSection from '../components/ServicesSection';
+import BookingForm from '../components/BookingForm';
+import Modal from '../components/ui/Modal';
+import { Card } from '../components/ui/card';
+import FormattedBio from '../components/FormattedBio';
 
 const CoiffeurProfilePage = () => {
-  const { id } = useParams();
+  const { id: paramId } = useParams();
   const navigate = useNavigate();
-  const user = useSelector(selectCurrentUser);
+  const user = useSelector(selectCurrentUser) as User | null;
+  const id = paramId || user?._id;
   const isOwner = user && user._id === id && user.role === 'coiffeur';
-  const isClient = user && user.role === 'client';
+  const isClient = user && user.role === 'user';
 
-  // Charger le coiffeur depuis l'API
   const [coiffeur, setCoiffeur] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'services' | 'reviews'>('services');
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [showBookingModal, setShowBookingModal] = useState(false);
+  const [selectedService, setSelectedService] = useState<any>(null);
+  const [reviews, setReviews] = useState<any[]>([]);
 
   useEffect(() => {
     if (!id) return;
-    userService.getUser(id)
-      .then(setCoiffeur)
-      .catch(() => setCoiffeur(null))
-      .finally(() => setLoading(false));
-  }, [id]);
+    
+    const fetchData = async () => {
+      try {
+        // Récupérer les données du coiffeur
+        const coiffeurData = await userService.getUser(id);
+        setCoiffeur(coiffeurData);
 
-  const initialGallery = isOwner
-    ? JSON.parse(localStorage.getItem(getGalleryKey(id!)) || 'null') || coiffeur?.gallery || []
-    : coiffeur?.gallery || [];
-  const [gallery, setGallery] = useState<string[]>(initialGallery);
-  const [edit, setEdit] = useState(false);
-  // Champs éditables
-  const [bio, setBio] = useState(coiffeur?.bio || '');
-  const [experience, setExperience] = useState(coiffeur?.experience || '');
-  const [diplomas, setDiplomas] = useState(coiffeur?.diplomas || '');
-  const [address, setAddress] = useState(coiffeur?.address || '');
-  const [tarifs, setTarifs] = useState(coiffeur?.tarifs || '');
-  // Prestations (CRUD avancé)
-  const initialServices: Service[] = isOwner
-    ? JSON.parse(localStorage.getItem(getServicesKey(id!)) || 'null') || []
-    : coiffeur?.services || [];
-  const [services, setServices] = useState<Service[]>(initialServices);
-  const [newService, setNewService] = useState<Service>({ name: '', priceHT: 0, duration: '', description: '' });
+        // Récupérer les avis du coiffeur
+        const reviewsData = await reviewService.getCoiffeurReviews(id);
+        setReviews(reviewsData);
 
-  const handleAddImages = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files) {
-      const newImages: string[] = Array.from(files).map((file) => URL.createObjectURL(file));
-      setGallery((prev) => {
-        const updated = [...prev, ...newImages];
-        if (isOwner) localStorage.setItem(getGalleryKey(id!), JSON.stringify(updated));
-        return updated;
-      });
-    }
-  };
-
-  React.useEffect(() => {
-    if (isOwner) {
-      localStorage.setItem(getGalleryKey(id!), JSON.stringify(gallery));
-      localStorage.setItem(getServicesKey(id!), JSON.stringify(services));
-    }
-  }, [gallery, services, isOwner, id]);
-
-  // Sauvegarde du profil édité
-  const handleSave = () => {
-    const profile = {
-      ...coiffeur,
-      bio,
-      experience,
-      diplomas,
-      address,
-      tarifs,
-      gallery,
-      services
+        // Vérifier si le coiffeur est en favori
+        if (user && isClient) {
+          try {
+            const favorites = await userService.getFavorites();
+            setIsFavorite(favorites.some((fav: any) => fav._id === id));
+          } catch (error) {
+            console.error('Error checking favorites:', error);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching coiffeur data:', error);
+        setCoiffeur(null);
+      } finally {
+        setLoading(false);
+      }
     };
-    localStorage.setItem(getProfileKey(id!), JSON.stringify(profile));
-    setEdit(false);
+
+    fetchData();
+  }, [id, user, isClient]);
+
+  const handleServiceBook = (service: any) => {
+    setSelectedService(service);
+    setShowBookingModal(true);
   };
 
-  const handleAddService = () => {
-    if (!newService.name || !newService.priceHT || !newService.duration) return;
-    setServices([...services, newService]);
-    setNewService({ name: '', priceHT: 0, duration: '', description: '' });
+  const handleBookingSuccess = () => {
+    setShowBookingModal(false);
+    navigate('/client/bookings');
   };
 
-  const handleRemoveService = (idx: number) => {
-    setServices(services.filter((_, i) => i !== idx));
+  const handleToggleFavorite = async () => {
+    if (!user || !coiffeur) return;
+
+    try {
+      if (isFavorite) {
+        await userService.removeFromFavorites(coiffeur._id);
+      } else {
+        await userService.addToFavorites(coiffeur._id);
+      }
+      setIsFavorite(!isFavorite);
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+    }
   };
 
-  if (loading) return <div className="container mx-auto px-4 py-8">Chargement...</div>;
-  if (!coiffeur) return <div className="container mx-auto px-4 py-8">Coiffeur introuvable.</div>;
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent mx-auto"></div>
+          <p className="text-gray-600 mt-2">Chargement du profil...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!coiffeur) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-red-600 mb-4">Coiffeur introuvable</h1>
+          <p className="text-gray-600">Le profil demandé n'existe pas ou a été supprimé.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-3xl">
-      <div className="flex flex-col md:flex-row gap-8 items-start mb-8">
-        <img src={coiffeur.photos?.[0] || '/default-avatar.png'} alt={coiffeur.name} className="w-32 h-32 rounded-full object-cover border-4 border-accent" />
-        <div className="flex-1">
-          <h1 className="text-3xl font-bold mb-2">{coiffeur.name}</h1>
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-yellow-500 font-bold">{coiffeur.rating}★</span>
-            {/* <span className="text-gray-500 text-sm">({coiffeur.reviewsCount} avis)</span> */}
+    <div className="container mx-auto px-4 py-8">
+      {/* En-tête du profil */}
+      <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+        <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
+          {/* Photo de profil */}
+          <div className="relative">
+            <img
+              src={coiffeur.photo || '/default-avatar.png'}
+              alt={coiffeur.name}
+              className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-lg"
+            />
+            {coiffeur.sirenStatus === 'verified' && (
+              <div className="absolute -bottom-2 -right-2 bg-blue-500 text-white rounded-full p-1">
+                <MdVerified className="text-lg" />
+              </div>
+            )}
           </div>
-          {edit ? (
-            <>
-              <textarea value={bio} onChange={e => setBio(e.target.value)} className="w-full p-2 border rounded mb-2" />
-              <input value={experience} onChange={e => setExperience(e.target.value)} className="p-1 border rounded mb-2 w-full" placeholder="Expérience (années)" />
-              <input value={diplomas} onChange={e => setDiplomas(e.target.value)} className="p-1 border rounded mb-2 w-full" placeholder="Diplômes" />
-              <input value={address} onChange={e => setAddress(e.target.value)} className="p-1 border rounded mb-2 w-full" placeholder="Adresse" />
-              <input value={tarifs} onChange={e => setTarifs(e.target.value)} className="p-1 border rounded mb-2 w-full" placeholder="Tarifs principaux" />
-              <div className="mb-4">
-                <label className="block text-sm font-medium mb-1">Ajouter une prestation</label>
-                <div className="flex flex-wrap gap-2 mb-2">
-                  <input value={newService.name} onChange={e => setNewService({ ...newService, name: e.target.value })} className="p-1 border rounded" placeholder="Nom" />
-                  <input type="number" value={newService.priceHT} onChange={e => setNewService({ ...newService, priceHT: Number(e.target.value) })} className="p-1 border rounded w-24" placeholder="Prix HT" />
-                  <input value={newService.duration} onChange={e => setNewService({ ...newService, duration: e.target.value })} className="p-1 border rounded w-24" placeholder="Durée" />
-                  <input value={newService.description} onChange={e => setNewService({ ...newService, description: e.target.value })} className="p-1 border rounded w-48" placeholder="Description" />
-                  <button type="button" onClick={handleAddService} className="bg-accent text-white px-2 rounded">Ajouter</button>
+
+          {/* Informations principales */}
+          <div className="flex-1">
+            <div className="flex items-center gap-3 mb-2">
+              <h1 className="text-3xl font-bold">{coiffeur.name}</h1>
+              {isClient && (
+                <button
+                  onClick={handleToggleFavorite}
+                  className={`p-2 rounded-full transition-colors ${
+                    isFavorite ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-600 hover:bg-red-500 hover:text-white'
+                  }`}
+                >
+                  {isFavorite ? <FaHeart /> : <FaHeartBroken />}
+                </button>
+              )}
+            </div>
+
+            <p className="text-gray-600 mb-2">{coiffeur.email}</p>
+
+            {/* Note et avis */}
+            <div className="flex items-center gap-4 mb-4">
+              <div className="flex items-center gap-1">
+                <FaStar className="text-yellow-400" />
+                <span className="font-semibold">{coiffeur.rating || 0}</span>
+                <span className="text-gray-500">({coiffeur.totalRatings || 0} avis)</span>
+              </div>
+              {coiffeur.phone && (
+                <div className="flex items-center gap-1 text-gray-600">
+                  <FaPhone />
+                  <span>{coiffeur.phone}</span>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  {services.map((s, i) => (
-                    <div key={i} className="bg-accent/10 rounded p-2 flex flex-col gap-1">
-                      <div className="flex justify-between items-center">
-                        <span className="font-semibold">{s.name}</span>
-                        <button type="button" onClick={() => handleRemoveService(i)} className="text-red-500 ml-2">✕</button>
-                      </div>
-                      <span className="text-xs text-gray-500">{s.description}</span>
-                      <span className="text-xs">Prix HT : {s.priceHT}€ | Prix TTC : {(s.priceHT * (1 + TVA)).toFixed(2)}€</span>
-                      <span className="text-xs text-gray-500">Durée : {s.duration}</span>
-                    </div>
+              )}
+            </div>
+
+            {/* Bio */}
+            {coiffeur.bio && (
+              <div className="mb-4">
+                <h3 className="font-semibold mb-2">À propos</h3>
+                <FormattedBio bio={coiffeur.bio} className="text-gray-700 leading-relaxed" />
+              </div>
+            )}
+
+            {/* Spécialités */}
+            {coiffeur.specialities && coiffeur.specialities.length > 0 && (
+              <div className="mb-4">
+                <h3 className="font-semibold mb-2">Spécialités</h3>
+                <div className="flex flex-wrap gap-2">
+                  {coiffeur.specialities.map((speciality, index) => (
+                    <span
+                      key={index}
+                      className="bg-accent/10 text-accent px-3 py-1 rounded-full text-sm"
+                    >
+                      {speciality}
+                    </span>
                   ))}
                 </div>
               </div>
-              <button onClick={handleSave} className="bg-green-600 text-white px-4 py-2 rounded mt-2">Enregistrer</button>
-              <button onClick={() => setEdit(false)} className="ml-2 text-gray-500 underline">Annuler</button>
-            </>
+            )}
+
+            {/* Mode de travail */}
+            {coiffeur.workingMode && coiffeur.workingMode.length > 0 && (
+              <div className="flex items-center gap-4 text-sm text-gray-600">
+                <div className="flex items-center gap-1">
+                  <FaMapMarkerAlt />
+                  <span>
+                    {coiffeur.workingMode.includes('salon') && coiffeur.workingMode.includes('domicile')
+                      ? 'Salon & Domicile'
+                      : coiffeur.workingMode.includes('salon')
+                      ? 'Salon uniquement'
+                      : 'Domicile uniquement'}
+                  </span>
+                </div>
+                {coiffeur.travelRadius && (
+                  <div className="flex items-center gap-1">
+                    <FaClock />
+                    <span>Rayon: {coiffeur.travelRadius}km</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Onglets */}
+      <div className="flex gap-2 mb-6">
+        <button
+          onClick={() => setActiveTab('services')}
+          className={`px-4 py-2 rounded-lg transition-colors ${
+            activeTab === 'services'
+              ? 'bg-accent text-white'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+          }`}
+        >
+          Services
+        </button>
+        <button
+          onClick={() => setActiveTab('reviews')}
+          className={`px-4 py-2 rounded-lg transition-colors ${
+            activeTab === 'reviews'
+              ? 'bg-accent text-white'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+          }`}
+        >
+          Avis ({reviews.length})
+        </button>
+      </div>
+
+      {/* Contenu des onglets */}
+      {activeTab === 'services' ? (
+        <ServicesSection
+          coiffeurId={id || ''}
+          isOwner={isOwner || false}
+          onServiceBook={handleServiceBook}
+          showBookButton={isClient || false}
+        />
+      ) : (
+        <div className="space-y-4">
+          {reviews.length === 0 ? (
+            <Card className="p-6">
+              <p className="text-center text-gray-600">
+                Aucun avis pour le moment
+              </p>
+            </Card>
           ) : (
-            <>
-              <p className="text-gray-700 mb-2">{coiffeur.bio}</p>
-              <div className="text-gray-600 text-sm mb-1">Expérience : <span className="font-medium">{coiffeur.experience} ans</span></div>
-              <div className="text-gray-600 text-sm mb-1">Diplômes : <span className="font-medium">{coiffeur.diplomas}</span></div>
-              {coiffeur.address && <div className="text-gray-600 text-sm mb-1">Adresse : <span className="font-medium">{coiffeur.address}</span></div>}
-              <div className="text-gray-600 text-sm mb-1">Tarifs : <span className="font-medium">{coiffeur.tarifs}</span></div>
-              {/* Grille tarifaire moderne */}
-              {services.length > 0 && (
-                <div className="mt-4">
-                  <h2 className="text-lg font-semibold mb-2">Prestations & Tarifs</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {services.map((s, i) => (
-                      <div key={i} className="bg-white/10 border border-accent rounded-lg p-4 flex flex-col gap-1">
-                        <div className="flex justify-between items-center">
-                          <span className="font-semibold text-accent">{s.name}</span>
-                          <span className="text-lg font-bold">{(s.priceHT * (1 + TVA)).toFixed(2)}€ TTC</span>
-                        </div>
-                        <span className="text-xs text-gray-500">Prix HT : {s.priceHT}€</span>
-                        <span className="text-xs text-gray-500">Durée : {s.duration}</span>
-                        <span className="text-xs text-gray-500">{s.description}</span>
+            reviews.map((review) => (
+              <Card key={review._id} className="p-4">
+                <div className="flex items-start gap-4">
+                  <img
+                    src={review.client.photo || '/default-avatar.png'}
+                    alt={review.client.name}
+                    className="w-12 h-12 rounded-full object-cover"
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="font-semibold">{review.client.name}</span>
+                      <div className="flex gap-1">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <FaStar
+                            key={star}
+                            className={`text-sm ${
+                              star <= review.rating ? 'text-yellow-400' : 'text-gray-300'
+                            }`}
+                          />
+                        ))}
                       </div>
-                    ))}
+                    </div>
+                    <p className="text-gray-700 mb-2">{review.comment}</p>
+                    <p className="text-sm text-gray-500">
+                      {new Date(review.createdAt).toLocaleDateString('fr-FR')}
+                    </p>
                   </div>
                 </div>
-              )}
-              {isOwner && <button onClick={() => setEdit(true)} className="bg-accent text-white px-4 py-2 rounded mt-2">Modifier le profil</button>}
-              {/* Bouton Réserver visible côté client */}
-              {isClient && (
-                <button onClick={() => navigate(`/booking/${id}`)} className="bg-green-600 text-white px-4 py-2 rounded mt-4">Réserver</button>
-              )}
-            </>
+              </Card>
+            ))
           )}
         </div>
-      </div>
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="text-xl font-semibold">Galerie de réalisations</h2>
-          {isOwner && (
-            <label className="bg-accent text-white px-4 py-2 rounded-lg font-medium hover:bg-accent/90 cursor-pointer">
-              Ajouter des photos
-              <input type="file" accept="image/*" multiple onChange={handleAddImages} className="hidden" />
-            </label>
-          )}
-        </div>
-        {gallery.length === 0 ? (
-          <p className="text-gray-500">Aucune photo pour le moment.</p>
-        ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            {gallery.map((img, i) => (
-              <img key={i} src={img} alt="Réalisation" className="w-full h-40 object-cover rounded-lg shadow" />
-            ))}
+      )}
+
+      {/* Modal de réservation */}
+      {showBookingModal && selectedService && coiffeur && (
+        <Modal
+          open={showBookingModal}
+          onClose={() => setShowBookingModal(false)}
+          title="Réserver un service"
+        >
+          <div className="p-4">
+            <h3 className="text-lg font-semibold mb-4">
+              Réserver avec {coiffeur.name}
+            </h3>
+            <BookingForm
+              coiffeur={coiffeur}
+              selectedService={selectedService}
+              onSuccess={handleBookingSuccess}
+              onCancel={() => setShowBookingModal(false)}
+            />
           </div>
-        )}
-      </div>
+        </Modal>
+      )}
     </div>
   );
 };

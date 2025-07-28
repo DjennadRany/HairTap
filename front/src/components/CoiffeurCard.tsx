@@ -34,34 +34,32 @@ export const CoiffeurCard = ({ coiffeur, onClick, userLocation }: CoiffeurCardPr
   return (
     <div
       onClick={onClick}
-      className="bg-white rounded-lg shadow-md overflow-hidden cursor-pointer hover:shadow-lg transition-shadow"
+      className="bg-white rounded-lg shadow-md overflow-hidden cursor-pointer hover:shadow-lg transition-shadow relative"
     >
       <div className="relative h-48">
         <img
-          src={coiffeur.photo || '/default-coiffeur.jpg'}
+          src={coiffeur.photo && coiffeur.photo !== 'default-avatar.png' ? coiffeur.photo : '/default-avatar.png'}
           alt={coiffeur.name}
           className="w-full h-full object-cover"
         />
         <div className="absolute top-2 right-2 bg-white rounded-full px-2 py-1 flex items-center">
           <StarIcon className="h-4 w-4 text-yellow-400" />
-          <span className="ml-1 text-sm font-medium">{coiffeur.rating.toFixed(1)}</span>
+          <span className="ml-1 text-sm font-medium">{coiffeur.rating?.toFixed(1) ?? '0.0'}</span>
         </div>
       </div>
 
       <div className="p-4">
         <h3 className="text-lg font-semibold mb-2">{coiffeur.name}</h3>
-        
         <div className="flex items-center text-sm text-gray-600 mb-2">
-          <span>{coiffeur.address.city}</span>
+          <span>{coiffeur.address?.city || ''}</span>
           {distance && (
             <span className="ml-2">
               • {distance.toFixed(1)} km
             </span>
           )}
         </div>
-
         <div className="flex flex-wrap gap-2 mb-3">
-          {coiffeur.speciality.map((spec, index) => (
+          {(coiffeur.specialities || coiffeur.speciality || []).map((spec: string, index: number) => (
             <span
               key={index}
               className="bg-accent/10 text-accent text-xs px-2 py-1 rounded-full"
@@ -69,17 +67,22 @@ export const CoiffeurCard = ({ coiffeur, onClick, userLocation }: CoiffeurCardPr
               {spec}
             </span>
           ))}
+          {Array.isArray(coiffeur.services) && coiffeur.services.length > 0 &&
+            coiffeur.services.map((service: any, idx: number) => (
+              <span key={idx} className="bg-accent/10 text-accent text-xs px-2 py-1 rounded-full">
+                {typeof service === 'string' ? service : service.name}
+              </span>
+            ))}
         </div>
-
         <div className="flex items-center justify-between">
           <div className="flex items-center">
-            <span className="text-sm font-medium">{coiffeur.priceRange}</span>
+            <span className="text-sm font-medium">{coiffeur.priceRange || ''}</span>
           </div>
           <div className="flex items-center space-x-1">
-            {coiffeur.mode.includes('salon') && (
+            {(coiffeur.workingMode || coiffeur.mode || []).includes('salon') && (
               <span className="text-xs bg-gray-100 px-2 py-1 rounded">Salon</span>
             )}
-            {coiffeur.mode.includes('domicile') && (
+            {(coiffeur.workingMode || coiffeur.mode || []).includes('domicile') && (
               <span className="text-xs bg-gray-100 px-2 py-1 rounded">Domicile</span>
             )}
           </div>

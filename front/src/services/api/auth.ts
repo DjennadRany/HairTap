@@ -40,19 +40,5 @@ export const authService = {
   async logout(): Promise<void> {
     localStorage.removeItem('token');
     await api.post('/auth/logout');
-  },
-
-  async getCurrentUser(): Promise<User> {
-    const response = await api.get<User>('/auth/me');
-    return response.data;
-  },
-
-  async isAuthenticated(): Promise<boolean> {
-    try {
-      await this.getCurrentUser();
-      return true;
-    } catch {
-      return false;
-    }
   }
 }; 
