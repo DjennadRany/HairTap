@@ -61,10 +61,16 @@ export const profileSlice = createSlice({
         saveProfileToLocalStorage(state.profile);
       }
     },
+    resetProfile: (state) => {
+      state.profile = null;
+      state.loading = false;
+      state.error = null;
+      localStorage.removeItem('client_profile');
+    },
   },
 });
 
-export const { setProfile, setLoading, setError, updatePreferences } =
+export const { setProfile, setLoading, setError, updatePreferences, resetProfile } =
   profileSlice.actions;
 
 export const selectProfile = (state: RootState) => state.profile.profile;
@@ -82,5 +88,7 @@ export const loadProfileFromLocalStorage = (): Profile | null => {
   }
   return null;
 };
+
+export { initialState };
 
 export default profileSlice.reducer; 

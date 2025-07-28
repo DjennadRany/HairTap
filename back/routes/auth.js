@@ -70,13 +70,15 @@ function generateFakeToken(user) {
 router.post('/login', validateAuth, async (req, res) => {
   try {
     const { email, password } = req.body;
+    console.log('LOGIN DEBUG - body:', req.body);
     const user = await User.findOne({ email }).select('+password');
+    console.log('LOGIN DEBUG - user:', user);
     if (!user) {
-      return res.status(400).json({ message: 'Email ou mot de passe incorrect' });
+      return res.status(400).json({ message: 'Utilisateur inexistant.' });
     }
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
-      return res.status(400).json({ message: 'Email ou mot de passe incorrect' });
+      return res.status(400).json({ message: 'Mot de passe incorrect.' });
     }
     const token = jwt.sign({ id: user._id, role: user.role }, JWT_SECRET, { expiresIn: '24h' });
     res.json({
@@ -150,7 +152,7 @@ router.post('/google', async (req, res) => {
         res.json({ 
           token,
           user: {
-            id: user.id,
+            _id: user.id,
             name: user.name,
             email: user.email,
             role: user.role,

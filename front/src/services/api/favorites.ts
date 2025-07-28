@@ -15,7 +15,7 @@ export const favoriteService = {
   },
 
   async addFavorite(coiffeurId: string): Promise<Favorite> {
-    const response = await api.post('/favorites', { coiffeurId });
+    const response = await api.post(`/favorites/${coiffeurId}`);
     return response.data;
   },
 
@@ -25,8 +25,8 @@ export const favoriteService = {
 
   async isFavorite(coiffeurId: string): Promise<boolean> {
     try {
-      await api.get(`/favorites/${coiffeurId}`);
-      return true;
+      const favorites = await this.getFavorites();
+      return favorites.some((fav: any) => fav._id === coiffeurId || fav.coiffeurId === coiffeurId);
     } catch {
       return false;
     }

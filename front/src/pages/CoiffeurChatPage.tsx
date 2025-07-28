@@ -4,12 +4,13 @@ import { selectCurrentUser } from '../store/slices/authSlice';
 import { ChatWindow } from '../components/ChatWindow';
 import { getConversations } from '../hooks/useChat';
 import { userService } from '../services/api/users';
+import { User } from '../types/user';
 
 export const CoiffeurChatPage: React.FC = () => {
   const user = useSelector(selectCurrentUser);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [conversations, setConversations] = useState<any[]>([]);
-  const [clients, setClients] = useState<Record<string, any>>({});
+  const [clients, setClients] = useState<Record<string, User>>({});
 
   useEffect(() => {
     const fetchData = async () => {
@@ -22,12 +23,15 @@ export const CoiffeurChatPage: React.FC = () => {
           const clientIds = convs.map(conv => conv.userId);
           const uniqueClientIds = [...new Set(clientIds)];
           const clientsData = await Promise.all(
-            uniqueClientIds.map(id => userService.getUser(id))
+            uniqueClientIds.map(id => {
+              let userId = typeof id === 'string' ? id : (id && typeof id === 'object' && (id._id || id.id)) ? (id._id || id.id) : null;
+              return userId ? userService.getUser(userId) : Promise.resolve(null);
+            })
           );
-          const clientsMap = clientsData.reduce((acc, client) => {
+          const clientsMap = (clientsData.filter((client): client is User => !!client)).reduce((acc, client) => {
             acc[client._id] = client;
             return acc;
-          }, {});
+          }, {} as Record<string, User>);
           setClients(clientsMap);
         } catch (error) {
           console.error('Error fetching chat data:', error);

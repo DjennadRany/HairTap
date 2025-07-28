@@ -8,12 +8,11 @@ const bookingSchema = new mongoose.Schema({
   },
   coiffeur: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Coiffeur',
+    ref: 'User',
     required: true
   },
   service: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Service',
+    type: String,
     required: true
   },
   date: {
@@ -98,51 +97,40 @@ bookingSchema.methods.canBeCancelled = function() {
 };
 
 // Méthode pour annuler une réservation
-bookingSchema.methods.cancel = async function(reason) {
-  if (!this.canBeCancelled()) {
-    throw new Error('La réservation ne peut plus être annulée');
-  }
-  
+bookingSchema.methods.cancel = function(reason) {
   this.status = 'cancelled';
   this.cancellationReason = reason;
-  await this.save();
+  this.updatedAt = new Date();
+  return this.save();
 };
 
 // Méthode pour confirmer une réservation
-bookingSchema.methods.confirm = async function() {
-  if (this.status !== 'pending') {
-    throw new Error('La réservation ne peut pas être confirmée');
-  }
-  
+bookingSchema.methods.confirm = function() {
   this.status = 'confirmed';
-  await this.save();
+  this.updatedAt = new Date();
+  return this.save();
 };
 
-// Méthode pour compléter une réservation
-bookingSchema.methods.complete = async function() {
-  if (this.status !== 'confirmed') {
-    throw new Error('La réservation ne peut pas être complétée');
-  }
-  
+// Méthode pour marquer comme terminée
+bookingSchema.methods.complete = function() {
   this.status = 'completed';
-  await this.save();
+  this.updatedAt = new Date();
+  return this.save();
 };
 
-// Méthode pour mettre à jour le statut de paiement
-bookingSchema.methods.updatePaymentStatus = async function(status) {
-  if (!['pending', 'paid', 'refunded'].includes(status)) {
-    throw new Error('Statut de paiement invalide');
-  }
-  
-  this.paymentStatus = status;
-  await this.save();
+// Méthode statique pour récupérer les réservations d'un client
+bookingSchema.statics.getClientBookings = function(clientId) {
+  return this.find({ client: clientId })
+    .populate('coiffeur', 'name email photo')
+    .sort({ date: 1 });
 };
 
-// Middleware pour mettre à jour le champ updatedAt
-bookingSchema.pre('save', function(next) {
-  this.updatedAt = Date.now();
-  next();
-});
+// Méthode statique pour récupérer les réservations d'un coiffeur
+bookingSchema.statics.getCoiffeurBookings = function(coiffeurId) {
+  return this.find({ coiffeur: coiffeurId })
+    .populate('client', 'name email photo')
+    .sort({ date: 1 });
+};
 
 const Booking = mongoose.model('Booking', bookingSchema);
 

@@ -1,6 +1,6 @@
 import express from 'express';
 import Service from '../models/Service.js';
-import auth, { isCoiffeur } from '../middleware/auth.js';
+import auth from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -28,7 +28,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST /api/services - Créer un nouveau service (coiffeur uniquement)
-router.post('/', auth, isCoiffeur, async (req, res) => {
+router.post('/', auth, async (req, res) => {
   try {
     const service = new Service({
       ...req.body,
@@ -42,7 +42,7 @@ router.post('/', auth, isCoiffeur, async (req, res) => {
 });
 
 // PATCH /api/services/:id - Mettre à jour un service (coiffeur uniquement)
-router.patch('/:id', auth, isCoiffeur, async (req, res) => {
+router.patch('/:id', auth, async (req, res) => {
   try {
     const service = await Service.findById(req.params.id);
     if (!service) {
@@ -60,7 +60,7 @@ router.patch('/:id', auth, isCoiffeur, async (req, res) => {
 });
 
 // DELETE /api/services/:id - Supprimer un service (coiffeur uniquement)
-router.delete('/:id', auth, isCoiffeur, async (req, res) => {
+router.delete('/:id', auth, async (req, res) => {
   try {
     const service = await Service.findById(req.params.id);
     if (!service) {
@@ -99,6 +99,41 @@ router.get('/coiffeur/:coiffeurId', async (req, res) => {
     res.json(services);
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+});
+
+// Toggle like sur un service
+router.post('/:serviceId/like', auth, async (req, res) => {
+  try {
+    const service = await Service.findById(req.params.serviceId);
+    
+    if (!service) {
+      return res.status(404).json({ message: 'Service introuvable' });
+    }
+
+    // Vérifier si l'utilisateur a déjà liké ce service
+    const userLiked = service.likedBy && service.likedBy.includes(req.user.id);
+    
+    if (userLiked) {
+      // Unlike
+      service.likes = Math.max(0, service.likes - 1);
+      service.likedBy = service.likedBy.filter(id => id !== req.user.id);
+    } else {
+      // Like
+      service.likes = service.likes + 1;
+      if (!service.likedBy) service.likedBy = [];
+      service.likedBy.push(req.user.id);
+    }
+
+    await service.save();
+    
+    res.json({ 
+      likes: service.likes, 
+      isLiked: !userLiked 
+    });
+  } catch (error) {
+    console.error('Toggle service like error:', error);
+    res.status(500).json({ message: 'Erreur lors du like/unlike' });
   }
 });
 

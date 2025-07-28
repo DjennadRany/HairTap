@@ -1,16 +1,25 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import { selectCurrentUser } from '../store/slices/authSlice';
 import { useAuth } from '../hooks/useAuth';
+import type { RootState } from '../store/store';
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const { login, isLoading, error } = useAuth();
+  const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
+
+  // Si déjà connecté, ne pas afficher la page de login
+  if (isAuthenticated && user) {
+    return null;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!email || !password) return;
     await login({ email, password });
-    // La redirection est déjà gérée dans le hook useAuth
   };
 
   return (
@@ -26,7 +35,7 @@ const LoginPage = () => {
           )}
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form className="space-y-4" onSubmit={handleSubmit}>
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-gray-700">
               Email
@@ -57,7 +66,7 @@ const LoginPage = () => {
 
           <button
             type="submit"
-            disabled={isLoading}
+            disabled={isLoading || !email || !password}
             className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#DE6C5C] hover:bg-[#DE6C5C]/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#DE6C5C] disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? 'Connexion...' : 'Se connecter'}
@@ -66,8 +75,12 @@ const LoginPage = () => {
 
         <div className="text-center text-sm">
           <span className="text-gray-600">Pas encore de compte ?</span>{' '}
-          <Link to="/" className="text-[#DE6C5C] hover:text-[#DE6C5C]/90">
-            Retour à l'accueil
+          <Link to="/onboarding/client" className="text-[#DE6C5C] hover:text-[#DE6C5C]/90">
+            Créer un compte client
+          </Link>
+          {' ou '}
+          <Link to="/onboarding/pro" className="text-[#DE6C5C] hover:text-[#DE6C5C]/90">
+            Créer un compte coiffeur
           </Link>
         </div>
       </div>

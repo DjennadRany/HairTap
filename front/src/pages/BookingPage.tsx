@@ -4,13 +4,10 @@ import { useSelector } from 'react-redux';
 import { selectCurrentUser } from '../store/slices/authSlice';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/Button';
-import { format, addDays } from 'date-fns';
-import { fr } from 'date-fns/locale';
-import { SearchResult } from '../features/search/domain/types';
-import { useClientBookings } from '../hooks/useClientBookings';
-import Modal from '../components/ui/Modal';
-import { v4 as uuidv4 } from 'uuid';
 import { userService } from '../services/api/users';
+import { bookingService } from '../services/api/bookings';
+import BookingForm from '../components/BookingForm';
+import ServiceCard from '../components/ServiceCard';
 import type { User } from '../types/models';
 
 const BookingPage = () => {
@@ -18,107 +15,49 @@ const BookingPage = () => {
   const navigate = useNavigate();
   const user = useSelector(selectCurrentUser);
   const [loading, setLoading] = useState(true);
-  const [selectedService, setSelectedService] = useState<{ name: string; price: number; duration: string } | null>(null);
-  const [selectedDate, setSelectedDate] = useState<string>('');
-  const [selectedTime, setSelectedTime] = useState<string>('');
-  const [bookingMode, setBookingMode] = useState<'salon' | 'domicile'>('salon');
-  const [clientAddress, setClientAddress] = useState<string>('');
   const [coiffeur, setCoiffeur] = useState<User | null>(null);
-  const { addBooking, error: bookingError, setError, bookings } = useClientBookings();
-  const [showConflictModal, setShowConflictModal] = useState(false);
-  const [bookingCount, setBookingCount] = useState(bookings.length);
+  const [services, setServices] = useState<any[]>([]);
+  const [selectedService, setSelectedService] = useState<any>(null);
 
   useEffect(() => {
-    if (!id) return;
-    userService.getUser(id).then((found) => {
-      setCoiffeur(found || null);
+    if (!id || typeof id !== 'string') return;
+    
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        
+        // Récupérer le coiffeur
+        const coiffeurData = await userService.getUser(id);
+        setCoiffeur(coiffeurData);
+        
+        // Récupérer tous les services du coiffeur
+        const coiffeurServices = await userService.getCoiffeurServices(id);
+        setServices(coiffeurServices);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        navigate('/');
+      } finally {
       setLoading(false);
-    });
-  }, [id]);
-
-  useEffect(() => {
-    if (bookingError && bookingError.includes('déjà une réservation à cette date')) {
-      setShowConflictModal(true);
-    }
-    if (bookings.length > bookingCount) {
-      setBookingCount(bookings.length);
-      navigate('/client/bookings');
-    }
-  }, [bookingError, bookings.length]);
-
-  const handleServiceSelect = (service: { name: string; price: number; duration: string }) => {
-    setSelectedService(service);
-    setSelectedDate('');
-    setSelectedTime('');
-  };
-
-  const handleDateSelect = (date: string) => {
-    setSelectedDate(date);
-    setSelectedTime('');
-  };
-
-  const coiffeurModes = coiffeur ? (coiffeur.mode || ['salon']) : ['salon'];
-  const coiffeurServices = coiffeur ? (Array.isArray(coiffeur.services) && typeof coiffeur.services[0] === 'object'
-    ? coiffeur.services
-    : []) : [];
-  const coiffeurAvailability = coiffeur ? (coiffeur.availability || Array.from({ length: 7 }, (_, i) => ({
-    date: format(addDays(new Date(), i), 'yyyy-MM-dd'),
-    slots: ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00', '17:00']
-  }))) : [];
-  const coiffeurCancellation = coiffeur ? (coiffeur.cancellationPolicy || "Annulation gratuite jusqu'à 24h avant le rendez-vous.") : "Annulation gratuite jusqu'à 24h avant le rendez-vous.";
-
-  const getAvailableSlots = () => {
-    if (!selectedDate) return [];
-    const dayAvailability = coiffeurAvailability.find((a: any) => a.date === selectedDate);
-    return dayAvailability?.slots || [];
-  };
-
-  const handleSubmit = async () => {
-    if (!user) {
-      navigate('/login');
-      return;
-    }
-    if (!selectedService || !selectedDate || !selectedTime) {
-      setError('Veuillez remplir tous les champs obligatoires');
-      return;
-    }
-    if (bookingMode === 'domicile' && !clientAddress) {
-      setError('Veuillez fournir une adresse pour la prestation à domicile');
-      return;
-    }
-    if (!coiffeur) {
-      setError('Coiffeur introuvable, impossible de réserver.');
-      return;
-    }
-    // Créer la réservation dynamiquement
-    const booking = {
-      _id: uuidv4(),
-      client: user.id,
-      coiffeur: coiffeur._id,
-      service: selectedService.name,
-      date: `${selectedDate}T${selectedTime}`,
-      duration: Number(selectedService.duration),
-      status: 'confirmed' as const,
-      mode: bookingMode,
-      address: bookingMode === 'domicile' ? {
-        street: clientAddress,
-        city: '',
-        postalCode: ''
-      } : undefined,
-      paymentStatus: 'paid' as const,
-      price: selectedService.price,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      }
     };
-    addBooking(booking);
+
+    fetchData();
+  }, [id, navigate]);
+
+  const handleServiceSelect = (service: any) => {
+    setSelectedService(service);
+  };
+
+  const handleBookingSuccess = () => {
+    navigate('/client/bookings');
   };
 
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <div className="animate-pulse">
-          <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
-          <div className="h-4 bg-gray-200 rounded w-2/4 mb-2"></div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent mx-auto"></div>
+          <p className="text-gray-600 mt-2">Chargement...</p>
         </div>
       </div>
     );
@@ -127,195 +66,52 @@ const BookingPage = () => {
   if (!coiffeur) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <div className="text-center text-red-500 font-semibold">Coiffeur introuvable.</div>
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-red-600 mb-4">Erreur</h1>
+          <p className="text-gray-600">Coiffeur introuvable.</p>
+          <Button onClick={() => navigate('/')} className="mt-4">
+            Retour à l'accueil
+          </Button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="max-w-3xl mx-auto">
-        <h1 className="text-2xl font-bold mb-6">
-          Réserver avec {coiffeur.name}
-        </h1>
-
-        {bookingError && !showConflictModal && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-            {bookingError}
+    <div className="container mx-auto px-4 py-8 max-w-4xl">
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold mb-2">Réserver avec {coiffeur.name}</h1>
+        <p className="text-gray-600">Sélectionnez un service pour continuer</p>
           </div>
-        )}
 
-        <div className="space-y-6">
-          {/* Mode de prestation */}
-          {coiffeurModes.length > 1 && (
-            <Card className="p-6">
-              <h2 className="text-lg font-semibold mb-4">Mode de prestation</h2>
-              <div className="flex gap-4">
-                {coiffeurModes.map((mode: string) => (
-                  <button
-                    key={mode}
-                    className={`flex-1 p-4 rounded-lg border ${
-                      bookingMode === mode
-                        ? 'border-primary bg-primary/10'
-                        : 'border-gray-200'
-                    }`}
-                    onClick={() => setBookingMode(mode as 'salon' | 'domicile')}
-                  >
-                    {mode === 'salon' ? 'En salon' : 'À domicile'}
-                  </button>
-                ))}
-              </div>
-              {bookingMode === 'domicile' && (
-                <div className="mt-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Votre adresse
-                  </label>
-                  <input
-                    type="text"
-                    value={clientAddress}
-                    onChange={(e) => setClientAddress(e.target.value)}
-                    className="w-full p-2 border rounded-lg"
-                    placeholder="Entrez votre adresse complète"
-                  />
-                </div>
-              )}
-            </Card>
-          )}
-
-          {/* Services */}
-          <Card className="p-6">
-            <h2 className="text-lg font-semibold mb-4">Services disponibles</h2>
-            <div className="space-y-2">
-              {coiffeurServices.map((service: any) => (
-                <div
-                  key={service.name}
-                  className={`flex items-center justify-between p-4 border rounded-lg cursor-pointer ${
-                    selectedService?.name === service.name
-                      ? 'border-primary bg-primary/10'
-                      : 'hover:border-gray-300'
-                  }`}
-                  onClick={() => handleServiceSelect(service)}
-                >
+      {!selectedService ? (
+        // Affichage de la sélection de service
                   <div>
-                    <h3 className="font-medium">{service.name}</h3>
-                    <p className="text-sm text-gray-500">{service.duration}</p>
-                  </div>
-                  <span className="text-lg font-semibold">{service.price}€</span>
-                </div>
-              ))}
-            </div>
-          </Card>
-
-          {/* Date et heure */}
-          {selectedService && (
-            <Card className="p-6">
-              <h2 className="text-lg font-semibold mb-4">Date et heure</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Calendrier */}
-                <div>
-                  <h3 className="text-sm font-medium text-gray-700 mb-2">
-                    Sélectionnez une date
-                  </h3>
-                  <div className="space-y-2">
-                    {coiffeurAvailability.map((day: any) => (
-                      <button
-                        key={day.date}
-                        className={`w-full p-2 text-left rounded-lg border ${
-                          selectedDate === day.date
-                            ? 'border-primary bg-primary/10'
-                            : 'hover:border-gray-300'
-                        }`}
-                        onClick={() => handleDateSelect(day.date)}
-                      >
-                        {format(new Date(day.date), 'EEEE d MMMM', { locale: fr })}
-                      </button>
-                    ))}
+          <h2 className="text-xl font-semibold mb-4">Services disponibles</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {services.length === 0 ? (
+              <p className="text-gray-600 col-span-full text-center">Aucun service disponible pour le moment.</p>
+            ) : (
+              services.map((service: any) => (
+                <ServiceCard
+                  key={service._id}
+                  service={service}
+                  showBookButton={true}
+                  onBook={() => handleServiceSelect(service)}
+                />
+              ))
+            )}
           </div>
-          </div>
-
-                {/* Horaires */}
-                {selectedDate && (
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-700 mb-2">
-                      Sélectionnez un horaire
-                    </h3>
-                    <div className="grid grid-cols-2 gap-2">
-                      {getAvailableSlots().map((time: string) => (
-                  <button
-                    key={time}
-                          className={`p-2 text-center rounded-lg border ${
-                            selectedTime === time
-                              ? 'border-primary bg-primary/10'
-                              : 'hover:border-gray-300'
-                          }`}
-                          onClick={() => setSelectedTime(time)}
-                  >
-                    {time}
-                  </button>
-                      ))}
-                    </div>
-                  </div>
-              )}
-            </div>
-            </Card>
-          )}
-
-          {/* Politique d'annulation */}
-          <Card className="p-6">
-            <h2 className="text-lg font-semibold mb-2">Politique d'annulation</h2>
-            <p className="text-gray-600 text-sm">{coiffeurCancellation}</p>
-          </Card>
-
-          {/* Récapitulatif et validation */}
-          {selectedService && selectedDate && selectedTime && (
-            <Card className="p-6">
-              <h2 className="text-lg font-semibold mb-4">Récapitulatif</h2>
-              <div className="space-y-2 mb-6">
-                <p>
-                  <span className="font-medium">Service :</span>{' '}
-                  {selectedService.name} ({selectedService.duration})
-                </p>
-                <p>
-                  <span className="font-medium">Date :</span>{' '}
-                  {format(new Date(selectedDate), 'EEEE d MMMM', { locale: fr })}
-                </p>
-                <p>
-                  <span className="font-medium">Heure :</span> {selectedTime}
-                </p>
-                <p>
-                  <span className="font-medium">Mode :</span>{' '}
-                  {bookingMode === 'salon' ? 'En salon' : 'À domicile'}
-                </p>
-                {bookingMode === 'domicile' && clientAddress && (
-                  <p>
-                    <span className="font-medium">Adresse :</span> {clientAddress}
-                  </p>
-                )}
-                <p className="text-lg font-bold mt-4">
-                  Total : {selectedService.price}€
-                </p>
-          </div>
-
-              <Button
-                onClick={handleSubmit}
-                className="w-full bg-primary text-white py-3 rounded-lg font-medium hover:bg-primary/90"
-              >
-            Confirmer la réservation
-              </Button>
-            </Card>
-          )}
         </div>
-      </div>
-      <Modal
-        open={showConflictModal}
-        onClose={() => { setShowConflictModal(false); setError(''); }}
-        title="Créneau déjà réservé"
-        actions={
-          <Button onClick={() => { setShowConflictModal(false); setError(''); }} className="bg-primary text-white">OK</Button>
-        }
-      >
-        Vous avez déjà une réservation à cette date et heure, veuillez annuler l'autre réservation avant de continuer.
-      </Modal>
+      ) : (
+        // Formulaire de réservation
+        <BookingForm
+          coiffeur={coiffeur}
+          selectedService={selectedService}
+          onSuccess={handleBookingSuccess}
+          onCancel={() => setSelectedService(null)}
+        />
+      )}
     </div>
   );
 };

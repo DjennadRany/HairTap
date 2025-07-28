@@ -1,68 +1,90 @@
-import { Link } from 'react-router-dom';
-
-// MOCKS à remplacer par API plus tard
-const mockStats = {
-  upcoming: 2,
-  revenue: 420,
-  clients: 12,
-  rating: 4.8,
-};
-const mockNextBookings = [
-  {
-    id: 'b1',
-    client: 'John Client',
-    date: '2024-06-20T10:00',
-    service: 'Coupe',
-    status: 'confirmed',
-  },
-  {
-    id: 'b2',
-    client: 'Alexis Duprez',
-    date: '2024-06-21T14:30',
-    service: 'Brushing',
-    status: 'pending',
-  },
-];
+import React, { useState } from 'react';
+import { useSelector } from 'react-redux';
+import { selectCurrentUser } from '../store/slices/authSlice';
+import Dashboard from '../components/Dashboard';
+import ServiceManager from '../components/ServiceManager';
+import CoiffeurBookings from '../components/CoiffeurBookings';
+import { Card } from '../components/ui/card';
+import { FaChartBar, FaCog, FaCalendarAlt, FaUsers, FaStar, FaEuroSign } from 'react-icons/fa';
+import type { User } from '../types/models';
 
 const CoiffeurDashboardPage = () => {
+  const user = useSelector(selectCurrentUser) as User | null;
+  const [activeTab, setActiveTab] = useState<'overview' | 'services' | 'bookings'>('overview');
+
+  if (!user) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent mx-auto"></div>
+          <p className="text-gray-600 mt-2">Chargement...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold mb-6">Tableau de bord coiffeur</h1>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-white rounded-lg shadow p-6 flex flex-col items-center">
-          <span className="text-3xl font-bold text-accent">{mockStats.revenue}€</span>
-          <span className="text-gray-600 mt-2">Revenus ce mois</span>
-      </div>
-        <div className="bg-white rounded-lg shadow p-6 flex flex-col items-center">
-          <span className="text-3xl font-bold">{mockStats.clients}</span>
-          <span className="text-gray-600 mt-2">Clients ce mois</span>
-      </div>
-        <div className="bg-white rounded-lg shadow p-6 flex flex-col items-center">
-          <span className="text-3xl font-bold">{mockStats.rating}★</span>
-          <span className="text-gray-600 mt-2">Note moyenne</span>
-              </div>
-            </div>
-      <div className="bg-white rounded-lg shadow p-6">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold">Prochains rendez-vous</h2>
-          <Link to="/coiffeur/reservations" className="text-accent underline">Voir tout</Link>
+      {/* En-tête avec onglets */}
+      <div className="mb-8">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-3xl font-bold">Tableau de bord</h1>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setActiveTab('overview')}
+              className={`px-4 py-2 rounded-lg transition-colors ${
+                activeTab === 'overview'
+                  ? 'bg-accent text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <FaChartBar className="inline mr-2" />
+              Vue d'ensemble
+            </button>
+            <button
+              onClick={() => setActiveTab('bookings')}
+              className={`px-4 py-2 rounded-lg transition-colors ${
+                activeTab === 'bookings'
+                  ? 'bg-accent text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <FaCalendarAlt className="inline mr-2" />
+              Réservations
+            </button>
+            <button
+              onClick={() => setActiveTab('services')}
+              className={`px-4 py-2 rounded-lg transition-colors ${
+                activeTab === 'services'
+                  ? 'bg-accent text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              <FaCog className="inline mr-2" />
+              Mes Services
+            </button>
+          </div>
         </div>
-        {mockNextBookings.length === 0 ? (
-          <p className="text-gray-600">Aucun rendez-vous à venir.</p>
-        ) : (
-          <ul className="divide-y">
-            {mockNextBookings.map((b) => (
-              <li key={b.id} className="py-3 flex flex-col md:flex-row md:items-center md:justify-between">
-                <div>
-                  <span className="font-medium">{b.service}</span> avec <span className="font-medium">{b.client}</span>
-                  <span className="block text-sm text-gray-500">{new Date(b.date).toLocaleString()}</span>
-                </div>
-                <span className={`mt-2 md:mt-0 px-3 py-1 rounded-full text-xs font-semibold ${b.status === 'confirmed' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>{b.status === 'confirmed' ? 'Confirmé' : 'En attente'}</span>
-              </li>
-            ))}
-          </ul>
-        )}
       </div>
+
+      {/* Contenu des onglets */}
+      {activeTab === 'overview' ? (
+        <Dashboard user={user} isCoiffeur={true} />
+      ) : activeTab === 'bookings' ? (
+        <div>
+          <Card className="p-6">
+            <h2 className="text-xl font-semibold mb-4">Gestion des réservations</h2>
+            <CoiffeurBookings coiffeurId={user._id} />
+          </Card>
+        </div>
+      ) : (
+        <div>
+          <Card className="p-6">
+            <h2 className="text-xl font-semibold mb-4">Gestion des services</h2>
+            <ServiceManager coiffeurId={user._id} isOwner={true} />
+          </Card>
+        </div>
+      )}
     </div>
   );
 };

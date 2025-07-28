@@ -27,7 +27,11 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
-      window.location.href = '/login';
+      // Ne redirige que si on n'est pas déjà sur /login
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
+      // Sinon, laisse React gérer l'affichage de l'erreur
     }
     return Promise.reject(error);
   }

@@ -24,12 +24,30 @@ const serviceSchema = new mongoose.Schema({
   },
   category: {
     type: String,
-    enum: ['coupe', 'coloration', 'coiffure', 'soin', 'barbe', 'autre'],
+    enum: ['coupe', 'coloration', 'brushing', 'lissage', 'permanente', 'barbe', 'soin', 'autre'],
     default: 'autre'
+  },
+  keywords: {
+    type: [String],
+    default: []
+  },
+  examplePhotos: {
+    type: [String],
+    default: []
+  },
+  likes: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  likedBy: {
+    type: [mongoose.Schema.Types.ObjectId],
+    ref: 'User',
+    default: []
   },
   coiffeur: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Coiffeur',
+    ref: 'User',
     required: true
   },
   isActive: {
@@ -52,6 +70,8 @@ const serviceSchema = new mongoose.Schema({
 serviceSchema.index({ 'coiffeur': 1 });
 serviceSchema.index({ 'category': 1 });
 serviceSchema.index({ 'isActive': 1 });
+serviceSchema.index({ 'keywords': 1 });
+serviceSchema.index({ 'likes': -1 });
 
 // Méthode pour désactiver un service
 serviceSchema.methods.deactivate = async function() {
@@ -67,13 +87,38 @@ serviceSchema.methods.activate = async function() {
 
 // Méthode pour mettre à jour les détails d'un service
 serviceSchema.methods.updateDetails = async function(details) {
-  const allowedUpdates = ['name', 'description', 'price', 'duration', 'category'];
+  const allowedUpdates = ['name', 'description', 'price', 'duration', 'category', 'keywords', 'examplePhotos'];
   Object.keys(details).forEach(key => {
     if (allowedUpdates.includes(key)) {
       this[key] = details[key];
     }
   });
   await this.save();
+};
+
+// Méthode pour ajouter un like
+serviceSchema.methods.addLike = async function(userId) {
+  if (!this.likedBy.includes(userId)) {
+    this.likes += 1;
+    this.likedBy.push(userId);
+    await this.save();
+  }
+  return this.likes;
+};
+
+// Méthode pour retirer un like
+serviceSchema.methods.removeLike = async function(userId) {
+  if (this.likedBy.includes(userId)) {
+    this.likes = Math.max(0, this.likes - 1);
+    this.likedBy = this.likedBy.filter(id => id.toString() !== userId.toString());
+    await this.save();
+  }
+  return this.likes;
+};
+
+// Méthode pour vérifier si un utilisateur a liké
+serviceSchema.methods.isLikedBy = function(userId) {
+  return this.likedBy.includes(userId);
 };
 
 // Middleware pour mettre à jour le champ updatedAt

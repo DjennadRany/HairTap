@@ -3,7 +3,7 @@ import type { PayloadAction } from '@reduxjs/toolkit';
 import type { RootState } from '../index';
 
 export interface User {
-  id: string;
+  _id: string;
   name: string;
   email: string;
   role: 'client' | 'coiffeur';
@@ -24,13 +24,17 @@ const initialState: AuthState = {
   error: null,
 };
 
+export { initialState };
+
 export const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
-    setUser: (state, action: PayloadAction<User>) => {
-      state.user = action.payload;
-      state.isAuthenticated = true;
+    setUser: (state, action: PayloadAction<User | null>) => {
+      const user = action.payload;
+      const isValid = !!user && !!user._id && !!user.email && (user.role === 'client' || user.role === 'coiffeur');
+      state.user = isValid ? user : null;
+      state.isAuthenticated = isValid;
       state.loading = false;
       state.error = null;
     },

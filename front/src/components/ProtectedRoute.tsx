@@ -11,13 +11,17 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
   const location = useLocation();
   const { user, isAuthenticated } = useSelector((state: RootState) => state.auth);
 
-  if (!isAuthenticated || !user) {
-    // Sauvegarder le chemin actuel pour la redirection après connexion
+  if (
+    !isAuthenticated ||
+    !user ||
+    !user._id ||
+    !user.email ||
+    (user.role !== 'client' && user.role !== 'coiffeur')
+  ) {
     return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
 
   if (requiredRole && user.role !== requiredRole) {
-    // Rediriger vers la page appropriée si le rôle ne correspond pas
     return <Navigate to={user.role === 'coiffeur' ? '/coiffeur/dashboard' : '/client/dashboard'} replace />;
   }
 

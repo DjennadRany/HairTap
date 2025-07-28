@@ -1,104 +1,246 @@
-import React, { useState } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
-import { selectCurrentUser, setUser } from '../store/slices/authSlice';
-import { Input } from '../components/ui/Input';
-
-interface GalleryImage {
-  id: string;
-  url: string;
-}
-
-const initialGallery: GalleryImage[] = JSON.parse(localStorage.getItem('coiffeur_gallery') || '[]');
+import React, { useState, useEffect } from 'react';
+import { useSelector } from 'react-redux';
+import { selectCurrentUser } from '../store/slices/authSlice';
+import { Navigate } from 'react-router-dom';
+import { userService } from '../services/api/users';
+import { Card } from '../components/ui/card';
+import { Button } from '../components/ui/Button';
+import RichTextEditor from '../components/RichTextEditor';
+import type { User } from '../types/models';
 
 const CoiffeurProfileEditPage = () => {
-  const dispatch = useDispatch();
-  const user = useSelector(selectCurrentUser);
-  const [name, setName] = useState(user?.name || '');
-  const [bio, setBio] = useState('Passionné(e) par la coiffure, à votre service !');
-  const [specialties, setSpecialties] = useState('Coupe homme, Brushing, Coloration');
-  const [experience, setExperience] = useState('5');
-  const [diplomas, setDiplomas] = useState('CAP Coiffure');
-  const [address, setAddress] = useState('');
-  const [photo, setPhoto] = useState(user?.photo || '');
-  const [gallery, setGallery] = useState<GalleryImage[]>(initialGallery);
-  const [tarifs, setTarifs] = useState('Coupe: 30€, Brushing: 25€');
-  const [success, setSuccess] = useState('');
+  const user = useSelector(selectCurrentUser) as User | null;
+  const [loading, setLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => setPhoto(reader.result as string);
-      reader.readAsDataURL(file);
+  // États du formulaire
+  const [bio, setBio] = useState(user?.bio || '');
+  const [specialities, setSpecialities] = useState<string[]>(user?.specialities || []);
+  const [workingMode, setWorkingMode] = useState<('salon' | 'domicile' | 'both')[]>(
+    Array.isArray(user?.workingMode) ? user.workingMode as ('salon' | 'domicile' | 'both')[] : []
+  );
+  const [travelRadius, setTravelRadius] = useState(user?.travelRadius || 10);
+  const [phone, setPhone] = useState(user?.phone || '');
+
+  if (!user || user.role !== 'coiffeur') {
+    return <Navigate to="/login" replace />;
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setErrorMessage(null);
+
+    try {
+      const updatedProfile = {
+        ...user,
+        bio,
+        specialities,
+        workingMode,
+        travelRadius,
+        phone
+      };
+
+      await userService.updateUser(user._id, updatedProfile);
+      setSuccessMessage('Profil mis à jour avec succès !');
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      setErrorMessage('Erreur lors de la mise à jour du profil');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleGalleryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files) {
-      const newImages: GalleryImage[] = Array.from(files).map((file) => {
-        const id = Math.random().toString(36).substr(2, 9);
-        return { id, url: URL.createObjectURL(file) };
-      });
-      setGallery((prev) => {
-        const updated = [...prev, ...newImages];
-        localStorage.setItem('coiffeur_gallery', JSON.stringify(updated));
-        return updated;
-      });
+  const addSpeciality = () => {
+    const newSpeciality = prompt('Ajouter une spécialité :');
+    if (newSpeciality && newSpeciality.trim()) {
+      setSpecialities(prev => [...prev, newSpeciality.trim()]);
     }
   };
 
-  const handleRemoveImage = (id: string) => {
-    setGallery((prev) => {
-      const updated = prev.filter((img) => img.id !== id);
-      localStorage.setItem('coiffeur_gallery', JSON.stringify(updated));
-      return updated;
+  const removeSpeciality = (index: number) => {
+    setSpecialities(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const toggleWorkingMode = (mode: 'salon' | 'domicile' | 'both') => {
+    setWorkingMode(prev => {
+      if (prev.includes(mode)) {
+        return prev.filter(m => m !== mode);
+      } else {
+        return [...prev, mode];
+      }
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) return;
-    dispatch(setUser({
-      id: user.id,
-      name,
-      photo,
-      email: user.email,
-      role: user.role
-    }));
-    setSuccess('Profil mis à jour !');
-  };
-
   return (
-    <div className="container mx-auto px-4 py-8 max-w-2xl">
-      <h1 className="text-2xl font-bold mb-6">Mon profil professionnel</h1>
-      {success && <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-2 rounded mb-4">{success}</div>}
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="flex flex-col items-center gap-2">
-          <img src={photo || '/default-avatar.png'} alt="Profil" className="w-24 h-24 rounded-full object-cover bg-gray-100" />
-          <input type="file" accept="image/*" onChange={handlePhotoChange} />
+    <div className="container mx-auto px-4 py-8">
+      <div className="max-w-4xl mx-auto">
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold mb-2">Modifier mon profil</h1>
+          <p className="text-gray-600">
+            Personnalisez votre profil pour attirer plus de clients
+          </p>
         </div>
-        <Input label="Nom" value={name} onChange={e => setName(e.target.value)} required />
-        <Input label="Bio / Description" value={bio} onChange={e => setBio(e.target.value)} required />
-        <Input label="Spécialités" value={specialties} onChange={e => setSpecialties(e.target.value)} required />
-        <Input label="Années d'expérience" value={experience} onChange={e => setExperience(e.target.value)} required />
-        <Input label="Diplômes / Certifications" value={diplomas} onChange={e => setDiplomas(e.target.value)} required />
-        <Input label="Adresse du salon (optionnel)" value={address} onChange={e => setAddress(e.target.value)} />
-        <Input label="Tarifs principaux" value={tarifs} onChange={e => setTarifs(e.target.value)} required />
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Galerie de réalisations</label>
-          <input type="file" accept="image/*" multiple onChange={handleGalleryChange} />
-          <div className="grid grid-cols-3 gap-2 mt-2">
-            {gallery.map((img) => (
-              <div key={img.id} className="relative group">
-                <img src={img.url} alt="Réalisation" className="w-full h-24 object-cover rounded" />
-                <button type="button" onClick={() => handleRemoveImage(img.id)} className="absolute top-1 right-1 bg-white/80 rounded-full p-1 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">✕</button>
+
+        {/* Messages */}
+        {successMessage && (
+          <Card className="p-4 mb-6 bg-green-50 border-green-200">
+            <p className="text-green-800">{successMessage}</p>
+          </Card>
+        )}
+
+        {errorMessage && (
+          <Card className="p-4 mb-6 bg-red-50 border-red-200">
+            <p className="text-red-800">{errorMessage}</p>
+          </Card>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Bio avec Rich Text Editor */}
+          <Card className="p-6">
+            <h2 className="text-xl font-semibold mb-4">À propos de vous</h2>
+            <RichTextEditor
+              value={bio}
+              onChange={setBio}
+              placeholder="Décrivez votre expérience, vos spécialités, votre approche..."
+              maxLength={500}
+            />
+          </Card>
+
+          {/* Spécialités */}
+          <Card className="p-6">
+            <h2 className="text-xl font-semibold mb-4">Spécialités</h2>
+            <div className="space-y-4">
+              <div className="flex flex-wrap gap-2">
+                {specialities.map((speciality, index) => (
+                  <span
+                    key={index}
+                    className="px-3 py-1 bg-accent/10 text-accent rounded-full flex items-center gap-2"
+                  >
+                    {speciality}
+                    <button
+                      type="button"
+                      onClick={() => removeSpeciality(index)}
+                      className="text-accent hover:text-accent/80"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
               </div>
-            ))}
+              <Button
+                type="button"
+                onClick={addSpeciality}
+                className="bg-gray-100 text-gray-700 hover:bg-gray-200"
+              >
+                + Ajouter une spécialité
+              </Button>
+            </div>
+          </Card>
+
+          {/* Mode de travail */}
+          <Card className="p-6">
+            <h2 className="text-xl font-semibold mb-4">Mode de travail</h2>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <label className="flex items-center space-x-3">
+                  <input
+                    type="checkbox"
+                    checked={workingMode.includes('salon')}
+                    onChange={() => toggleWorkingMode('salon')}
+                    className="rounded border-gray-300 text-accent focus:ring-accent"
+                  />
+                  <span>Salon</span>
+                </label>
+                <label className="flex items-center space-x-3">
+                  <input
+                    type="checkbox"
+                    checked={workingMode.includes('domicile')}
+                    onChange={() => toggleWorkingMode('domicile')}
+                    className="rounded border-gray-300 text-accent focus:ring-accent"
+                  />
+                  <span>Domicile</span>
+                </label>
+                <label className="flex items-center space-x-3">
+                  <input
+                    type="checkbox"
+                    checked={workingMode.includes('both')}
+                    onChange={() => toggleWorkingMode('both')}
+                    className="rounded border-gray-300 text-accent focus:ring-accent"
+                  />
+                  <span>Les deux</span>
+                </label>
+              </div>
+            </div>
+          </Card>
+
+          {/* Rayon de déplacement */}
+          {workingMode.includes('domicile') && (
+            <Card className="p-6">
+              <h2 className="text-xl font-semibold mb-4">Rayon de déplacement</h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Distance maximale (km)
+                  </label>
+                  <input
+                    type="range"
+                    min="1"
+                    max="50"
+                    value={travelRadius}
+                    onChange={(e) => setTravelRadius(Number(e.target.value))}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-sm text-gray-500 mt-1">
+                    <span>1 km</span>
+                    <span>{travelRadius} km</span>
+                    <span>50 km</span>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          )}
+
+          {/* Contact */}
+          <Card className="p-6">
+            <h2 className="text-xl font-semibold mb-4">Informations de contact</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Téléphone
+                </label>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="Votre numéro de téléphone"
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
+                />
+              </div>
+            </div>
+          </Card>
+
+          {/* Actions */}
+          <div className="flex gap-4">
+            <Button
+              type="submit"
+              disabled={loading}
+              className="flex-1 bg-accent hover:bg-accent/90"
+            >
+              {loading ? 'Mise à jour...' : 'Sauvegarder les modifications'}
+            </Button>
+            <Button
+              type="button"
+              onClick={() => window.history.back()}
+              className="flex-1 bg-gray-300 hover:bg-gray-400"
+            >
+              Annuler
+            </Button>
           </div>
-        </div>
-        <button type="submit" className="w-full bg-accent text-white py-2 rounded-lg hover:bg-accent/90 transition-colors">Enregistrer</button>
-      </form>
+        </form>
+      </div>
     </div>
   );
 };

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { useSelector } from "react-redux";
 import { selectCurrentUser } from "../store/slices/authSlice";
 import { selectProfile } from "../store/slices/profileSlice";
-import { useClientBookings } from "../hooks/useClientBookings";
 import { ChatWindow } from "../components/ChatWindow";
 import { getConversations } from "../hooks/useChat";
 import { userService } from "../services/api/users";
@@ -26,9 +25,12 @@ export const ClientChatPage: React.FC = () => {
           const coiffeurIds = convs.map(conv => conv.userId);
           const uniqueCoiffeurIds = [...new Set(coiffeurIds)];
           const coiffeursData = await Promise.all(
-            uniqueCoiffeurIds.map(id => userService.getUser(id))
+            uniqueCoiffeurIds.map(id => {
+              let userId = typeof id === 'string' ? id : (id && typeof id === 'object' && (id._id || id.id)) ? (id._id || id.id) : null;
+              return userId ? userService.getUser(userId) : Promise.resolve(null);
+            })
           );
-          const coiffeursMap = coiffeursData.reduce((acc, coiffeur) => {
+          const coiffeursMap = (coiffeursData.filter((coiffeur): coiffeur is User => !!coiffeur)).reduce((acc, coiffeur) => {
             acc[coiffeur._id] = coiffeur;
             return acc;
           }, {} as Record<string, User>);
@@ -58,20 +60,12 @@ export const ClientChatPage: React.FC = () => {
             const lastMsg = conv.lastMessage;
             const isUnread = conv.unread > 0;
             return (
-              <li
-                key={coiffeur._id}
-                className={`flex items-center gap-3 p-2 rounded cursor-pointer hover:bg-gray-100 ${selectedCoiffeurId === coiffeur._id ? 'bg-primary/10' : ''}`}
-                onClick={() => setSelectedCoiffeurId(coiffeur._id)}
-              >
-                <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-200">
-                  {coiffeur.photos && coiffeur.photos.length > 0 ? (
-                    <img src={coiffeur.photos[0]} alt={coiffeur.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-accent text-white text-xl font-bold">
-                      {coiffeur.name[0]}
-                    </div>
-                  )}
-                </div>
+              <li key={coiffeur._id} className="bg-white rounded-lg shadow p-4 flex items-center gap-4">
+                <img
+                  src={coiffeur.photo || '/default-avatar.png'}
+                  alt={coiffeur.name}
+                  className="w-16 h-16 rounded-full object-cover"
+                />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className={`font-semibold truncate ${isUnread ? 'text-accent font-bold' : ''}`}>{coiffeur.name}</span>

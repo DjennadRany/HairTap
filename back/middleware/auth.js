@@ -20,9 +20,10 @@ export default async (req, res, next) => {
       return res.status(401).json({ message: 'Utilisateur non trouvé' });
     }
 
-    // Ajouter l'utilisateur à la requête
+    // Ajouter l'utilisateur à la requête (avec _id et id)
     req.user = {
-      id: user._id,
+      _id: user._id,
+      id: user._id.toString(),
       role: user.role
     };
 
