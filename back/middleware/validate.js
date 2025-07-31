@@ -15,7 +15,7 @@ import {
 import { body, validationResult } from 'express-validator';
 
 // Middleware de validation pour les utilisateurs
-export const validateUser = (req, res, next) => {
+const validateUser = (req, res, next) => {
   const { name, email, phone, address, role } = req.body;
   const errors = [];
 
@@ -48,7 +48,7 @@ export const validateUser = (req, res, next) => {
 };
 
 // Middleware de validation pour les coiffeurs
-export const validateCoiffeur = (req, res, next) => {
+const validateCoiffeur = (req, res, next) => {
   const { name, email, phone, address, services, mode } = req.body;
   const errors = [];
 
@@ -98,7 +98,7 @@ export const validateCoiffeur = (req, res, next) => {
 };
 
 // Middleware de validation pour les réservations
-export const validateBooking = (req, res, next) => {
+const validateBooking = (req, res, next) => {
   const { date, status, paymentStatus } = req.body;
   const errors = [];
 
@@ -123,7 +123,7 @@ export const validateBooking = (req, res, next) => {
 };
 
 // Middleware de validation pour l'authentification
-export const validateAuth = [
+const validateAuth = [
   body('email')
     .isEmail()
     .withMessage('Email invalide')
@@ -149,7 +149,7 @@ export const validateAuth = [
 ];
 
 // Middleware de validation pour les fichiers
-export const validateFile = (req, res, next) => {
+const validateFile = (req, res, next) => {
   if (!req.file) {
     return res.status(400).json({ message: 'Aucun fichier fourni' });
   }
@@ -165,4 +165,12 @@ export const validateFile = (req, res, next) => {
   }
 
   next();
+}; 
+
+export { 
+  validateUser, 
+  validateCoiffeur, 
+  validateBooking, 
+  validateAuth, 
+  validateFile 
 }; 

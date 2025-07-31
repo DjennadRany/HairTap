@@ -3,7 +3,7 @@ import User from '../models/User.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
-export default async (req, res, next) => {
+const auth = async (req, res, next) => {
   try {
     // Récupérer le token du header
     const token = req.header('Authorization')?.replace('Bearer ', '');
@@ -56,4 +56,4 @@ const isCoiffeur = async (req, res, next) => {
   }
 };
 
-export { isAdmin, isCoiffeur }; 
+export { auth, isAdmin, isCoiffeur }; 

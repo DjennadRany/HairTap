@@ -47,7 +47,7 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
   };
 
   return (
-    <div className="border rounded-lg p-4 hover:shadow-md transition-shadow bg-white">
+    <div className="border rounded-lg p-4 hover:shadow-md transition-shadow bg-fashion-light-gray">
       <div className="flex justify-between items-start mb-2">
         <h3 className="font-semibold text-lg">{service.name}</h3>
         <div className="flex items-center gap-2">

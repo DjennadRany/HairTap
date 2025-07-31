@@ -47,7 +47,7 @@ export const CoiffeurChatPage: React.FC = () => {
   if (!user) return <div>Veuillez vous connecter.</div>;
 
   return (
-    <div className="flex h-[80vh] max-w-4xl mx-auto mt-8 border rounded-lg shadow bg-white">
+    <div className="flex h-[80vh] max-w-4xl mx-auto mt-8 border rounded-lg shadow bg-fashion-light-gray">
       <div className="w-1/3 border-r p-4 overflow-y-auto">
         <h2 className="font-bold text-lg mb-4">Mes clients</h2>
         <ul className="space-y-2">

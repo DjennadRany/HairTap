@@ -1,34 +1,6 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 
-const ServiceSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  description: {
-    type: String,
-    trim: true
-  },
-  duration: {
-    type: Number, // en minutes
-    required: true
-  },
-  priceHT: {
-    type: Number,
-    required: true
-  },
-  image: String,
-  tags: [String],
-  isTemporary: {
-    type: Boolean,
-    default: false
-  },
-  startDate: Date,
-  endDate: Date
-});
-
 const userSchema = new mongoose.Schema({
   // Informations de base
   name: {
@@ -76,13 +48,74 @@ const userSchema = new mongoose.Schema({
   },
   address: {
     street: String,
+    streetNumber: String,
     city: String,
     postalCode: String,
+    floor: String,
+    apartment: String,
+    buildingCode: String,
+    additionalInfo: String,
     coordinates: {
       lat: Number,
       lng: Number
     }
   },
+  // Adresses multiples pour UX-Pro
+  addresses: {
+    home: {
+      street: String,
+      streetNumber: String,
+      city: String,
+      postalCode: String,
+      floor: String,
+      apartment: String,
+      buildingCode: String,
+      additionalInfo: String,
+      coordinates: {
+        lat: Number,
+        lng: Number
+      }
+    },
+    office: {
+      street: String,
+      streetNumber: String,
+      city: String,
+      postalCode: String,
+      floor: String,
+      apartment: String,
+      buildingCode: String,
+      additionalInfo: String,
+      coordinates: {
+        lat: Number,
+        lng: Number
+      }
+    }
+  },
+  
+  // Adresses de réservation (ajoutées automatiquement)
+  bookingAddresses: [{
+    type: {
+      type: String,
+      enum: ['bureau', 'domicile', 'autre'],
+      required: true
+    },
+    street: String,
+    streetNumber: String,
+    city: String,
+    postalCode: String,
+    floor: String,
+    apartment: String,
+    buildingCode: String,
+    additionalInfo: String,
+    coordinates: {
+      lat: Number,
+      lng: Number
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
   
   // Champs spécifiques aux coiffeurs
   siren: {
@@ -94,7 +127,6 @@ const userSchema = new mongoose.Schema({
     enum: ['pending', 'verified', 'none'],
     default: 'none'
   },
-  sirenVerificationDate: Date,
   specialities: [String],
   rating: {
     type: Number,
@@ -108,23 +140,21 @@ const userSchema = new mongoose.Schema({
     type: String,
     enum: ['salon', 'domicile', 'both']
   }],
-  workingHours: {
-    monday: { start: String, end: String, isAvailable: Boolean },
-    tuesday: { start: String, end: String, isAvailable: Boolean },
-    wednesday: { start: String, end: String, isAvailable: Boolean },
-    thursday: { start: String, end: String, isAvailable: Boolean },
-    friday: { start: String, end: String, isAvailable: Boolean },
-    saturday: { start: String, end: String, isAvailable: Boolean },
-    sunday: { start: String, end: String, isAvailable: Boolean }
-  },
   travelRadius: {
-    type: Number, // en km
+    type: Number,
     default: 10
   },
-  services: [ServiceSchema],
+  
+  // Galerie simple
   gallery: [{
-    url: String,
-    description: String,
+    url: {
+      type: String,
+      required: true
+    },
+    description: {
+      type: String,
+      default: ''
+    },
     isVerified: {
       type: Boolean,
       default: false
@@ -140,46 +170,13 @@ const userSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   }],
-  socialPosts: [{
-    content: String,
-    images: [String],
-    hashtags: [String],
-    createdAt: {
-      type: Date,
-      default: Date.now
-    },
-    likes: {
-      type: Number,
-      default: 0
-    },
-    comments: [{
-      userId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User'
-      },
-      content: String,
-      createdAt: {
-        type: Date,
-        default: Date.now
-      }
-    }]
-  }],
   
-  // Préférences & Paramètres
+  // Préférences utilisateur
   preferences: {
     notifications: {
-      email: {
-        type: Boolean,
-        default: true
-      },
-      sms: {
-        type: Boolean,
-        default: false
-      },
-      push: {
-        type: Boolean,
-        default: true
-      }
+      email: { type: Boolean, default: true },
+      sms: { type: Boolean, default: false },
+      push: { type: Boolean, default: true }
     },
     language: {
       type: String,
@@ -190,50 +187,19 @@ const userSchema = new mongoose.Schema({
       type: String,
       enum: ['light', 'dark'],
       default: 'light'
-    },
-    privacy: {
-      showPhone: {
-        type: Boolean,
-        default: false
-      },
-      showAddress: {
-        type: Boolean,
-        default: true
-      }
     }
   },
   
-  // Statistiques & Performance
+  // Statistiques
   stats: {
-    totalBookings: {
-      type: Number,
-      default: 0
-    },
-    completedBookings: {
-      type: Number,
-      default: 0
-    },
-    cancelledBookings: {
-      type: Number,
-      default: 0
-    },
-    averageRating: {
-      type: Number,
-      default: 0
-    },
-    profileViews: {
-      type: Number,
-      default: 0
-    }
+    totalBookings: { type: Number, default: 0 },
+    completedBookings: { type: Number, default: 0 },
+    cancelledBookings: { type: Number, default: 0 },
+    averageRating: { type: Number, default: 0 },
+    profileViews: { type: Number, default: 0 }
   },
   
-  // Sécurité & Conformité
-  lastLogin: Date,
-  loginHistory: [{
-    date: Date,
-    ip: String,
-    device: String
-  }],
+  // Sécurité
   isBlocked: {
     type: Boolean,
     default: false
@@ -252,21 +218,18 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   }
-}, {
-  timestamps: true
 });
-
-// Index pour améliorer les performances des recherches
-userSchema.index({ email: 1 });
-userSchema.index({ googleId: 1 });
-userSchema.index({ role: 1 });
-userSchema.index({ 'address.coordinates': '2dsphere' });
-userSchema.index({ siren: 1 });
 
 // Hash password before saving
 userSchema.pre('save', async function(next) {
   if (!this.isModified('password')) return next();
   this.password = await bcrypt.hash(this.password, 12);
+  next();
+});
+
+// Middleware pour mettre à jour le timestamp
+userSchema.pre('save', function(next) {
+  this.updatedAt = Date.now();
   next();
 });
 
@@ -304,11 +267,58 @@ userSchema.methods.isUserBlocked = function(userId) {
   return this.blockedUsers.some(id => id.toString() === userId.toString());
 };
 
-// Middleware pour mettre à jour le champ updatedAt
-userSchema.pre('save', function(next) {
-  this.updatedAt = Date.now();
-  next();
-});
+// Méthode pour ajouter une image à la galerie
+userSchema.methods.addGalleryImage = async function(imageUrl, description = '') {
+  this.gallery.push({
+    url: imageUrl,
+    description,
+    isVerified: false
+  });
+  await this.save();
+  return this.gallery[this.gallery.length - 1];
+};
+
+// Méthode pour supprimer une image de la galerie
+userSchema.methods.removeGalleryImage = async function(imageUrl) {
+  this.gallery = this.gallery.filter(img => img.url !== imageUrl);
+  await this.save();
+  return this;
+};
+
+// Méthode pour ajouter une adresse de réservation
+userSchema.methods.addBookingAddress = async function(addressData) {
+  // Vérifier si l'adresse existe déjà
+  const existingAddress = this.bookingAddresses.find(addr => 
+    addr.street === addressData.street &&
+    addr.streetNumber === addressData.streetNumber &&
+    addr.city === addressData.city &&
+    addr.postalCode === addressData.postalCode
+  );
+  
+  if (!existingAddress) {
+    this.bookingAddresses.push(addressData);
+    await this.save();
+    console.log('✅ [User] Adresse de réservation ajoutée:', addressData);
+  } else {
+    console.log('⚠️ [User] Adresse de réservation déjà existante');
+  }
+  
+  return this.bookingAddresses[this.bookingAddresses.length - 1];
+};
+
+// Méthode pour récupérer les adresses de réservation
+userSchema.methods.getBookingAddresses = function() {
+  return this.bookingAddresses.sort((a, b) => b.createdAt - a.createdAt);
+};
+
+// Méthode pour supprimer une adresse de réservation
+userSchema.methods.removeBookingAddress = async function(addressId) {
+  this.bookingAddresses = this.bookingAddresses.filter(addr => 
+    addr._id.toString() !== addressId.toString()
+  );
+  await this.save();
+  return this;
+};
 
 const User = mongoose.model('User', userSchema);
 

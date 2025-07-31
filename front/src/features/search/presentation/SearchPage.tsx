@@ -4,10 +4,11 @@ import { SearchMode } from '../domain/types';
 import { getSearchComponentFactory } from '../infrastructure/SearchComponentFactory';
 import { LocationSearchBar } from '@/components/LocationSearchBar';
 import { SearchFilters, type SearchFilters as SearchFiltersType } from '../../../components/SearchFilters';
-import { CoiffeurCard } from '../../../components/CoiffeurCard';
+import CoiffeurCard from '../../../components/CoiffeurCard';
 import { point, distance as turfDistance } from '@turf/turf';
 import { ProtectedRoute } from '../../../components/ProtectedRoute';
-import { coiffeurService, type Coiffeur } from '@/services/api/coiffeurs';
+import { coiffeurService } from '@/services/api/coiffeurs';
+import type { User } from '../../../types/models';
 import { Map } from '../../../components/Map';
 import { useGeolocation } from '../../../hooks/useGeolocation';
 
@@ -16,8 +17,8 @@ export const SearchPage: React.FC = () => {
   const { location, error: locationError } = useGeolocation();
   const [showMap, setShowMap] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [selectedResults, setSelectedResults] = useState<Coiffeur[]>([]);
-  const [results, setResults] = useState<Coiffeur[]>([]);
+  const [selectedResults, setSelectedResults] = useState<User[]>([]);
+  const [results, setResults] = useState<User[]>([]);
 
   const [filters, setFilters] = useState<SearchFiltersType>({
     service: '',
@@ -47,7 +48,7 @@ export const SearchPage: React.FC = () => {
       let filteredResults = searchResults;
       if (location) {
         filteredResults = searchResults.filter(coiffeur => {
-          if (!coiffeur.address.coordinates) return true;
+          if (!coiffeur.address?.coordinates) return true;
           const distance = calculateDistance(
             location.latitude,
             location.longitude,
@@ -79,12 +80,16 @@ export const SearchPage: React.FC = () => {
     return R * c;
   };
 
-  const handleCoiffeurClick = (coiffeur: Coiffeur) => {
+  const handleCoiffeurClick = (coiffeur: User) => {
     navigate(`/coiffeur/${coiffeur._id}`);
   };
 
   useEffect(() => {
-    handleSearch();
+    const timeoutId = setTimeout(() => {
+      handleSearch();
+    }, 500); // Délai de 500ms pour éviter les requêtes trop fréquentes
+
+    return () => clearTimeout(timeoutId);
   }, [filters, location]);
 
   const componentFactory = getSearchComponentFactory();
@@ -137,7 +142,7 @@ export const SearchPage: React.FC = () => {
                   key={coiffeur._id}
                   coiffeur={coiffeur}
                   onClick={() => handleCoiffeurClick(coiffeur)}
-                  userLocation={location}
+                  userLocation={location || undefined}
                 />
               ))}
             </div>

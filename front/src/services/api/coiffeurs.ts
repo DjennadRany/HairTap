@@ -35,8 +35,8 @@ export const coiffeurService = {
   },
 
   async getFavorites(coiffeurIds: string[]): Promise<User[]> {
-    const response = await api.post<User[]>('/coiffeurs/favorites', { coiffeurIds });
-    return response.data;
+    const response = await api.post<{ success: boolean; coiffeurs: User[] }>('/coiffeurs/favorites', { coiffeurIds });
+    return response.data.coiffeurs;
   },
 
   async updateCoiffeur(id: string, data: Partial<User>): Promise<User> {
@@ -44,10 +44,10 @@ export const coiffeurService = {
     return response.data;
   },
 
-  async updatePhoto(id: string, photo: File): Promise<User> {
+  async updatePhoto(id: string, photo: File): Promise<{ success: boolean; photo: { url: string; filename: string; size: number } }> {
     const formData = new FormData();
     formData.append('photo', photo);
-    const response = await api.post<User>(`/coiffeurs/${id}/photo`, formData, {
+    const response = await api.post<{ success: boolean; photo: { url: string; filename: string; size: number } }>(`/coiffeurs/${id}/photo`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -55,13 +55,54 @@ export const coiffeurService = {
     return response.data;
   },
 
-  async updateAvailability(id: string, availability: User['workingHours']): Promise<User> {
-    const response = await api.patch<User>(`/coiffeurs/${id}/availability`, { availability });
+  async updateAvailability(id: string, availability: User['workingHours']): Promise<{ success: boolean; coiffeur: User }> {
+    const response = await api.patch<{ success: boolean; coiffeur: User }>(`/coiffeurs/${id}/availability`, { availability });
     return response.data;
   },
 
-  async updateServices(id: string, services: User['services']): Promise<User> {
-    const response = await api.patch<User>(`/coiffeurs/${id}/services`, { services });
+  async updateServices(id: string, services: User['services']): Promise<{ success: boolean; coiffeur: User }> {
+    const response = await api.patch<{ success: boolean; coiffeur: User }>(`/coiffeurs/${id}/services`, { services });
+    return response.data;
+  },
+
+  // Récupérer les services d'un coiffeur
+  async getCoiffeurServices(coiffeurId: string): Promise<any[]> {
+    const response = await api.get(`/coiffeurs/${coiffeurId}/services`);
+    return response.data;
+  },
+
+  // Ajouter un service à un coiffeur
+  async addCoiffeurService(coiffeurId: string, serviceData: any): Promise<any> {
+    const response = await api.post(`/coiffeurs/${coiffeurId}/services`, serviceData);
+    return response.data;
+  },
+
+  // Mettre à jour un service
+  async updateService(coiffeurId: string, serviceId: string, serviceData: any): Promise<any> {
+    const response = await api.put(`/coiffeurs/${coiffeurId}/services/${serviceId}`, serviceData);
+    return response.data;
+  },
+
+  // Supprimer un service
+  async deleteService(coiffeurId: string, serviceId: string): Promise<void> {
+    await api.delete(`/coiffeurs/${coiffeurId}/services/${serviceId}`);
+  },
+
+  // Synchroniser la galerie avec les services
+  async syncGallery(coiffeurId: string): Promise<any> {
+    const response = await api.post(`/coiffeurs/${coiffeurId}/sync-gallery`);
+    return response.data;
+  },
+
+  // Récupérer les statistiques de likes
+  async getLikesStats(coiffeurId: string): Promise<any> {
+    const response = await api.get(`/coiffeurs/${coiffeurId}/likes-stats`);
+    return response.data;
+  },
+
+  // Toggle like sur un service
+  async toggleServiceLike(coiffeurId: string, serviceId: string): Promise<any> {
+    const response = await api.post(`/coiffeurs/${coiffeurId}/services/${serviceId}/like`);
     return response.data;
   }
 }; 

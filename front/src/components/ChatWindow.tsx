@@ -59,7 +59,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ currentUserId, otherUser
   }
 
   return (
-    <div className="flex flex-col h-full border rounded-lg bg-white shadow-md max-w-lg mx-auto">
+    <div className="flex flex-col h-full border rounded-lg bg-fashion-light-gray shadow-md max-w-lg mx-auto">
       <div className="flex items-center gap-3 p-4 border-b bg-gray-50">
         <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-200">
           {otherUser?.photos && otherUser.photos.length > 0 ? (
@@ -128,7 +128,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ currentUserId, otherUser
         })}
         <div ref={bottomRef} />
       </div>
-      <form onSubmit={handleSend} className="flex gap-2 p-4 border-t bg-white">
+      <form onSubmit={handleSend} className="flex gap-2 p-4 border-t bg-fashion-light-gray">
         <input
           type="text"
           value={input}

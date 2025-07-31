@@ -84,7 +84,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
         <button
           type="button"
           onClick={() => toggleFormat('bold')}
-          className={`p-2 rounded ${isBold ? 'bg-blue-500 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'}`}
+          className={`p-2 rounded ${isBold ? 'bg-blue-500 text-white' : 'bg-fashion-light-gray text-gray-700 hover:bg-gray-100'}`}
           title="Gras"
         >
           <strong>B</strong>
@@ -92,7 +92,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
         <button
           type="button"
           onClick={() => toggleFormat('italic')}
-          className={`p-2 rounded ${isItalic ? 'bg-blue-500 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'}`}
+          className={`p-2 rounded ${isItalic ? 'bg-blue-500 text-white' : 'bg-fashion-light-gray text-gray-700 hover:bg-gray-100'}`}
           title="Italique"
         >
           <em>I</em>
@@ -100,7 +100,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
         <button
           type="button"
           onClick={() => toggleFormat('underline')}
-          className={`p-2 rounded ${isUnderline ? 'bg-blue-500 text-white' : 'bg-white text-gray-700 hover:bg-gray-100'}`}
+          className={`p-2 rounded ${isUnderline ? 'bg-blue-500 text-white' : 'bg-fashion-light-gray text-gray-700 hover:bg-gray-100'}`}
           title="Souligné"
         >
           <u>U</u>

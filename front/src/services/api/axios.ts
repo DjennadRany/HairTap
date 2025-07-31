@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: 'http://localhost:5000/api',
   headers: {
     'Content-Type': 'application/json'
   }
@@ -26,12 +26,12 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
+      // Nettoyer le token invalide
       localStorage.removeItem('token');
-      // Ne redirige que si on n'est pas déjà sur /login
-      if (window.location.pathname !== '/login') {
-        window.location.href = '/login';
-      }
-      // Sinon, laisse React gérer l'affichage de l'erreur
+      localStorage.removeItem('user');
+      
+      // Ne pas rediriger automatiquement, laisser AuthProvider gérer
+      console.warn('Token invalide détecté, nettoyage en cours...');
     }
     return Promise.reject(error);
   }

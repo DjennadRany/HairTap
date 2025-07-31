@@ -1,7 +1,8 @@
 import { useCallback, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
-import { setUser } from '../store/slices/authSlice';
+import { useDispatch, useSelector } from 'react-redux';
+import { setUser, setToken, logout } from '../store/slices/authSlice';
+import { selectIsAuthenticated, selectCurrentUser } from '../store/slices/authSlice';
 import { setProfile, resetProfile } from '../store/slices/profileSlice';
 import { authService, LoginCredentials, RegisterData } from '../services/api/auth';
 
@@ -28,24 +29,32 @@ export function useAuth(): AuthHook {
   const dispatch = useDispatch();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('token'));
-  const [user, setUserState] = useState<any | null>(null);
+  
+  // Utiliser le state Redux pour l'authentification
+  const isAuthenticated = useSelector(selectIsAuthenticated);
+  const user = useSelector(selectCurrentUser);
 
   const login = useCallback(async (credentials: LoginCredentials) => {
     try {
       setIsLoading(true);
       setError(null);
+      
       const response = await authService.login(credentials);
       const apiRole = response.user.role as ApiRole;
       const storeRole = convertRole(apiRole);
+      
+      // Mettre à jour le store Redux
       dispatch(setUser({
         _id: response.user._id,
         email: response.user.email,
         name: response.user.name,
-        role: storeRole
+        role: storeRole,
+        photo: response.user.photo
       }));
-      setIsAuthenticated(true);
-      setUserState(response.user);
+      
+      dispatch(setToken(response.token));
+      
+      // Mettre à jour le profil si c'est un client
       if (apiRole === 'user') {
         dispatch(setProfile({
           id: response.user._id,
@@ -57,6 +66,7 @@ export function useAuth(): AuthHook {
           }
         }));
       }
+      
       // Redirection selon le rôle
       if (apiRole === 'coiffeur') {
         navigate('/coiffeur/dashboard');
@@ -64,11 +74,8 @@ export function useAuth(): AuthHook {
         navigate('/client/dashboard');
       }
     } catch (err: any) {
-      localStorage.removeItem('token');
-      setIsAuthenticated(false);
-      setUserState(null);
-      dispatch(setUser(null));
-      dispatch(resetProfile());
+      // En cas d'erreur, nettoyer l'état
+      dispatch(logout() as any);
       if (err?.response?.data?.message) {
         setError(err.response.data.message);
       } else {
@@ -77,21 +84,29 @@ export function useAuth(): AuthHook {
     } finally {
       setIsLoading(false);
     }
-  }, [navigate, dispatch, location.state]);
+  }, [navigate, dispatch]);
 
   const register = useCallback(async (data: RegisterData) => {
     try {
       setIsLoading(true);
       setError(null);
+      
       const response = await authService.register(data);
       const apiRole = response.user.role as ApiRole;
       const storeRole = convertRole(apiRole);
+      
+      // Mettre à jour le store Redux
       dispatch(setUser({
         _id: response.user._id,
         email: response.user.email,
         name: response.user.name,
-        role: storeRole
+        role: storeRole,
+        photo: response.user.photo
       }));
+      
+      dispatch(setToken(response.token));
+      
+      // Mettre à jour le profil si c'est un client
       if (apiRole === 'user') {
         dispatch(setProfile({
           id: response.user._id,
@@ -103,28 +118,43 @@ export function useAuth(): AuthHook {
           }
         }));
       }
+      
+      // Redirection selon le rôle
       if (apiRole === 'coiffeur') {
         navigate('/coiffeur/dashboard');
       } else {
         navigate('/client/dashboard');
       }
-    } catch (err) {
-      setError('Erreur lors de l\'inscription');
+    } catch (err: any) {
+      if (err?.response?.data?.message) {
+        setError(err.response.data.message);
+      } else {
+        setError('Erreur lors de l\'inscription');
+      }
     } finally {
       setIsLoading(false);
     }
   }, [navigate, dispatch]);
 
-  const logout = useCallback(async () => {
+  const handleLogout = useCallback(async () => {
     try {
+      setIsLoading(true);
       await authService.logout();
-      dispatch({ type: 'auth/logout' });
-      localStorage.removeItem('token');
-      setIsAuthenticated(false);
-      setUserState(null);
+      
+      // Nettoyer le store Redux
+      dispatch(logout() as any);
+      dispatch(resetProfile());
+      
+      // Rediriger vers la page d'accueil
       navigate('/');
     } catch (err) {
-      // ignore
+      console.error('Erreur lors de la déconnexion:', err);
+      // Même en cas d'erreur, nettoyer l'état local
+      dispatch(logout() as any);
+      dispatch(resetProfile());
+      navigate('/');
+    } finally {
+      setIsLoading(false);
     }
   }, [navigate, dispatch]);
 
@@ -135,6 +165,6 @@ export function useAuth(): AuthHook {
     user,
     login,
     register,
-    logout
+    logout: handleLogout
   };
 } 

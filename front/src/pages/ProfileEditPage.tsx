@@ -52,7 +52,7 @@ const ProfileEditPage = () => {
       <h1 className="text-2xl font-bold mb-6">Modifier mon profil</h1>
 
       <form onSubmit={handleSubmit(onSubmit)} className="max-w-2xl mx-auto">
-        <div className="bg-white rounded-lg shadow-lg p-6 space-y-6">
+        <div className="bg-fashion-light-gray rounded-lg shadow-lg p-6 space-y-6">
           {/* Informations de base */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">

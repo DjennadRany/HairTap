@@ -109,7 +109,7 @@ export const Map: React.FC<MapViewProps & { onMapClick?: () => void }> = ({
       />
       
       {/* Contrôles de la carte */}
-      <div className="absolute top-4 right-4 z-[1000] bg-white rounded-lg shadow-lg p-2 space-y-2">
+      <div className="absolute top-4 right-4 z-[1000] bg-fashion-light-gray rounded-lg shadow-lg p-2 space-y-2">
         <button
           className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
           title="Mode plein écran"

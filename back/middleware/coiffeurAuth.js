@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 
-export const coiffeurAuth = async (req, res, next) => {
+const coiffeurAuth = async (req, res, next) => {
   try {
     // Vérifier le token
     const token = req.header('Authorization')?.replace('Bearer ', '');
@@ -29,4 +29,6 @@ export const coiffeurAuth = async (req, res, next) => {
   } catch (error) {
     res.status(401).json({ message: 'Token invalide' });
   }
-}; 
+};
+
+export { coiffeurAuth }; 

@@ -24,7 +24,7 @@ const LoginPage = () => {
 
   return (
     <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center bg-[#FAF1E0]">
-      <div className="w-full max-w-md space-y-6 p-8 bg-white rounded-lg shadow-lg">
+      <div className="w-full max-w-md space-y-6 p-8 bg-fashion-light-gray rounded-lg shadow-lg">
         <div className="text-center">
           <h2 className="text-3xl font-bold text-[#000000]">Connexion</h2>
           <p className="mt-2 text-gray-600">

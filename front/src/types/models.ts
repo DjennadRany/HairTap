@@ -8,11 +8,46 @@ export interface User {
   phone?: string;
   address?: {
     street: string;
+    streetNumber?: string;
     city: string;
     postalCode: string;
-    coordinates: {
+    floor?: string;
+    apartment?: string;
+    buildingCode?: string;
+    additionalInfo?: string;
+    coordinates?: {
       lat: number;
       lng: number;
+    };
+  };
+  addresses?: {
+    home?: {
+      street: string;
+      streetNumber?: string;
+      city: string;
+      postalCode: string;
+      floor?: string;
+      apartment?: string;
+      buildingCode?: string;
+      additionalInfo?: string;
+      coordinates?: {
+        lat: number;
+        lng: number;
+      };
+    };
+    office?: {
+      street: string;
+      streetNumber?: string;
+      city: string;
+      postalCode: string;
+      floor?: string;
+      apartment?: string;
+      buildingCode?: string;
+      additionalInfo?: string;
+      coordinates?: {
+        lat: number;
+        lng: number;
+      };
     };
   };
   siren?: string;
@@ -91,8 +126,13 @@ export interface Booking {
   mode: 'salon' | 'domicile';
   address?: {
     street: string;
+    streetNumber?: string;
     city: string;
     postalCode: string;
+    floor?: string;
+    apartment?: string;
+    buildingCode?: string;
+    additionalInfo?: string;
   };
   notes?: string;
   cancellationReason?: string;

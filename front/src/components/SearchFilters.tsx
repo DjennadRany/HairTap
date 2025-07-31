@@ -89,7 +89,7 @@ export const SearchFilters = ({ filters, onFilterChange, isLoading = false }: Se
   };
 
   return (
-    <div className={`space-y-6 bg-white p-6 rounded-lg shadow ${isLoading ? 'opacity-50' : ''}`}>
+    <div className={`space-y-6 bg-fashion-light-gray p-6 rounded-lg shadow ${isLoading ? 'opacity-50' : ''}`}>
       <div ref={wrapperRef} className="relative">
         <label className="block text-sm font-medium text-gray-700 mb-2">Service</label>
         <input
@@ -103,7 +103,7 @@ export const SearchFilters = ({ filters, onFilterChange, isLoading = false }: Se
           disabled={isLoading}
         />
         {showSuggestions && filteredServiceOptions.length > 0 && (
-          <ul className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-b-md shadow-lg max-h-60 overflow-auto">
+          <ul className="absolute z-10 mt-1 w-full bg-fashion-light-gray border border-gray-300 rounded-b-md shadow-lg max-h-60 overflow-auto">
             {filteredServiceOptions.map(opt => (
               <li
                 key={opt}
@@ -219,7 +219,7 @@ export const SearchFilters = ({ filters, onFilterChange, isLoading = false }: Se
       </div>
 
       {isLoading && (
-        <div className="absolute inset-0 bg-white bg-opacity-50 flex items-center justify-center">
+        <div className="absolute inset-0 bg-fashion-light-gray bg-opacity-50 flex items-center justify-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"></div>
         </div>
       )}

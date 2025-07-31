@@ -25,7 +25,7 @@ interface ServiceFormData {
   price: number;
   category: string;
   keywords: string[];
-  examplePhotos: string[];
+  examplePhotos: (string | File)[];
 }
 
 const ServiceModal: React.FC<ServiceModalProps> = ({
@@ -35,17 +35,19 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
   service,
   isLoading = false
 }) => {
+  
   const [formData, setFormData] = useState<ServiceFormData>({
     name: '',
     description: '',
     duration: 30,
     price: 0,
-    category: 'coupe',
+    category: 'autre',
     keywords: [],
     examplePhotos: []
   });
   const [error, setError] = useState<string | null>(null);
   const [newKeyword, setNewKeyword] = useState('');
+  const [existingPhotos, setExistingPhotos] = useState<string[]>([]);
 
   useEffect(() => {
     if (service) {
@@ -56,8 +58,9 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
         price: service.price,
         category: service.category,
         keywords: service.keywords || [],
-        examplePhotos: service.examplePhotos || []
+        examplePhotos: []
       });
+      setExistingPhotos(service.examplePhotos || []);
     } else {
       setFormData({
         name: '',
@@ -68,6 +71,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
         keywords: [],
         examplePhotos: []
       });
+      setExistingPhotos([]);
     }
     setError(null);
     setNewKeyword('');
@@ -82,7 +86,17 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
     }
 
     try {
-      await onSubmit(formData);
+      // Préparer les données avec les images existantes et nouvelles
+      const submitData = {
+        ...formData,
+        examplePhotos: [
+          ...existingPhotos,
+          ...formData.examplePhotos.filter(photo => typeof photo === 'string').map(photo => photo as string),
+          ...formData.examplePhotos.filter(photo => photo instanceof File).map(photo => (photo as File).name)
+        ]
+      };
+      
+      await onSubmit(submitData);
       onClose();
     } catch (error: any) {
       setError(error.response?.data?.message || 'Erreur lors de la sauvegarde');
@@ -109,7 +123,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
-      const newPhotos: string[] = Array.from(files).map(file => URL.createObjectURL(file));
+      const newPhotos: File[] = Array.from(files);
       setFormData({
         ...formData,
         examplePhotos: [...formData.examplePhotos, ...newPhotos]
@@ -124,11 +138,15 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
     });
   };
 
+  const handleRemoveExistingPhoto = (index: number) => {
+    setExistingPhotos(existingPhotos.filter((_, i) => i !== index));
+  };
+
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-fashion-light-gray rounded-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-2xl font-bold text-gray-800">
             {service ? 'Modifier le service' : 'Ajouter un service'}
@@ -159,12 +177,11 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
                 type="text"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
-                placeholder="Ex: Coupe femme moderne"
-                disabled={isLoading}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
+                required
               />
             </div>
-
+            
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Catégorie *
@@ -172,8 +189,8 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
               <select
                 value={formData.category}
                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
-                disabled={isLoading}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
+                required
               >
                 <option value="coupe">Coupe</option>
                 <option value="coloration">Coloration</option>
@@ -194,10 +211,9 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
             <textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
-              rows={4}
-              placeholder="Décrivez votre service en détail..."
-              disabled={isLoading}
+              rows={3}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
+              required
             />
           </div>
 
@@ -209,14 +225,14 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
               <input
                 type="number"
                 value={formData.duration}
-                onChange={(e) => setFormData({ ...formData, duration: parseInt(e.target.value) || 0 })}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
+                onChange={(e) => setFormData({ ...formData, duration: parseInt(e.target.value) })}
                 min="15"
-                max="300"
-                disabled={isLoading}
+                step="15"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
+                required
               />
             </div>
-
+            
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Prix (€) *
@@ -224,11 +240,11 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
               <input
                 type="number"
                 value={formData.price}
-                onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
+                onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) })}
                 min="0"
-                step="0.50"
-                disabled={isLoading}
+                step="0.01"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
+                required
               />
             </div>
           </div>
@@ -238,21 +254,19 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Mots-clés (pour la recherche)
             </label>
-            <div className="flex gap-2 mb-3">
+            <div className="flex gap-2 mb-2">
               <input
                 type="text"
                 value={newKeyword}
                 onChange={(e) => setNewKeyword(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddKeyword())}
-                className="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
                 placeholder="Ajouter un mot-clé..."
-                disabled={isLoading}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
+                onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddKeyword())}
               />
               <button
                 type="button"
                 onClick={handleAddKeyword}
-                className="px-4 py-3 bg-accent text-white rounded-lg hover:bg-accent/90 transition-colors disabled:opacity-50"
-                disabled={isLoading || !newKeyword.trim()}
+                className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent/90 transition-colors"
               >
                 <FaPlus />
               </button>
@@ -262,16 +276,15 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
                 {formData.keywords.map((keyword, index) => (
                   <span
                     key={index}
-                    className="px-3 py-1 bg-accent/10 text-accent rounded-full text-sm flex items-center gap-2"
+                    className="bg-accent/10 text-accent px-3 py-1 rounded-full text-sm flex items-center gap-2"
                   >
-                    <FaTags className="text-xs" />
                     {keyword}
                     <button
                       type="button"
                       onClick={() => handleRemoveKeyword(keyword)}
-                      className="text-accent hover:text-accent/70 transition-colors"
+                      className="text-accent hover:text-accent/70"
                     >
-                      <FaTimes className="text-xs" />
+                      <FaTrash className="text-xs" />
                     </button>
                   </span>
                 ))}
@@ -286,30 +299,61 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
             </label>
             <input
               type="file"
-              accept="image/*"
               multiple
+              accept="image/*"
               onChange={handlePhotoUpload}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
-              disabled={isLoading}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
             />
+            
+            {/* Photos existantes */}
+            {existingPhotos.length > 0 && (
+              <div className="mt-4">
+                <h4 className="text-sm font-medium text-gray-700 mb-2">Photos existantes :</h4>
+                <div className="grid grid-cols-4 gap-2">
+                  {existingPhotos.map((photo, index) => (
+                    <div key={index} className="relative">
+                      <img
+                        src={photo}
+                        alt={`Exemple ${index + 1}`}
+                        className="w-full h-20 object-cover rounded-lg"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveExistingPhoto(index)}
+                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                      >
+                        <FaTrash className="text-xs" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Nouvelles photos */}
             {formData.examplePhotos.length > 0 && (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-3">
-                {formData.examplePhotos.map((photo, index) => (
-                  <div key={index} className="relative group">
-                    <img
-                      src={photo}
-                      alt={`Exemple ${index + 1}`}
-                      className="w-full h-24 object-cover rounded-lg"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => handleRemovePhoto(index)}
-                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <FaTrash className="text-xs" />
-                    </button>
-                  </div>
-                ))}
+              <div className="mt-4">
+                <h4 className="text-sm font-medium text-gray-700 mb-2">Nouvelles photos :</h4>
+                <div className="grid grid-cols-4 gap-2">
+                  {formData.examplePhotos
+                    .filter(photo => photo instanceof File)
+                    .map((photo, index) => (
+                    <div key={index} className="relative">
+                      <img
+                        src={URL.createObjectURL(photo as File)}
+                        alt={`Nouvelle photo ${index + 1}`}
+                        className="w-full h-20 object-cover rounded-lg"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleRemovePhoto(index)}
+                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                      >
+                        <FaTrash className="text-xs" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -327,9 +371,9 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
             <button
               type="submit"
               disabled={isLoading}
-              className="bg-accent text-white px-8 py-3 rounded-lg hover:bg-accent/90 transition-colors disabled:opacity-50 font-medium"
+              className="bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 font-medium shadow-lg"
             >
-              {isLoading ? 'Sauvegarde...' : (service ? 'Modifier' : 'Ajouter')}
+              {isLoading ? 'Sauvegarde...' : 'Modifier'}
             </button>
           </div>
         </form>

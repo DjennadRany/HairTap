@@ -80,7 +80,7 @@ const ClientServicesPage = () => {
       </button>
 
       {/* En-tête du coiffeur */}
-      <div className="flex flex-col md:flex-row gap-8 items-start mb-8 bg-white rounded-lg shadow-lg p-6">
+      <div className="flex flex-col md:flex-row gap-8 items-start mb-8 bg-fashion-light-gray rounded-lg shadow-lg p-6">
         <div className="relative">
           <img 
             src={coiffeur.photo || '/default-avatar.png'} 
@@ -143,7 +143,7 @@ const ClientServicesPage = () => {
       </div>
 
       {/* Section des services */}
-      <div className="bg-white rounded-lg shadow-lg p-6">
+      <div className="bg-fashion-light-gray rounded-lg shadow-lg p-6">
         <ServicesSection
           coiffeurId={coiffeurId || ''}
           isOwner={false}

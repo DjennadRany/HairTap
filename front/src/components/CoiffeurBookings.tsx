@@ -149,7 +149,7 @@ const CoiffeurBookings: React.FC<CoiffeurBookingsProps> = ({ coiffeurId }) => {
         <button
           onClick={() => setFilter('all')}
           className={`px-4 py-2 rounded-lg transition-colors ${
-            filter === 'all' ? 'bg-accent text-white' : 'bg-gray-100 text-gray-700'
+            filter === 'all' ? 'bg-fashion-dark-gray text-white' : 'bg-gray-100 text-gray-700'
           }`}
         >
           Toutes ({bookings.length})
@@ -157,7 +157,7 @@ const CoiffeurBookings: React.FC<CoiffeurBookingsProps> = ({ coiffeurId }) => {
         <button
           onClick={() => setFilter('pending')}
           className={`px-4 py-2 rounded-lg transition-colors ${
-            filter === 'pending' ? 'bg-accent text-white' : 'bg-gray-100 text-gray-700'
+            filter === 'pending' ? 'bg-fashion-dark-gray text-white' : 'bg-gray-100 text-gray-700'
           }`}
         >
           En attente ({bookings.filter(b => b.status === 'pending').length})
@@ -165,7 +165,7 @@ const CoiffeurBookings: React.FC<CoiffeurBookingsProps> = ({ coiffeurId }) => {
         <button
           onClick={() => setFilter('confirmed')}
           className={`px-4 py-2 rounded-lg transition-colors ${
-            filter === 'confirmed' ? 'bg-accent text-white' : 'bg-gray-100 text-gray-700'
+            filter === 'confirmed' ? 'bg-fashion-dark-gray text-white' : 'bg-gray-100 text-gray-700'
           }`}
         >
           Confirmées ({bookings.filter(b => b.status === 'confirmed').length})
@@ -173,7 +173,7 @@ const CoiffeurBookings: React.FC<CoiffeurBookingsProps> = ({ coiffeurId }) => {
         <button
           onClick={() => setFilter('completed')}
           className={`px-4 py-2 rounded-lg transition-colors ${
-            filter === 'completed' ? 'bg-accent text-white' : 'bg-gray-100 text-gray-700'
+            filter === 'completed' ? 'bg-fashion-dark-gray text-white' : 'bg-gray-100 text-gray-700'
           }`}
         >
           Terminées ({bookings.filter(b => b.status === 'completed').length})

@@ -4,10 +4,12 @@ import { useSelector } from 'react-redux';
 import { selectCurrentUser } from '../store/slices/authSlice';
 import { userService } from '../services/api/users';
 import { reviewService } from '../services/api/reviews';
+import { favoriteService } from '../services/api/favorites';
 import type { User } from '../types/models';
-import { FaStar, FaMapMarkerAlt, FaClock, FaPhone, FaEnvelope, FaHeart, FaHeartBroken } from 'react-icons/fa';
+import { FaStar, FaMapMarkerAlt, FaClock, FaPhone, FaEnvelope, FaHeart, FaHeartBroken, FaCamera, FaSpinner } from 'react-icons/fa';
 import { MdVerified } from 'react-icons/md';
 import ServicesSection from '../components/ServicesSection';
+import Gallery from '../components/Gallery';
 import BookingForm from '../components/BookingForm';
 import Modal from '../components/ui/Modal';
 import { Card } from '../components/ui/card';
@@ -23,11 +25,16 @@ const CoiffeurProfilePage = () => {
 
   const [coiffeur, setCoiffeur] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'services' | 'reviews'>('services');
+  const [activeTab, setActiveTab] = useState<'gallery' | 'services' | 'reviews'>('gallery');
   const [isFavorite, setIsFavorite] = useState(false);
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [selectedService, setSelectedService] = useState<any>(null);
   const [reviews, setReviews] = useState<any[]>([]);
+  
+  // États pour l'upload de photo de profil
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [photoError, setPhotoError] = useState<string>('');
+  const [photoSuccess, setPhotoSuccess] = useState<string>('');
 
   useEffect(() => {
     if (!id) return;
@@ -45,8 +52,8 @@ const CoiffeurProfilePage = () => {
         // Vérifier si le coiffeur est en favori
         if (user && isClient) {
           try {
-            const favorites = await userService.getFavorites();
-            setIsFavorite(favorites.some((fav: any) => fav._id === id));
+            const isFav = await favoriteService.isFavorite(id);
+            setIsFavorite(isFav);
           } catch (error) {
             console.error('Error checking favorites:', error);
           }
@@ -77,13 +84,56 @@ const CoiffeurProfilePage = () => {
 
     try {
       if (isFavorite) {
-        await userService.removeFromFavorites(coiffeur._id);
+        await favoriteService.removeFavorite(coiffeur._id);
       } else {
-        await userService.addToFavorites(coiffeur._id);
+        await favoriteService.addFavorite(coiffeur._id);
       }
       setIsFavorite(!isFavorite);
     } catch (error) {
       console.error('Error toggling favorite:', error);
+    }
+  };
+
+  // Fonction pour uploader une photo de profil
+  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !coiffeur) return;
+
+    // Validation du fichier
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      setPhotoError('Type de fichier non autorisé. Utilisez JPEG, PNG ou WebP.');
+      return;
+    }
+
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      setPhotoError('Fichier trop volumineux. Taille maximum : 5MB.');
+      return;
+    }
+
+    try {
+      setIsUploadingPhoto(true);
+      setPhotoError('');
+      setPhotoSuccess('');
+
+      const result = await userService.uploadProfilePhoto(coiffeur._id, file);
+      
+      if (result.success) {
+        // Mettre à jour l'état local
+        setCoiffeur({
+          ...coiffeur,
+          photo: result.photo.url
+        });
+        setPhotoSuccess('Photo de profil mise à jour avec succès !');
+      } else {
+        setPhotoError('Erreur lors de l\'upload de la photo');
+      }
+    } catch (error: any) {
+      console.error('Erreur upload photo:', error);
+      setPhotoError(error.response?.data?.message || 'Erreur lors de l\'upload de la photo');
+    } finally {
+      setIsUploadingPhoto(false);
     }
   };
 
@@ -112,18 +162,59 @@ const CoiffeurProfilePage = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       {/* En-tête du profil */}
-      <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+      <div className="bg-fashion-light-gray rounded-lg shadow-lg p-6 mb-6">
         <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
-          {/* Photo de profil */}
+          {/* Photo de profil avec upload pour le propriétaire */}
           <div className="relative">
-            <img
-              src={coiffeur.photo || '/default-avatar.png'}
-              alt={coiffeur.name}
-              className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-lg"
-            />
-            {coiffeur.sirenStatus === 'verified' && (
-              <div className="absolute -bottom-2 -right-2 bg-blue-500 text-white rounded-full p-1">
-                <MdVerified className="text-lg" />
+            <div className="relative group">
+              <img
+                src={coiffeur.photo || '/default-avatar.png'}
+                alt={coiffeur.name}
+                className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-lg"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = '/default-avatar.png';
+                }}
+              />
+              
+              {/* Badge vérifié */}
+              {coiffeur.sirenStatus === 'verified' && (
+                <div className="absolute -bottom-2 -right-2 bg-blue-500 text-white rounded-full p-1">
+                  <MdVerified className="text-lg" />
+                </div>
+              )}
+              
+              {/* Bouton upload pour le propriétaire - TOUJOURS VISIBLE */}
+              {isOwner && (
+                <div className="absolute inset-0 rounded-full bg-black/30 flex items-center justify-center">
+                  <label className="cursor-pointer">
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/jpg,image/png,image/webp"
+                      onChange={handlePhotoUpload}
+                      className="hidden"
+                      disabled={isUploadingPhoto}
+                    />
+                    <div className="p-2 bg-fashion-light-gray/80 hover:bg-fashion-light-gray text-gray-800 rounded-full transition-colors duration-200">
+                      {isUploadingPhoto ? <FaSpinner className="animate-spin" /> : <FaCamera />}
+                    </div>
+                  </label>
+                </div>
+              )}
+            </div>
+            
+            {/* Messages d'état pour l'upload - TOUJOURS VISIBLE */}
+            {isOwner && (
+              <div className="mt-2 text-center">
+                {photoError && (
+                  <div className="text-red-600 text-xs mb-1">{photoError}</div>
+                )}
+                {photoSuccess && (
+                  <div className="text-green-600 text-xs mb-1">{photoSuccess}</div>
+                )}
+                <div className="text-xs text-gray-500">
+                  {isUploadingPhoto ? 'Upload en cours...' : 'Cliquez pour changer'}
+                </div>
               </div>
             )}
           </div>
@@ -199,12 +290,6 @@ const CoiffeurProfilePage = () => {
                       : 'Domicile uniquement'}
                   </span>
                 </div>
-                {coiffeur.travelRadius && (
-                  <div className="flex items-center gap-1">
-                    <FaClock />
-                    <span>Rayon: {coiffeur.travelRadius}km</span>
-                  </div>
-                )}
               </div>
             )}
           </div>
@@ -214,10 +299,20 @@ const CoiffeurProfilePage = () => {
       {/* Onglets */}
       <div className="flex gap-2 mb-6">
         <button
+          onClick={() => setActiveTab('gallery')}
+          className={`px-4 py-2 rounded-lg transition-colors ${
+            activeTab === 'gallery'
+              ? 'bg-fashion-dark-gray text-white'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+          }`}
+        >
+          Galerie
+        </button>
+        <button
           onClick={() => setActiveTab('services')}
           className={`px-4 py-2 rounded-lg transition-colors ${
             activeTab === 'services'
-              ? 'bg-accent text-white'
+              ? 'bg-fashion-dark-gray text-white'
               : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
           }`}
         >
@@ -227,7 +322,7 @@ const CoiffeurProfilePage = () => {
           onClick={() => setActiveTab('reviews')}
           className={`px-4 py-2 rounded-lg transition-colors ${
             activeTab === 'reviews'
-              ? 'bg-accent text-white'
+              ? 'bg-fashion-dark-gray text-white'
               : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
           }`}
         >
@@ -236,12 +331,18 @@ const CoiffeurProfilePage = () => {
       </div>
 
       {/* Contenu des onglets */}
-      {activeTab === 'services' ? (
+      {activeTab === 'gallery' ? (
+        <Gallery
+          coiffeurId={id || ''}
+          isOwner={isOwner || false}
+          onServiceBook={handleServiceBook}
+        />
+      ) : activeTab === 'services' ? (
         <ServicesSection
           coiffeurId={id || ''}
           isOwner={isOwner || false}
           onServiceBook={handleServiceBook}
-          showBookButton={isClient || false}
+          showBookButton={true}
         />
       ) : (
         <div className="space-y-4">
@@ -292,18 +393,14 @@ const CoiffeurProfilePage = () => {
           open={showBookingModal}
           onClose={() => setShowBookingModal(false)}
           title="Réserver un service"
+          size="xl"
         >
-          <div className="p-4">
-            <h3 className="text-lg font-semibold mb-4">
-              Réserver avec {coiffeur.name}
-            </h3>
-            <BookingForm
-              coiffeur={coiffeur}
-              selectedService={selectedService}
-              onSuccess={handleBookingSuccess}
-              onCancel={() => setShowBookingModal(false)}
-            />
-          </div>
+          <BookingForm
+            coiffeur={coiffeur}
+            selectedService={selectedService}
+            onSuccess={handleBookingSuccess}
+            onCancel={() => setShowBookingModal(false)}
+          />
         </Modal>
       )}
     </div>

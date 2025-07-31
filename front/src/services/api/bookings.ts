@@ -55,8 +55,8 @@ export const bookingService = {
     return response.data;
   },
 
-  // Créer une nouvelle réservation
-  createBooking: async (bookingData: any) => {
+  // Créer une nouvelle réservation - AVEC VALIDATION
+  createBooking: async (bookingData: any): Promise<{ success: boolean; data: any; message: string }> => {
     const response = await api.post('/bookings', bookingData);
     return response.data;
   },

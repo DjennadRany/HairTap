@@ -2,89 +2,136 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Styles globaux pour le design fashion week */
 @layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
-
-    --primary: 0 0% 0%;
-    --primary-foreground: 0 0% 98%;
- 
-    --secondary: 39 74% 94%;
-    --secondary-foreground: 0 0% 9%;
- 
-    --accent: 6 68% 62%;
-    --accent-foreground: 0 0% 98%;
- 
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
- 
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
- 
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
- 
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
- 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-
-    --radius: 0.5rem;
+  html {
+    scroll-behavior: smooth;
   }
- 
-  .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
- 
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
- 
-    --secondary: 39 74% 94%;
-    --secondary-foreground: 0 0% 98%;
- 
-    --accent: 6 68% 62%;
-    --accent-foreground: 0 0% 9%;
- 
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
- 
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
- 
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
- 
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
- 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-  }
-
-  * {
-    @apply border-border;
-  }
+  
   body {
-    @apply bg-background text-foreground;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+    background-color: #f8f9fa;
+    color: #1a1a1a;
+  }
+
+  /* Polices personnalisées */
+  .font-fashion {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  }
+
+  .font-elegant {
+    font-family: 'Playfair Display', Georgia, serif;
   }
 }
 
 @layer components {
-  .btn {
-    @apply px-4 py-2 rounded-md font-medium transition-colors;
+  /* Boutons fashion week */
+  .btn-fashion {
+    @apply px-6 py-3 rounded-full font-fashion font-medium transition-all duration-300 transform hover:scale-105 shadow-lg;
   }
-  
-  .btn-primary {
-    @apply bg-accent text-white hover:bg-accent/90;
+
+  .btn-fashion-primary {
+    @apply bg-fashion-black text-white hover:bg-fashion-gray-800;
   }
-  
-  .btn-outline {
-    @apply border-2 border-accent text-accent hover:bg-accent hover:text-white;
+
+  .btn-fashion-secondary {
+    @apply bg-fashion-light-gray/10 backdrop-blur-md text-white border-2 border-white/30 hover:bg-fashion-light-gray/20 hover:border-white/50;
   }
-  
-  .input {
-    @apply w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent;
+
+  /* Cards fashion week */
+  .card-fashion {
+    @apply bg-fashion-light-gray/95 backdrop-blur-md border border-fashion-gray-200 rounded-xl shadow-xl;
   }
+
+  /* Inputs fashion week */
+  .input-fashion {
+    @apply w-full px-4 py-3 border border-fashion-gray-300 rounded-lg focus:ring-2 focus:ring-fashion-black focus:border-transparent transition-all duration-200;
+  }
+
+  /* Animations personnalisées */
+  .animate-gradient {
+    animation: gradient 15s ease infinite;
+  }
+
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+
+  .animate-fade-in {
+    animation: fade-in 0.6s ease-out;
+  }
+
+  .animate-slide-up {
+    animation: slide-up 0.8s ease-out;
+  }
+}
+
+@layer utilities {
+  /* Utilitaires fashion week */
+  .text-fashion-black {
+    color: #1a1a1a;
+  }
+
+  .bg-fashion-black {
+    background-color: #1a1a1a;
+  }
+
+  .border-fashion-black {
+    border-color: #1a1a1a;
+  }
+
+  /* Gradients fashion week */
+  .bg-gradient-fashion {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+  }
+
+  /* Backdrop blur fashion week */
+  .backdrop-blur-fashion {
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+}
+
+/* Scrollbar personnalisée */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f5f5f5;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1a1a1a;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #404040;
+}
+
+/* Focus styles */
+*:focus {
+  outline: 2px solid #1a1a1a;
+  outline-offset: 2px;
+}
+
+/* Selection styles */
+::selection {
+  background-color: #1a1a1a;
+  color: white;
+}
+
+/* Loading states */
+.loading-fashion {
+  @apply animate-pulse bg-fashion-gray-200;
+}
+
+/* Hover effects */
+.hover-lift {
+  @apply transition-transform duration-300 hover:scale-105;
+}
+
+.hover-glow {
+  @apply transition-shadow duration-300 hover:shadow-2xl;
 }

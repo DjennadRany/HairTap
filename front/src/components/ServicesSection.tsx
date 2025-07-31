@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { selectCurrentUser } from '../store/slices/authSlice';
-import { userService } from '../services/api/users';
+import { coiffeurService } from '../services/api/coiffeurs';
 import ServiceCard from './ServiceCard';
 import ServiceModal from './ServiceModal';
 import { FaPlus } from 'react-icons/fa';
@@ -21,9 +21,9 @@ interface Service {
   duration: number;
   price: number;
   category: string;
-  keywords: string[];
-  examplePhotos: string[];
-  likes: number;
+  keywords?: string[];
+  examplePhotos?: string[];
+  likes?: number;
   isLiked?: boolean;
   coiffeur: string;
   isActive: boolean;
@@ -53,7 +53,7 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({
   const fetchServices = async () => {
     try {
       setLoading(true);
-      const servicesData = await userService.getCoiffeurServices(coiffeurId);
+      const servicesData = await coiffeurService.getCoiffeurServices(coiffeurId);
       // Enrichir les services avec les propriétés par défaut
       const enrichedServices = servicesData.map(service => ({
         ...service,
@@ -75,65 +75,56 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({
     setShowModal(true);
   };
 
-  const handleEditService = (service: Service) => {
-    setEditingService(service);
-    setShowModal(true);
+  const handleEditService = (serviceId: string) => {
+    const service = services.find(s => s._id === serviceId);
+    if (service) {
+      setEditingService(service);
+      setShowModal(true);
+    }
   };
 
   const handleDeleteService = async (serviceId: string) => {
     if (window.confirm('Êtes-vous sûr de vouloir supprimer ce service ?')) {
       try {
-        await userService.deleteService(coiffeurId, serviceId);
-        setServices(services.filter(s => s._id !== serviceId));
-        setSuccessMessage('Service supprimé avec succès !');
-        setTimeout(() => setSuccessMessage(null), 3000);
+        await coiffeurService.deleteService(coiffeurId, serviceId);
+        setSuccessMessage('Service supprimé avec succès');
+        fetchServices();
       } catch (error) {
         console.error('Error deleting service:', error);
       }
     }
   };
 
-  const handleLikeService = async (serviceId: string) => {
-    if (!user) return;
-    
+  const handleServiceSubmit = async (serviceData: any) => {
     try {
-      await userService.toggleServiceLike(coiffeurId, serviceId);
-      setServices(services.map(service => 
-        service._id === serviceId 
-          ? { ...service, isLiked: !service.isLiked, likes: service.isLiked ? service.likes - 1 : service.likes + 1 }
-          : service
-      ));
-    } catch (error) {
-      console.error('Error toggling like:', error);
-    }
-  };
-
-  const handleSubmitService = async (serviceData: any) => {
-    setIsSubmitting(true);
-    try {
+      setIsSubmitting(true);
       if (editingService) {
-        const updatedService = await userService.updateService(coiffeurId, editingService._id, serviceData);
-        setServices(services.map(s => s._id === editingService._id ? { ...updatedService, keywords: updatedService.keywords || [], examplePhotos: updatedService.examplePhotos || [], likes: updatedService.likes || 0, isLiked: updatedService.isLiked || false } : s));
-        setSuccessMessage('Service modifié avec succès !');
+        await coiffeurService.updateService(coiffeurId, editingService._id, serviceData);
+        setSuccessMessage('Service mis à jour avec succès');
       } else {
-        const newService = await userService.addCoiffeurService(coiffeurId, serviceData);
-        setServices([{ ...newService, keywords: newService.keywords || [], examplePhotos: newService.examplePhotos || [], likes: newService.likes || 0, isLiked: newService.isLiked || false }, ...services]);
-        setSuccessMessage('Service ajouté avec succès !');
+        await coiffeurService.addCoiffeurService(coiffeurId, serviceData);
+        setSuccessMessage('Service créé avec succès');
       }
-      setTimeout(() => setSuccessMessage(null), 3000);
+      setShowModal(false);
+      setEditingService(null);
+      fetchServices();
     } catch (error) {
-      throw error;
+      console.error('Error submitting service:', error);
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleServiceBook = (serviceId: string) => {
-    if (onServiceBook) {
-      const service = services.find(s => s._id === serviceId);
-      if (service) {
-        onServiceBook(service);
-      }
+    const service = services.find(s => s._id === serviceId);
+    if (service && onServiceBook) {
+      onServiceBook(service);
+    }
+  };
+
+  const handleServiceLike = (serviceId: string) => {
+    if (onServiceLike) {
+      onServiceLike(serviceId);
     }
   };
 
@@ -147,67 +138,73 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({
   }
 
   return (
-    <div>
-      {/* Messages de succès */}
-      {successMessage && (
-        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-          {successMessage}
-        </div>
-      )}
-
-      {/* En-tête avec bouton d'ajout */}
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold">Services</h2>
-        {isOwner && (
+    <div className="space-y-6">
+      {/* En-tête avec bouton d'ajout pour les propriétaires */}
+      {isOwner && (
+        <div className="flex justify-between items-center">
+          <h2 className="text-2xl font-bold text-gray-800">Mes Services</h2>
           <button
             onClick={handleAddService}
             className="bg-accent text-white px-4 py-2 rounded-lg hover:bg-accent/90 transition-colors flex items-center gap-2"
           >
-            <FaPlus /> Ajouter un service
+            <FaPlus />
+            Ajouter un service
           </button>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* Messages de succès */}
+      {successMessage && (
+        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
+          {successMessage}
+        </div>
+      )}
 
       {/* Liste des services */}
       {services.length === 0 ? (
         <div className="text-center py-8">
-          <p className="text-gray-600 mb-4">
-            {isOwner ? 'Aucun service disponible pour le moment.' : 'Aucun service disponible.'}
+          <p className="text-gray-600">
+            {isOwner ? 'Aucun service créé pour le moment' : 'Aucun service disponible'}
           </p>
           {isOwner && (
             <button
               onClick={handleAddService}
-              className="bg-accent text-white px-6 py-3 rounded-lg hover:bg-accent/90 transition-colors"
+              className="mt-4 bg-accent text-white px-6 py-2 rounded-lg hover:bg-accent/90 transition-colors"
             >
-              Ajouter votre premier service
+              Créer votre premier service
             </button>
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {services.map((service) => (
             <ServiceCard
               key={service._id}
               service={service}
               isOwner={isOwner}
               showBookButton={showBookButton}
-              onEdit={isOwner ? () => handleEditService(service) : undefined}
-              onDelete={isOwner ? () => handleDeleteService(service._id) : undefined}
-              onBook={!isOwner ? () => handleServiceBook(service._id) : undefined}
-              onLike={!isOwner ? () => handleLikeService(service._id) : undefined}
+              onEdit={isOwner ? handleEditService : undefined}
+              onDelete={isOwner ? handleDeleteService : undefined}
+              onBook={!isOwner && showBookButton ? handleServiceBook : undefined}
+              onLike={!isOwner ? handleServiceLike : undefined}
             />
           ))}
         </div>
       )}
 
       {/* Modal pour ajouter/modifier un service */}
-      <ServiceModal
-        isOpen={showModal}
-        onClose={() => setShowModal(false)}
-        onSubmit={handleSubmitService}
-        service={editingService || undefined}
-        isLoading={isSubmitting}
-      />
+      {showModal && (
+        <ServiceModal
+          isOpen={showModal}
+          onClose={() => {
+            setShowModal(false);
+            setEditingService(null);
+          }}
+          service={editingService || undefined}
+          onSubmit={handleServiceSubmit}
+          isLoading={isSubmitting}
+        />
+      )}
     </div>
   );
 };
