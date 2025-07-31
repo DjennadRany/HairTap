@@ -2,7 +2,7 @@ import express from 'express';
 import User from '../models/User.js';
 import jwt from 'jsonwebtoken';
 import { OAuth2Client } from 'google-auth-library';
-import auth from '../middleware/auth.js';
+import { auth } from '../middleware/auth.js';
 import { validateAuth } from '../middleware/validate.js';
 import bcrypt from 'bcryptjs';
 
@@ -252,6 +252,43 @@ router.post('/reset-password', async (req, res) => {
   } catch (error) {
     console.error('Reset password error:', error);
     res.status(500).json({ message: 'Erreur lors de la réinitialisation du mot de passe' });
+  }
+});
+
+// Vérifier la validité du token
+router.get('/verify', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(401).json({ message: 'Utilisateur non trouvé' });
+    }
+
+    // Générer un nouveau token (refresh)
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
+    res.json({
+      token,
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        photo: user.photo,
+        ...(user.role === 'coiffeur' && {
+          speciality: user.speciality,
+          address: user.address,
+          rating: user.rating,
+          priceRange: user.priceRange
+        })
+      }
+    });
+  } catch (error) {
+    console.error('Verify token error:', error);
+    res.status(401).json({ message: 'Token invalide' });
   }
 });
 

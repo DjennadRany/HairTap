@@ -1,6 +1,6 @@
 import { logger } from '../utils/logger.js';
 
-export const errorHandler = (err, req, res, next) => {
+const errorHandler = (err, req, res, next) => {
   logger.error(err.stack);
 
   const statusCode = err.statusCode || 500;
@@ -15,7 +15,7 @@ export const errorHandler = (err, req, res, next) => {
   });
 };
 
-export class AppError extends Error {
+class AppError extends Error {
   constructor(message, statusCode) {
     super(message);
     this.statusCode = statusCode;
@@ -24,4 +24,6 @@ export class AppError extends Error {
 
     Error.captureStackTrace(this, this.constructor);
   }
-} 
+}
+
+export { errorHandler, AppError }; 

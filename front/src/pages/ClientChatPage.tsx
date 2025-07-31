@@ -49,7 +49,7 @@ export const ClientChatPage: React.FC = () => {
   if (!user) return <div>Veuillez vous connecter.</div>;
 
   return (
-    <div className="flex h-[80vh] max-w-4xl mx-auto mt-8 border rounded-lg shadow bg-white">
+    <div className="flex h-[80vh] max-w-4xl mx-auto mt-8 border rounded-lg shadow bg-fashion-light-gray">
       <div className="w-1/3 border-r p-4 overflow-y-auto">
         <h2 className="font-bold text-lg mb-4">Mes coiffeurs</h2>
         <ul className="space-y-2">
@@ -60,7 +60,7 @@ export const ClientChatPage: React.FC = () => {
             const lastMsg = conv.lastMessage;
             const isUnread = conv.unread > 0;
             return (
-              <li key={coiffeur._id} className="bg-white rounded-lg shadow p-4 flex items-center gap-4">
+              <li key={coiffeur._id} className="bg-fashion-light-gray rounded-lg shadow p-4 flex items-center gap-4">
                 <img
                   src={coiffeur.photo || '/default-avatar.png'}
                   alt={coiffeur.name}

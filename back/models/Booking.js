@@ -50,11 +50,31 @@ const bookingSchema = new mongoose.Schema({
       type: String,
       trim: true
     },
+    streetNumber: {
+      type: String,
+      trim: true
+    },
     city: {
       type: String,
       trim: true
     },
     postalCode: {
+      type: String,
+      trim: true
+    },
+    floor: {
+      type: String,
+      trim: true
+    },
+    apartment: {
+      type: String,
+      trim: true
+    },
+    buildingCode: {
+      type: String,
+      trim: true
+    },
+    additionalInfo: {
       type: String,
       trim: true
     }

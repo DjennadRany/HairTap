@@ -22,6 +22,7 @@ import serviceRoutes from './routes/services.js';
 import chatRoutes from './routes/chat.js';
 import favoriteRoutes from './routes/favorites.js';
 import reviewRoutes from './routes/reviews.js';
+import imageRoutes from './routes/images.js';
 
 const envPath = path.resolve(process.cwd(), '.env');
 console.log('[DEBUG] .env path:', envPath, 'Exists:', fs.existsSync(envPath));
@@ -33,16 +34,18 @@ const app = express();
 // Security Middleware
 app.use(helmet());
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
-  credentials: true
+  origin: ['http://localhost:5173', 'http://localhost:3000'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Rate Limiting
-const limiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
-  max: parseInt(process.env.RATE_LIMIT_MAX) || 10000
-});
-app.use(limiter);
+// Rate Limiting - Désactivé pour le développement
+// const limiter = rateLimit({
+//   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 1 * 60 * 1000, // 1 minute
+//   max: parseInt(process.env.RATE_LIMIT_MAX) || 1000 // 1000 requêtes par minute
+// });
+// app.use(limiter);
 
 // Body Parser
 app.use(express.json());
@@ -85,6 +88,10 @@ app.use('/api/services', serviceRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/favorites', favoriteRoutes);
 app.use('/api/reviews', reviewRoutes);
+app.use('/api/images', imageRoutes);
+
+// Configuration pour servir les fichiers statiques
+app.use('/uploads', express.static('uploads'));
 
 // Error Handling
 app.use(errorHandler);

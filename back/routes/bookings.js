@@ -1,6 +1,6 @@
 import express from 'express';
 import Booking from '../models/Booking.js';
-import auth from '../middleware/auth.js';
+import { auth } from '../middleware/auth.js';
 import { validateBooking } from '../middleware/validate.js';
 
 const router = express.Router();
@@ -76,9 +76,11 @@ router.get('/:id', auth, async (req, res) => {
   }
 });
 
-// Créer une nouvelle réservation
+// Créer une nouvelle réservation - AVEC VALIDATION DISPONIBILITÉ
 router.post('/', auth, async (req, res) => {
   try {
+    console.log('🔧 Données reçues pour réservation:', req.body);
+    
     const {
       coiffeur,
       service,
@@ -92,17 +94,78 @@ router.post('/', auth, async (req, res) => {
 
     // Validation des données requises
     if (!coiffeur || !service || !date || !duration || !price || !mode) {
+      console.log('❌ Données manquantes:', { coiffeur, service, date, duration, price, mode });
       return res.status(400).json({ 
+        success: false,
         message: 'Données manquantes pour créer la réservation' 
       });
     }
 
+    // VALIDATION DISPONIBILITÉ - CORRIGÉE
+    const bookingDate = new Date(date);
+    const endTime = new Date(bookingDate.getTime() + duration * 60000);
+    
+    console.log('🔍 Vérification disponibilité:', {
+      coiffeur,
+      bookingDate: bookingDate.toISOString(),
+      endTime: endTime.toISOString(),
+      duration
+    });
+    
+    // Vérifier les conflits de réservation (version ultra-simple)
+    const conflictingBookings = await Booking.find({
+      coiffeur,
+      status: { $nin: ['cancelled', 'completed'] },
+      date: bookingDate
+    });
+
+    // Afficher toutes les réservations existantes pour ce coiffeur
+    const allBookings = await Booking.find({
+      coiffeur,
+      status: { $nin: ['cancelled', 'completed'] }
+    }).sort({ date: 1 });
+    
+    console.log('📊 Toutes les réservations existantes pour ce coiffeur:', allBookings.map(b => ({
+      date: b.date.toISOString(),
+      service: b.service,
+      duration: b.duration,
+      status: b.status
+    })));
+    
+    console.log('🔍 Réservations conflictuelles trouvées:', conflictingBookings.length);
+    if (conflictingBookings.length > 0) {
+      console.log('📅 Créneaux conflictuels:', conflictingBookings.map(b => ({
+        date: b.date.toISOString(),
+        service: b.service,
+        duration: b.duration
+      })));
+    }
+
+    if (conflictingBookings.length > 0) {
+      return res.status(409).json({
+        success: false,
+        message: 'Créneau non disponible, veuillez choisir un autre horaire'
+      });
+    }
+
     // Créer la réservation
+    console.log('🔧 Création de la réservation avec:', {
+      client: req.user.id,
+      coiffeur,
+      service,
+      date: bookingDate,
+      duration,
+      price,
+      mode,
+      address,
+      notes
+    });
+    
     const booking = new Booking({
       client: req.user.id,
       coiffeur,
-      service, // On stocke le nom du service pour l'instant
-      date: new Date(date),
+      service,
+      date: bookingDate,
       duration,
       price,
       mode,
@@ -112,18 +175,25 @@ router.post('/', auth, async (req, res) => {
       paymentStatus: 'pending'
     });
 
+    console.log('✅ Réservation créée, sauvegarde...');
     await booking.save();
+    console.log('✅ Réservation sauvegardée avec succès');
     
     // Populate les références pour la réponse
     await booking.populate('client', 'name email');
     await booking.populate('coiffeur', 'name email');
 
-    res.status(201).json(booking);
+    // Réponse standardisée
+    res.status(201).json({
+      success: true,
+      data: booking,
+      message: 'Réservation créée avec succès'
+    });
   } catch (error) {
     console.error('Create booking error:', error);
     res.status(500).json({ 
-      message: 'Erreur lors de la création de la réservation',
-      error: error.message 
+      success: false,
+      message: 'Erreur lors de la création de la réservation'
     });
   }
 });

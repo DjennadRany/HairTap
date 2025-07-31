@@ -1,119 +1,59 @@
 import api from './axios';
-import type { User } from '../../types/models';
-
-// Type pour les services coiffeur avec nouvelles propriétés
-interface CoiffeurService {
-  _id: string;
-  name: string;
-  description: string;
-  duration: number;
-  price: number;
-  category: string;
-  keywords: string[];
-  examplePhotos: string[];
-  likes: number;
-  isLiked?: boolean;
-  coiffeur: string;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
+import { User } from '../../types/models';
 
 export const userService = {
-  getUser: async (_id: string): Promise<User> => {
-    const response = await api.get(`/coiffeurs/${_id}`);
-    return response.data;
-  },
-  
-  getCoiffeurServices: async (coiffeurId: string): Promise<CoiffeurService[]> => {
-    const response = await api.get(`/coiffeurs/${coiffeurId}/services`);
-    return response.data;
-  },
-  
-  addCoiffeurService: async (coiffeurId: string, serviceData: {
-    name: string;
-    description: string;
-    duration: number;
-    price: number;
-    category: string;
-    keywords?: string[];
-    examplePhotos?: string[];
-  }): Promise<CoiffeurService> => {
-    const response = await api.post(`/coiffeurs/${coiffeurId}/services`, serviceData);
+  // Récupérer un utilisateur par ID
+  async getUser(id: string): Promise<User> {
+    const response = await api.get<User>(`/users/${id}`);
     return response.data;
   },
 
-  updateService: async (coiffeurId: string, serviceId: string, serviceData: {
-    name: string;
-    description: string;
-    duration: number;
-    price: number;
-    category: string;
-    keywords?: string[];
-    examplePhotos?: string[];
-  }): Promise<CoiffeurService> => {
-    const response = await api.put(`/coiffeurs/${coiffeurId}/services/${serviceId}`, serviceData);
+  // Mettre à jour un utilisateur
+  async updateUser(id: string, data: Partial<User>): Promise<User> {
+    console.log('🚀 [userService] Envoi de la mise à jour pour l\'utilisateur:', id);
+    console.log('📦 [userService] Données envoyées:', JSON.stringify(data, null, 2));
+    
+    const response = await api.patch<User>(`/users/${id}`, data);
+    
+    console.log('✅ [userService] Réponse reçue:', JSON.stringify(response.data, null, 2));
     return response.data;
   },
 
-  // Supprimer un service
-  deleteService: async (coiffeurId: string, serviceId: string) => {
-    const response = await api.delete(`/coiffeurs/${coiffeurId}/services/${serviceId}`);
+  // Upload de photo de profil - CORRIGÉ
+  async uploadProfilePhoto(id: string, file: File): Promise<{ success: boolean; photo: { url: string }; message: string }> {
+    const formData = new FormData();
+    formData.append('image', file);
+
+    const response = await api.post(`/users/${id}/photo`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
     return response.data;
   },
 
-  // Synchroniser la galerie avec les images des services
-  syncGallery: async (coiffeurId: string) => {
-    const response = await api.post(`/coiffeurs/${coiffeurId}/sync-gallery`);
+  // Supprimer la photo de profil
+  async deleteProfilePhoto(id: string): Promise<{ success: boolean; message: string }> {
+    const response = await api.delete(`/users/${id}/photo`);
     return response.data;
   },
 
-  // Toggle like sur un service
-  toggleServiceLike: async (coiffeurId: string, serviceId: string) => {
-    const response = await api.post(`/coiffeurs/${coiffeurId}/services/${serviceId}/like`);
+  // Récupérer les adresses de réservation
+  async getBookingAddresses(id: string): Promise<any[]> {
+    const response = await api.get(`/users/${id}/booking-addresses`);
     return response.data;
   },
 
-  getAllCoiffeurs: async (): Promise<User[]> => {
-    const response = await api.get('/coiffeurs');
+  // Ajouter une adresse de réservation
+  async addBookingAddress(id: string, addressData: any): Promise<any> {
+    const response = await api.post(`/users/${id}/booking-addresses`, addressData);
     return response.data;
   },
 
-  updateUser: async (userId: string, userData: Partial<User>): Promise<User> => {
-    const response = await api.put(`/users/${userId}`, userData);
+  // Supprimer une adresse de réservation
+  async removeBookingAddress(id: string, addressId: string): Promise<{ message: string }> {
+    const response = await api.delete(`/users/${id}/booking-addresses/${addressId}`);
     return response.data;
-  },
-
-  // Récupérer un service par ID
-  getService: async (serviceId: string): Promise<any> => {
-    const response = await api.get(`/services/${serviceId}`);
-    return response.data;
-  },
-
-  // Récupérer les favoris d'un utilisateur
-  getFavorites: async (): Promise<any[]> => {
-    const response = await api.get('/favorites');
-    return response.data;
-  },
-
-  addToFavorites: async (coiffeurId: string): Promise<void> => {
-    await api.post(`/users/favorites/${coiffeurId}`);
-  },
-
-  removeFromFavorites: async (coiffeurId: string): Promise<void> => {
-    await api.delete(`/users/favorites/${coiffeurId}`);
-  },
-
-  getBlockedUsers: async (): Promise<User[]> => {
-    const response = await api.get('/users/blocked');
-    return response.data;
-  },
-
-  blockUser: async (userId: string, blockedUserId: string): Promise<void> => {
-    await api.post(`/users/${userId}/block/${blockedUserId}`);
-  },
-
-  unblockUser: async (userId: string, blockedUserId: string): Promise<void> => {
-    await api.delete(`/users/${userId}/block/${blockedUserId}`);
   }
 }; 

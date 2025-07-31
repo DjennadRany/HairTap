@@ -157,7 +157,7 @@ export const LocationSearchBar = ({
           </button>
 
           {showSuggestions && suggestions.length > 0 && (
-            <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg">
+            <div className="absolute z-10 w-full mt-1 bg-fashion-light-gray border border-gray-300 rounded-lg shadow-lg">
               {suggestions.map((suggestion, index) => (
                 <button
                   key={index}

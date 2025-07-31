@@ -1,67 +1,72 @@
 import api from './axios';
-
-export interface Service {
-  _id: string;
-  name: string;
-  description: string;
-  price: number;
-  duration: number;
-  category: 'coupe' | 'coloration' | 'coiffure' | 'soin' | 'barbe' | 'autre';
-  coiffeur: string;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface CreateServiceData {
-  name: string;
-  description: string;
-  price: number;
-  duration: number;
-  category: 'coupe' | 'coloration' | 'coiffure' | 'soin' | 'barbe' | 'autre';
-}
-
-export interface UpdateServiceData {
-  name?: string;
-  description?: string;
-  price?: number;
-  duration?: number;
-  category?: 'coupe' | 'coloration' | 'coiffure' | 'soin' | 'barbe' | 'autre';
-  isActive?: boolean;
-}
+import { Service } from '../../types/models';
 
 export const serviceService = {
+  // Récupérer tous les services
   async getServices(): Promise<Service[]> {
     const response = await api.get<Service[]>('/services');
     return response.data;
   },
 
+  // Récupérer un service par ID
   async getService(id: string): Promise<Service> {
     const response = await api.get<Service>(`/services/${id}`);
     return response.data;
   },
 
-  async createService(data: CreateServiceData): Promise<Service> {
+  // Créer un nouveau service
+  async createService(data: Partial<Service>): Promise<Service> {
     const response = await api.post<Service>('/services', data);
     return response.data;
   },
 
-  async updateService(id: string, data: UpdateServiceData): Promise<Service> {
+  // Mettre à jour un service
+  async updateService(id: string, data: Partial<Service>): Promise<Service> {
     const response = await api.patch<Service>(`/services/${id}`, data);
     return response.data;
   },
 
-  async deleteService(id: string): Promise<void> {
-    await api.delete(`/services/${id}`);
+  // Supprimer un service
+  async deleteService(id: string): Promise<{ message: string }> {
+    const response = await api.delete(`/services/${id}`);
+    return response.data;
   },
 
+  // Récupérer les services par catégorie
   async getServicesByCategory(category: string): Promise<Service[]> {
     const response = await api.get<Service[]>(`/services/category/${category}`);
     return response.data;
   },
 
+  // Récupérer les services d'un coiffeur
   async getServicesByCoiffeur(coiffeurId: string): Promise<Service[]> {
     const response = await api.get<Service[]>(`/services/coiffeur/${coiffeurId}`);
+    return response.data;
+  },
+
+  // Upload de photo de service
+  async uploadServicePhoto(serviceId: string, file: File): Promise<{ success: boolean; photo: { url: string } }> {
+    const formData = new FormData();
+    formData.append('photo', file);
+
+    const response = await api.post(`/services/${serviceId}/photo`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    return response.data;
+  },
+
+  // Supprimer une photo de service
+  async deleteServicePhoto(serviceId: string, photoUrl: string): Promise<{ success: boolean; message: string }> {
+    const response = await api.delete(`/services/${serviceId}/photo/${encodeURIComponent(photoUrl)}`);
+    return response.data;
+  },
+
+  // Toggle like sur un service - STANDARDISÉ
+  async toggleServiceLike(serviceId: string): Promise<{ success: boolean; data: { likes: number; isLiked: boolean }; message: string }> {
+    const response = await api.post(`/services/${serviceId}/like`);
     return response.data;
   }
 }; 

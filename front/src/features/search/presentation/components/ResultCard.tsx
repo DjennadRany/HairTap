@@ -25,7 +25,7 @@ export const ResultCard: React.FC<ResultCardProps> = ({
   if (variant === 'compact') {
     return (
       <div
-        className="flex items-center gap-3 p-3 bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+        className="flex items-center gap-3 p-3 bg-fashion-light-gray rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer"
         onClick={onClick}
       >
         <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100">
@@ -52,7 +52,7 @@ export const ResultCard: React.FC<ResultCardProps> = ({
 
   return (
     <div
-      className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow cursor-pointer p-4"
+      className="bg-fashion-light-gray rounded-lg shadow-md hover:shadow-lg transition-shadow cursor-pointer p-4"
       onClick={onClick}
     >
       <div className="aspect-w-16 aspect-h-9 rounded-lg overflow-hidden bg-gray-100 mb-4">

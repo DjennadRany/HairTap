@@ -27,21 +27,21 @@ const AboutPage: FC = () => {
         <section>
           <h2 className="text-2xl font-semibold mb-4">Nos Valeurs</h2>
           <div className="grid md:grid-cols-3 gap-6">
-            <div className="bg-white p-6 rounded-lg shadow-sm">
+            <div className="bg-fashion-light-gray p-6 rounded-lg shadow-sm">
               <h3 className="text-xl font-semibold mb-2 text-accent">Innovation</h3>
               <p className="text-gray-600">
                 Nous développons constamment de nouvelles fonctionnalités pour améliorer l'expérience 
                 utilisateur et répondre aux besoins évolutifs du secteur.
               </p>
             </div>
-            <div className="bg-white p-6 rounded-lg shadow-sm">
+            <div className="bg-fashion-light-gray p-6 rounded-lg shadow-sm">
               <h3 className="text-xl font-semibold mb-2 text-accent">Transparence</h3>
               <p className="text-gray-600">
                 Nous croyons en la transparence des prix, des services et des avis pour aider les clients 
                 à prendre des décisions éclairées.
               </p>
             </div>
-            <div className="bg-white p-6 rounded-lg shadow-sm">
+            <div className="bg-fashion-light-gray p-6 rounded-lg shadow-sm">
               <h3 className="text-xl font-semibold mb-2 text-accent">Communauté</h3>
               <p className="text-gray-600">
                 Nous construisons une communauté de confiance où les coiffeurs peuvent développer leur 

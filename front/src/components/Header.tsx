@@ -5,6 +5,7 @@ import { useState, useRef, useEffect } from 'react';
 import { getUnreadCount } from '../hooks/useChat';
 import { logout } from '../store/slices/authSlice';
 import type { RootState } from '../store/store';
+import { FaUser, FaSignOutAlt, FaCog, FaBell, FaSearch } from 'react-icons/fa';
 
 const Header: FC = () => {
   const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
@@ -63,25 +64,46 @@ const Header: FC = () => {
   }, []);
 
   return (
-    <header className="bg-white shadow-sm">
+    <header className="bg-fashion-light-gray/95 backdrop-blur-md border-b border-fashion-gray-200 shadow-sm sticky top-0 z-50">
       <div className="container mx-auto px-4">
         <div className="flex items-center h-16">
           {/* Logo */}
-          <a href="#" onClick={handleLogoClick} className="flex items-center mr-6">
-            <span className="text-2xl font-bold text-accent">TapHair</span>
+          <a href="#" onClick={handleLogoClick} className="flex items-center mr-8">
+            <span className="text-2xl font-elegant font-bold text-fashion-black tracking-wide">
+              TapHair
+            </span>
           </a>
+
           {/* Menu principal */}
           {isUserValid && (
-            <nav className="flex items-center gap-3">
+            <nav className="flex items-center gap-6">
               {user.role === 'client' ? (
                 <>
-                  <Link to="/client/dashboard" className="text-gray-700 hover:text-accent font-medium">Tableau de bord</Link>
-                  <Link to="/client/bookings" className="text-gray-700 hover:text-accent font-medium">Mes réservations</Link>
-                  <Link to="/client/favorites" className="text-gray-700 hover:text-accent font-medium">Favoris</Link>
-                  <Link to="/client/chat" className="text-gray-700 hover:text-accent font-medium relative">
+                  <Link 
+                    to="/client/dashboard" 
+                    className="text-fashion-gray-700 hover:text-fashion-black font-fashion font-medium transition-colors duration-200"
+                  >
+                    Tableau de bord
+                  </Link>
+                  <Link 
+                    to="/client/bookings" 
+                    className="text-fashion-gray-700 hover:text-fashion-black font-fashion font-medium transition-colors duration-200"
+                  >
+                    Mes réservations
+                  </Link>
+                  <Link 
+                    to="/client/favorites" 
+                    className="text-fashion-gray-700 hover:text-fashion-black font-fashion font-medium transition-colors duration-200"
+                  >
+                    Favoris
+                  </Link>
+                  <Link 
+                    to="/client/chat" 
+                    className="text-fashion-gray-700 hover:text-fashion-black font-fashion font-medium transition-colors duration-200 relative"
+                  >
                     Messagerie
                     {unreadCount > 0 && (
-                      <span className="absolute -top-2 -right-3 bg-red-500 text-white text-xs rounded-full px-2 py-0.5 font-bold animate-pulse">
+                      <span className="absolute -top-2 -right-3 bg-fashion-black text-white text-xs rounded-full px-2 py-0.5 font-bold animate-pulse">
                         {unreadCount}
                       </span>
                     )}
@@ -89,13 +111,37 @@ const Header: FC = () => {
                 </>
               ) : (
                 <>
-                  <Link to="/coiffeur/dashboard" className="text-gray-700 hover:text-accent font-medium">Tableau de bord</Link>
-                  <Link to="/coiffeur/reservations" className="text-gray-700 hover:text-accent font-medium">Réservations</Link>
-                  <Link to="/coiffeur/revenue" className="text-gray-700 hover:text-accent font-medium">Revenus</Link>
-                  <Link to="/coiffeur/chat" className="text-gray-700 hover:text-accent font-medium relative">
+                  <Link 
+                    to="/coiffeur/dashboard" 
+                    className="text-fashion-gray-700 hover:text-fashion-black font-fashion font-medium transition-colors duration-200"
+                  >
+                    Tableau de bord
+                  </Link>
+                  <Link 
+                    to="/coiffeur/reservations" 
+                    className="text-fashion-gray-700 hover:text-fashion-black font-fashion font-medium transition-colors duration-200"
+                  >
+                    Réservations
+                  </Link>
+                  <Link 
+                    to="/coiffeur/revenue" 
+                    className="text-fashion-gray-700 hover:text-fashion-black font-fashion font-medium transition-colors duration-200"
+                  >
+                    Revenus
+                  </Link>
+                  <Link 
+                    to={`/coiffeur/${user._id}`} 
+                    className="text-fashion-gray-700 hover:text-fashion-black font-fashion font-medium transition-colors duration-200"
+                  >
+                    Mes Services & Produits
+                  </Link>
+                  <Link 
+                    to="/coiffeur/chat" 
+                    className="text-fashion-gray-700 hover:text-fashion-black font-fashion font-medium transition-colors duration-200 relative"
+                  >
                     Messagerie
                     {unreadCount > 0 && (
-                      <span className="absolute -top-2 -right-3 bg-red-500 text-white text-xs rounded-full px-2 py-0.5 font-bold animate-pulse">
+                      <span className="absolute -top-2 -right-3 bg-fashion-black text-white text-xs rounded-full px-2 py-0.5 font-bold animate-pulse">
                         {unreadCount}
                       </span>
                     )}
@@ -104,12 +150,14 @@ const Header: FC = () => {
               )}
             </nav>
           )}
+
           <div className="flex-1" />
+
           {/* User dropdown ou Connexion */}
           {!isUserValid ? (
             <Link
               to="/login"
-              className="bg-accent text-white px-4 py-2 rounded-lg hover:bg-accent/90 transition-colors"
+              className="bg-fashion-black text-white px-6 py-2.5 rounded-full font-fashion font-medium hover:bg-fashion-gray-800 transition-all duration-300 transform hover:scale-105 shadow-lg"
             >
               Connexion
             </Link>
@@ -117,32 +165,59 @@ const Header: FC = () => {
             <div className="relative" ref={dropdownRef}>
               <button
                 onClick={() => setDropdownOpen((o) => !o)}
-                className="flex items-center gap-2 px-3 py-1 rounded hover:bg-gray-100 transition-colors focus:outline-none"
+                className="flex items-center gap-3 px-4 py-2 rounded-full hover:bg-fashion-gray-100 transition-all duration-200 focus:outline-none group"
               >
-                <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center">
-                  <span className="text-accent font-medium">U</span>
+                <div className="w-8 h-8 rounded-full bg-fashion-black text-white flex items-center justify-center font-fashion font-medium group-hover:bg-fashion-gray-800 transition-colors duration-200">
+                  {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
                 </div>
-                <span className="font-medium text-gray-800">Mon compte</span>
-                <svg className={`w-4 h-4 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                <span className="font-fashion font-medium text-fashion-gray-800 group-hover:text-fashion-black transition-colors duration-200">
+                  {user.name || 'Mon compte'}
+                </span>
+                <svg 
+                  className={`w-4 h-4 transition-transform duration-200 ${dropdownOpen ? 'rotate-180' : ''}`} 
+                  fill="none" 
+                  stroke="currentColor" 
+                  strokeWidth="2" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
               </button>
+              
               {dropdownOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-white border rounded-lg shadow-lg z-50">
-                  <ul className="py-1">
+                <div className="absolute right-0 mt-3 w-56 bg-fashion-light-gray border border-fashion-gray-200 rounded-xl shadow-xl z-50 overflow-hidden">
+                  <div className="p-4 border-b border-fashion-gray-100">
+                    <div className="font-fashion font-medium text-fashion-gray-900">{user.name}</div>
+                    <div className="text-sm text-fashion-gray-500">{user.email}</div>
+                  </div>
+                  <ul className="py-2">
                     <li>
                       <Link
                         to={user?.role === 'client' ? '/client/profile' : '/coiffeur/profile'}
-                        className="block px-4 py-2 text-gray-700 hover:bg-gray-100"
+                        className="flex items-center gap-3 px-4 py-3 text-fashion-gray-700 hover:bg-fashion-gray-50 transition-colors duration-200"
                         onClick={() => setDropdownOpen(false)}
                       >
-                        Voir mon profil
+                        <FaUser className="text-sm" />
+                        <span className="font-fashion">Voir mon profil</span>
                       </Link>
                     </li>
                     <li>
+                      <Link
+                        to={user?.role === 'client' ? '/client/dashboard' : '/coiffeur/dashboard'}
+                        className="flex items-center gap-3 px-4 py-3 text-fashion-gray-700 hover:bg-fashion-gray-50 transition-colors duration-200"
+                        onClick={() => setDropdownOpen(false)}
+                      >
+                        <FaCog className="text-sm" />
+                        <span className="font-fashion">Paramètres</span>
+                      </Link>
+                    </li>
+                    <li className="border-t border-fashion-gray-100 mt-2 pt-2">
                       <button
                         onClick={handleLogout}
-                        className="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100"
+                        className="flex items-center gap-3 px-4 py-3 text-fashion-gray-700 hover:bg-fashion-gray-50 transition-colors duration-200 w-full text-left"
                       >
-                        Déconnexion
+                        <FaSignOutAlt className="text-sm" />
+                        <span className="font-fashion">Déconnexion</span>
                       </button>
                     </li>
                   </ul>
@@ -155,4 +230,5 @@ const Header: FC = () => {
     </header>
   );
 };
+
 export default Header; 

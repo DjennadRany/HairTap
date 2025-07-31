@@ -1,7 +1,7 @@
 import express from 'express';
 import Review from '../models/Review.js';
 import Booking from '../models/Booking.js';
-import auth from '../middleware/auth.js';
+import { auth } from '../middleware/auth.js';
 
 const router = express.Router();
 

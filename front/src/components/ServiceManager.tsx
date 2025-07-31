@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { selectCurrentUser } from '../store/slices/authSlice';
-import { userService } from '../services/api/users';
+import { coiffeurService } from '../services/api/coiffeurs';
 import { FaPlus, FaEdit, FaTrash, FaHeart, FaHeartBroken, FaImage, FaTags, FaClock, FaEuroSign, FaStar, FaSearch } from 'react-icons/fa';
 import { MdVerified } from 'react-icons/md';
 import ServiceModal from './ServiceModal';
@@ -56,7 +56,7 @@ const ServiceManager: React.FC<ServiceManagerProps> = ({
   const fetchServices = async () => {
     try {
       setLoading(true);
-      const servicesData = await userService.getCoiffeurServices(coiffeurId);
+      const servicesData = await coiffeurService.getCoiffeurServices(coiffeurId);
       // Convertir les données pour inclure les propriétés par défaut
       const enrichedServices = servicesData.map(service => ({
         ...service,
@@ -79,6 +79,7 @@ const ServiceManager: React.FC<ServiceManagerProps> = ({
   };
 
   const handleEditService = (service: Service) => {
+    console.log('handleEditService called with:', service);
     setEditingService(service);
     setShowAddModal(true);
   };
@@ -86,7 +87,7 @@ const ServiceManager: React.FC<ServiceManagerProps> = ({
   const handleDeleteService = async (serviceId: string) => {
     if (window.confirm('Êtes-vous sûr de vouloir supprimer ce service ?')) {
       try {
-        await userService.deleteService(coiffeurId, serviceId);
+        await coiffeurService.deleteService(coiffeurId, serviceId);
         setServices(services.filter(s => s._id !== serviceId));
         setSuccessMessage('Service supprimé avec succès !');
         setTimeout(() => setSuccessMessage(null), 3000);
@@ -100,11 +101,11 @@ const ServiceManager: React.FC<ServiceManagerProps> = ({
     setIsSubmitting(true);
     try {
       if (editingService) {
-        const updatedService = await userService.updateService(coiffeurId, editingService._id, serviceData);
+        const updatedService = await coiffeurService.updateService(coiffeurId, editingService._id, serviceData);
         setServices(services.map(s => s._id === editingService._id ? { ...updatedService, keywords: updatedService.keywords || [], examplePhotos: updatedService.examplePhotos || [], likes: updatedService.likes || 0, isLiked: updatedService.isLiked || false } : s));
         setSuccessMessage('Service modifié avec succès !');
       } else {
-        const newService = await userService.addCoiffeurService(coiffeurId, serviceData);
+        const newService = await coiffeurService.addCoiffeurService(coiffeurId, serviceData);
         setServices([{ ...newService, keywords: newService.keywords || [], examplePhotos: newService.examplePhotos || [], likes: newService.likes || 0, isLiked: newService.isLiked || false }, ...services]);
         setSuccessMessage('Service ajouté avec succès !');
       }
@@ -112,12 +113,15 @@ const ServiceManager: React.FC<ServiceManagerProps> = ({
       // Synchroniser la galerie avec les nouvelles images
       if (serviceData.examplePhotos && serviceData.examplePhotos.length > 0) {
         try {
-          await userService.syncGallery(coiffeurId);
+          await coiffeurService.syncGallery(coiffeurId);
         } catch (error) {
           console.error('Error syncing gallery:', error);
         }
       }
 
+      // Fermer le modal et réinitialiser
+      setShowAddModal(false);
+      setEditingService(null);
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (error) {
       throw error;
@@ -165,7 +169,7 @@ const ServiceManager: React.FC<ServiceManagerProps> = ({
       )}
 
       {/* En-tête avec filtres et recherche */}
-      <div className="bg-white rounded-xl shadow-lg p-6">
+      <div className="bg-fashion-light-gray rounded-xl shadow-lg p-6">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
           <div>
             <h2 className="text-2xl font-bold text-gray-800">Mes Services</h2>
@@ -228,7 +232,7 @@ const ServiceManager: React.FC<ServiceManagerProps> = ({
 
       {/* Liste des services */}
       {filteredServices.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-xl shadow-lg">
+        <div className="text-center py-12 bg-fashion-light-gray rounded-xl shadow-lg">
           <div className="text-gray-400 text-6xl mb-4">✂️</div>
           <h3 className="text-xl font-semibold text-gray-700 mb-2">
             {isOwner ? 'Aucun service disponible' : 'Aucun service trouvé'}
@@ -268,7 +272,10 @@ const ServiceManager: React.FC<ServiceManagerProps> = ({
       {/* Modal pour ajouter/modifier un service */}
       <ServiceModal
         isOpen={showAddModal}
-        onClose={() => setShowAddModal(false)}
+        onClose={() => {
+          setShowAddModal(false);
+          setEditingService(null);
+        }}
         onSubmit={handleSubmitService}
         service={editingService || undefined}
         isLoading={isSubmitting}

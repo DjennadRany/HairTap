@@ -58,7 +58,7 @@ abstract class SearchComponentFactory {
 class MobileSearchComponentFactory extends SearchComponentFactory {
   createSearchBar({ onSearch, placeholder }: SearchBarProps) {
     return (
-      <div className="fixed top-0 left-0 right-0 z-50 bg-white shadow-md p-4">
+      <div className="fixed top-0 left-0 right-0 z-50 bg-fashion-light-gray shadow-md p-4">
         <div className="flex items-center space-x-2">
           <input
             type="text"
@@ -83,7 +83,7 @@ class MobileSearchComponentFactory extends SearchComponentFactory {
 
   createFilterPanel({ mode, onModeChange, maxPrice, onMaxPriceChange, minRating, onMinRatingChange }: FilterPanelProps) {
     return (
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-white shadow-lg p-4">
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-fashion-light-gray shadow-lg p-4">
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700">Type</label>
@@ -166,12 +166,12 @@ class MobileSearchComponentFactory extends SearchComponentFactory {
 
   createSortBar({ sortBy, onSortChange }: SortBarProps) {
     return (
-      <div className="fixed top-16 left-0 right-0 z-40 bg-white shadow-sm p-2">
+      <div className="fixed top-16 left-0 right-0 z-40 bg-fashion-light-gray shadow-sm p-2">
         <div className="flex space-x-2 overflow-x-auto">
           <button
             onClick={() => onSortChange('distance')}
             className={`px-3 py-1 rounded-full text-sm ${
-              sortBy === 'distance' ? 'bg-accent text-white' : 'bg-gray-100'
+              sortBy === 'distance' ? 'bg-fashion-dark-gray text-white' : 'bg-gray-100'
             }`}
           >
             Distance
@@ -179,7 +179,7 @@ class MobileSearchComponentFactory extends SearchComponentFactory {
           <button
             onClick={() => onSortChange('rating')}
             className={`px-3 py-1 rounded-full text-sm ${
-              sortBy === 'rating' ? 'bg-accent text-white' : 'bg-gray-100'
+              sortBy === 'rating' ? 'bg-fashion-dark-gray text-white' : 'bg-gray-100'
             }`}
           >
             Note
@@ -187,7 +187,7 @@ class MobileSearchComponentFactory extends SearchComponentFactory {
           <button
             onClick={() => onSortChange('price')}
             className={`px-3 py-1 rounded-full text-sm ${
-              sortBy === 'price' ? 'bg-accent text-white' : 'bg-gray-100'
+              sortBy === 'price' ? 'bg-fashion-dark-gray text-white' : 'bg-gray-100'
             }`}
           >
             Prix
@@ -202,7 +202,7 @@ class MobileSearchComponentFactory extends SearchComponentFactory {
 class DesktopSearchComponentFactory extends SearchComponentFactory {
   createSearchBar({ onSearch, placeholder }: SearchBarProps) {
     return (
-      <div className="bg-white shadow-md p-4">
+      <div className="bg-fashion-light-gray shadow-md p-4">
         <div className="max-w-7xl mx-auto flex items-center space-x-4">
           <div className="flex-1">
             <input
@@ -229,7 +229,7 @@ class DesktopSearchComponentFactory extends SearchComponentFactory {
 
   createFilterPanel({ mode, onModeChange, maxPrice, onMaxPriceChange, minRating, onMinRatingChange }: FilterPanelProps) {
     return (
-      <div className="w-64 p-4 bg-white shadow-lg">
+      <div className="w-64 p-4 bg-fashion-light-gray shadow-lg">
         <div className="space-y-6">
           <div>
             <h3 className="text-lg font-medium text-gray-900">Filtres</h3>
@@ -317,12 +317,12 @@ class DesktopSearchComponentFactory extends SearchComponentFactory {
 
   createSortBar({ sortBy, onSortChange }: SortBarProps) {
     return (
-      <div className="bg-white shadow-sm p-2">
+      <div className="bg-fashion-light-gray shadow-sm p-2">
         <div className="max-w-7xl mx-auto flex space-x-4">
           <button
             onClick={() => onSortChange('distance')}
             className={`px-4 py-2 rounded-lg text-sm ${
-              sortBy === 'distance' ? 'bg-accent text-white' : 'bg-gray-100'
+              sortBy === 'distance' ? 'bg-fashion-dark-gray text-white' : 'bg-gray-100'
             }`}
           >
             Distance
@@ -330,7 +330,7 @@ class DesktopSearchComponentFactory extends SearchComponentFactory {
           <button
             onClick={() => onSortChange('rating')}
             className={`px-4 py-2 rounded-lg text-sm ${
-              sortBy === 'rating' ? 'bg-accent text-white' : 'bg-gray-100'
+              sortBy === 'rating' ? 'bg-fashion-dark-gray text-white' : 'bg-gray-100'
             }`}
           >
             Note
@@ -338,7 +338,7 @@ class DesktopSearchComponentFactory extends SearchComponentFactory {
           <button
             onClick={() => onSortChange('price')}
             className={`px-4 py-2 rounded-lg text-sm ${
-              sortBy === 'price' ? 'bg-accent text-white' : 'bg-gray-100'
+              sortBy === 'price' ? 'bg-fashion-dark-gray text-white' : 'bg-gray-100'
             }`}
           >
             Prix

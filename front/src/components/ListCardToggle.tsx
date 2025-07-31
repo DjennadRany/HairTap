@@ -16,7 +16,7 @@ const ListCardToggle: FC<ListCardToggleProps> = ({ view, onChange, className = '
         onClick={() => onChange('grid')}
         className={`p-2 rounded-full transition-colors duration-200 ${
           view === 'grid' 
-            ? 'bg-accent text-white shadow-sm' 
+            ? 'bg-fashion-dark-gray text-white shadow-sm' 
             : 'text-gray-600 hover:bg-gray-200'
         }`}
         title="Vue en grille"
@@ -28,7 +28,7 @@ const ListCardToggle: FC<ListCardToggleProps> = ({ view, onChange, className = '
         onClick={() => onChange('list')}
         className={`p-2 rounded-full transition-colors duration-200 ${
           view === 'list' 
-            ? 'bg-accent text-white shadow-sm' 
+            ? 'bg-fashion-dark-gray text-white shadow-sm' 
             : 'text-gray-600 hover:bg-gray-200'
         }`}
         title="Vue en liste"

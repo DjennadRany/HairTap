@@ -1,8 +1,24 @@
 import express from 'express';
+import multer from 'multer';
 import Service from '../models/Service.js';
-import auth from '../middleware/auth.js';
+import { auth } from '../middleware/auth.js';
+import photoService from '../services/photoService.js';
 
 const router = express.Router();
+
+// Configuration multer simple
+const storage = multer.memoryStorage();
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB max
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Seuls les fichiers image sont autorisés'), false);
+    }
+  }
+});
 
 // GET /api/services - Récupérer tous les services
 router.get('/', async (req, res) => {
@@ -76,6 +92,84 @@ router.delete('/:id', auth, async (req, res) => {
   }
 });
 
+// Upload de photo de service - SIMPLIFIÉ
+router.post('/:id/photo', auth, upload.single('photo'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const service = await Service.findById(id);
+    if (!service) {
+      return res.status(404).json({ success: false, message: 'Service non trouvé' });
+    }
+
+    if (service.coiffeur.toString() !== req.user.id.toString()) {
+      return res.status(403).json({ success: false, message: 'Non autorisé' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'Aucun fichier fourni' });
+    }
+
+    // Upload de la nouvelle photo
+    const uploadResult = await photoService.uploadServicePhoto(req.file, id);
+
+    // Ajouter la photo au service
+    if (!service.examplePhotos) {
+      service.examplePhotos = [];
+    }
+    service.examplePhotos.push(uploadResult.url);
+    await service.save();
+
+    res.json({
+      success: true,
+      message: 'Photo ajoutée au service',
+      photo: { url: uploadResult.url }
+    });
+  } catch (error) {
+    console.error('Upload service photo error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: error.message || 'Erreur lors de l\'upload' 
+    });
+  }
+});
+
+// Supprimer une photo de service
+router.delete('/:id/photo/:photoUrl', auth, async (req, res) => {
+  try {
+    const { id, photoUrl } = req.params;
+    
+    const service = await Service.findById(id);
+    if (!service) {
+      return res.status(404).json({ success: false, message: 'Service non trouvé' });
+    }
+
+    if (service.coiffeur.toString() !== req.user.id.toString()) {
+      return res.status(403).json({ success: false, message: 'Non autorisé' });
+    }
+
+    // Supprimer la photo du serveur
+    await photoService.deletePhoto(decodeURIComponent(photoUrl));
+
+    // Retirer la photo du service
+    service.examplePhotos = service.examplePhotos.filter(
+      photo => photo !== decodeURIComponent(photoUrl)
+    );
+    await service.save();
+
+    res.json({
+      success: true,
+      message: 'Photo supprimée du service'
+    });
+  } catch (error) {
+    console.error('Delete service photo error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: error.message || 'Erreur lors de la suppression' 
+    });
+  }
+});
+
 // GET /api/services/category/:category - Récupérer les services par catégorie
 router.get('/category/:category', async (req, res) => {
   try {
@@ -102,38 +196,43 @@ router.get('/coiffeur/:coiffeurId', async (req, res) => {
   }
 });
 
-// Toggle like sur un service
+// Toggle like sur un service - UTILISE LES MÉTHODES DU MODÈLE
 router.post('/:serviceId/like', auth, async (req, res) => {
   try {
-    const service = await Service.findById(req.params.serviceId);
+    const { serviceId } = req.params;
+    const userId = req.user.id;
     
+    const service = await Service.findById(serviceId);
     if (!service) {
       return res.status(404).json({ message: 'Service introuvable' });
     }
 
-    // Vérifier si l'utilisateur a déjà liké ce service
-    const userLiked = service.likedBy && service.likedBy.includes(req.user.id);
+    // Utiliser les méthodes du modèle
+    const userLiked = service.isLikedBy(userId);
     
     if (userLiked) {
-      // Unlike
-      service.likes = Math.max(0, service.likes - 1);
-      service.likedBy = service.likedBy.filter(id => id !== req.user.id);
+      // Unlike - Utilise la méthode du modèle
+      await service.removeLike(userId);
     } else {
-      // Like
-      service.likes = service.likes + 1;
-      if (!service.likedBy) service.likedBy = [];
-      service.likedBy.push(req.user.id);
+      // Like - Utilise la méthode du modèle
+      await service.addLike(userId);
     }
 
-    await service.save();
-    
-    res.json({ 
-      likes: service.likes, 
-      isLiked: !userLiked 
+    // Réponse standardisée
+    res.json({
+      success: true,
+      data: {
+        likes: service.likes,
+        isLiked: !userLiked
+      },
+      message: userLiked ? 'Like retiré' : 'Service liké'
     });
   } catch (error) {
     console.error('Toggle service like error:', error);
-    res.status(500).json({ message: 'Erreur lors du like/unlike' });
+    res.status(500).json({ 
+      success: false,
+      message: 'Erreur lors du like/unlike' 
+    });
   }
 });
 

@@ -4,6 +4,7 @@ import { selectCurrentUser } from '../store/slices/authSlice';
 import Dashboard from '../components/Dashboard';
 import ServiceManager from '../components/ServiceManager';
 import CoiffeurBookings from '../components/CoiffeurBookings';
+
 import { Card } from '../components/ui/card';
 import { FaChartBar, FaCog, FaCalendarAlt, FaUsers, FaStar, FaEuroSign } from 'react-icons/fa';
 import type { User } from '../types/models';
@@ -34,7 +35,7 @@ const CoiffeurDashboardPage = () => {
               onClick={() => setActiveTab('overview')}
               className={`px-4 py-2 rounded-lg transition-colors ${
                 activeTab === 'overview'
-                  ? 'bg-accent text-white'
+                  ? 'bg-fashion-dark-gray text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
@@ -45,7 +46,7 @@ const CoiffeurDashboardPage = () => {
               onClick={() => setActiveTab('bookings')}
               className={`px-4 py-2 rounded-lg transition-colors ${
                 activeTab === 'bookings'
-                  ? 'bg-accent text-white'
+                  ? 'bg-fashion-dark-gray text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
@@ -56,7 +57,7 @@ const CoiffeurDashboardPage = () => {
               onClick={() => setActiveTab('services')}
               className={`px-4 py-2 rounded-lg transition-colors ${
                 activeTab === 'services'
-                  ? 'bg-accent text-white'
+                  ? 'bg-fashion-dark-gray text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
@@ -69,7 +70,9 @@ const CoiffeurDashboardPage = () => {
 
       {/* Contenu des onglets */}
       {activeTab === 'overview' ? (
-        <Dashboard user={user} isCoiffeur={true} />
+        <div className="grid grid-cols-1 gap-6">
+          <Dashboard user={user} isCoiffeur={true} />
+        </div>
       ) : activeTab === 'bookings' ? (
         <div>
           <Card className="p-6">

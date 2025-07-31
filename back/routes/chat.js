@@ -1,7 +1,8 @@
 import express from 'express';
-const router = express.Router();
-import auth from '../middleware/auth.js';
+import { auth } from '../middleware/auth.js';
 import Message from '../models/Message.js';
+
+const router = express.Router();
 
 // Récupérer les messages non lus
 router.get('/unread', auth, async (req, res) => {
