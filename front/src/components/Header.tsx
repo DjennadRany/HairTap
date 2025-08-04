@@ -6,6 +6,8 @@ import { getUnreadCount } from '../hooks/useChat';
 import { logout } from '../store/slices/authSlice';
 import type { RootState } from '../store/store';
 import { FaUser, FaSignOutAlt, FaCog, FaBell, FaSearch } from 'react-icons/fa';
+import { PHOTO_URLS } from '../config/api';
+import { getImageUrl, handleImageError } from '../utils/imageUtils';
 
 const Header: FC = () => {
   const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
@@ -167,7 +169,15 @@ const Header: FC = () => {
                 onClick={() => setDropdownOpen((o) => !o)}
                 className="flex items-center gap-3 px-4 py-2 rounded-full hover:bg-fashion-gray-100 transition-all duration-200 focus:outline-none group"
               >
-                <div className="w-8 h-8 rounded-full bg-fashion-black text-white flex items-center justify-center font-fashion font-medium group-hover:bg-fashion-gray-800 transition-colors duration-200">
+                {user.photo && user.photo !== PHOTO_URLS.DEFAULT_AVATAR ? (
+                  <img
+                    src={getImageUrl(user.photo, 'http://localhost:5000/default-avatar.png')}
+                    alt={user.name || 'Photo de profil'}
+                    className="w-8 h-8 rounded-full object-cover border-2 border-fashion-gray-200 group-hover:border-fashion-gray-300 transition-colors duration-200"
+                    onError={(e) => handleImageError(e, 'http://localhost:5000/default-avatar.png')}
+                  />
+                ) : null}
+                <div className={`w-8 h-8 rounded-full bg-fashion-black text-white flex items-center justify-center font-fashion font-medium group-hover:bg-fashion-gray-800 transition-colors duration-200 ${user.photo && user.photo !== PHOTO_URLS.DEFAULT_AVATAR ? 'hidden' : ''}`}>
                   {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
                 </div>
                 <span className="font-fashion font-medium text-fashion-gray-800 group-hover:text-fashion-black transition-colors duration-200">

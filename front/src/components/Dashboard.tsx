@@ -75,8 +75,11 @@ const Dashboard: React.FC<DashboardProps> = ({ user, isCoiffeur = false }) => {
           
           setRecentBookings(bookings.slice(0, 5));
         }
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error);
+      } catch (error: any) {
+        // Ne pas afficher d'erreur si c'est une erreur d'authentification
+        if (error?.response?.status !== 401) {
+          console.error('Error fetching dashboard data:', error);
+        }
       } finally {
         setLoading(false);
       }

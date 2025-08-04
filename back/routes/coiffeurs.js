@@ -4,7 +4,7 @@ import Service from '../models/Service.js';
 import { auth } from '../middleware/auth.js';
 import mongoose from 'mongoose';
 import multer from 'multer';
-import photoService from '../services/photoService.js';
+// photoService removed - simplified photo system
 
 const router = express.Router();
 
@@ -104,27 +104,30 @@ router.post('/:id/photo', auth, upload.single('photo'), handleUploadError, async
       });
     }
 
-    // Supprimer l'ancienne photo si elle existe
-    if (coiffeur.photo && coiffeur.photo !== 'default-avatar.png') {
-      await photoService.deletePhoto(coiffeur.photo);
+    // Upload de la nouvelle photo - SIMPLIFIÉ
+    const fileName = `coiffeur-${id}-${Date.now()}-${Math.random().toString(36).substring(2)}.${req.file.originalname.split('.').pop()}`;
+    const filePath = `uploads/profiles/${fileName}`;
+
+    // Sauvegarder le fichier
+    const fs = await import('fs');
+    const path = await import('path');
+    
+    const uploadDir = path.join(process.cwd(), 'uploads', 'profiles');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
     }
 
-    // Upload de la nouvelle photo
-    const uploadResult = await photoService.uploadProfilePhoto(req.file, id);
+    fs.writeFileSync(path.join(uploadDir, fileName), req.file.buffer);
 
     // Mettre à jour le coiffeur
     await User.findByIdAndUpdate(id, { 
-      photo: uploadResult.url 
+      photo: `/${filePath}` 
     });
 
     res.json({
       success: true,
       message: 'Photo mise à jour',
-      photo: { 
-        url: uploadResult.url,
-        filename: uploadResult.filename,
-        size: uploadResult.size
-      }
+      photo: `/${filePath}`
     });
   } catch (error) {
     console.error('Upload coiffeur photo error:', error);

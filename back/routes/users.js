@@ -2,7 +2,6 @@ import express from 'express';
 import multer from 'multer';
 import { auth } from '../middleware/auth.js';
 import User from '../models/User.js';
-import photoService from '../services/photoService.js';
 import geolocationService from '../services/geolocationService.js';
 
 const router = express.Router();
@@ -120,83 +119,93 @@ router.patch('/:id', auth, async (req, res) => {
   }
 });
 
-// Upload de photo de profil - CORRIGÉ
-router.post('/:id/photo', auth, upload.single('image'), async (req, res) => {
+// Route pour upload de photo de profil
+router.post('/:id/photo', auth, upload.single('photo'), async (req, res) => {
   try {
     const { id } = req.params;
+    const file = req.file;
+
+    if (!file) {
+      return res.status(400).json({ message: 'Aucune photo fournie' });
+    }
+
+    // Validation du fichier
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.mimetype)) {
+      return res.status(400).json({ message: 'Type de fichier non autorisé' });
+    }
+
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      return res.status(400).json({ message: 'Fichier trop volumineux (max 5MB)' });
+    }
+
+    // Générer un nom unique pour le fichier
+    const fileName = `profile-${id}-${Date.now()}-${Math.random().toString(36).substring(2)}.${file.originalname.split('.').pop()}`;
+    const filePath = `uploads/profiles/${fileName}`;
+
+    // Sauvegarder le fichier
+    const fs = await import('fs');
+    const path = await import('path');
     
-    const user = await User.findById(id);
+    const uploadDir = path.join(process.cwd(), 'uploads', 'profiles');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+
+    fs.writeFileSync(path.join(uploadDir, fileName), file.buffer);
+
+    // Mettre à jour l'utilisateur avec l'URL relative
+    const user = await User.findByIdAndUpdate(
+      id,
+      { photo: `/${filePath}` },
+      { new: true }
+    );
+
     if (!user) {
-      return res.status(404).json({ success: false, message: 'Utilisateur non trouvé' });
+      return res.status(404).json({ message: 'Utilisateur non trouvé' });
     }
 
-    if (req.user._id.toString() !== id && req.user.role !== 'admin') {
-      return res.status(403).json({ success: false, message: 'Non autorisé' });
-    }
-
-    if (!req.file) {
-      return res.status(400).json({ success: false, message: 'Aucun fichier fourni' });
-    }
-
-    // Supprimer l'ancienne photo
-    if (user.photo && user.photo !== 'default-avatar.png') {
-      await photoService.deletePhoto(user.photo);
-    }
-
-    // Upload de la nouvelle photo
-    const uploadResult = await photoService.uploadProfilePhoto(req.file, id);
-
-    // Mettre à jour l'utilisateur
-    await User.findByIdAndUpdate(id, { 
-      photo: uploadResult.url 
+    console.log('✅ [POST /users/:id/photo] Photo uploadée avec succès');
+    console.log('📁 Fichier sauvegardé:', path.join(uploadDir, fileName));
+    console.log('🌐 URL retournée:', `/${filePath}`);
+    
+    res.json({ 
+      success: true, 
+      message: 'Photo mise à jour avec succès',
+      photo: `/${filePath}` 
     });
 
-    res.json({
-      success: true,
-      message: 'Photo mise à jour',
-      photo: { url: uploadResult.url }
-    });
   } catch (error) {
-    console.error('Upload photo error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: error.message || 'Erreur lors de l\'upload' 
-    });
+    console.error('Erreur upload photo:', error);
+    res.status(500).json({ message: 'Erreur lors de l\'upload de la photo' });
   }
 });
 
-// Supprimer la photo de profil
+// Route pour supprimer la photo de profil
 router.delete('/:id/photo', auth, async (req, res) => {
   try {
     const { id } = req.params;
     
-    const user = await User.findById(id);
+    const user = await User.findByIdAndUpdate(
+      id,
+      { photo: '/default-avatar.png' },
+      { new: true }
+    );
+
     if (!user) {
-      return res.status(404).json({ success: false, message: 'Utilisateur non trouvé' });
+      return res.status(404).json({ message: 'Utilisateur non trouvé' });
     }
 
-    if (req.user._id.toString() !== id && req.user.role !== 'admin') {
-      return res.status(403).json({ success: false, message: 'Non autorisé' });
-    }
-
-    // Supprimer la photo du serveur
-    if (user.photo && user.photo !== 'default-avatar.png') {
-      await photoService.deletePhoto(user.photo);
-    }
-
-    // Remettre la photo par défaut
-    await User.findByIdAndUpdate(id, { photo: 'default-avatar.png' });
-
-    res.json({
-      success: true,
-      message: 'Photo supprimée'
+    res.json({ 
+      success: true, 
+      message: 'Photo supprimée avec succès',
+      photo: '/default-avatar.png' 
     });
+
   } catch (error) {
-    console.error('Delete photo error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: error.message || 'Erreur lors de la suppression' 
-    });
+    console.error('Erreur suppression photo:', error);
+    res.status(500).json({ message: 'Erreur lors de la suppression de la photo' });
   }
 });
 
