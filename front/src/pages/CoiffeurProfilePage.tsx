@@ -14,6 +14,7 @@ import BookingForm from '../components/BookingForm';
 import Modal from '../components/ui/Modal';
 import { Card } from '../components/ui/card';
 import FormattedBio from '../components/FormattedBio';
+import { getImageUrl, handleImageError } from '../utils/imageUtils';
 
 const CoiffeurProfilePage = () => {
   const { id: paramId } = useParams();
@@ -30,11 +31,6 @@ const CoiffeurProfilePage = () => {
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [selectedService, setSelectedService] = useState<any>(null);
   const [reviews, setReviews] = useState<any[]>([]);
-  
-  // États pour l'upload de photo de profil
-  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
-  const [photoError, setPhotoError] = useState<string>('');
-  const [photoSuccess, setPhotoSuccess] = useState<string>('');
 
   useEffect(() => {
     if (!id) return;
@@ -94,49 +90,6 @@ const CoiffeurProfilePage = () => {
     }
   };
 
-  // Fonction pour uploader une photo de profil
-  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file || !coiffeur) return;
-
-    // Validation du fichier
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-    if (!allowedTypes.includes(file.type)) {
-      setPhotoError('Type de fichier non autorisé. Utilisez JPEG, PNG ou WebP.');
-      return;
-    }
-
-    const maxSize = 5 * 1024 * 1024; // 5MB
-    if (file.size > maxSize) {
-      setPhotoError('Fichier trop volumineux. Taille maximum : 5MB.');
-      return;
-    }
-
-    try {
-      setIsUploadingPhoto(true);
-      setPhotoError('');
-      setPhotoSuccess('');
-
-      const result = await userService.uploadProfilePhoto(coiffeur._id, file);
-      
-      if (result.success) {
-        // Mettre à jour l'état local
-        setCoiffeur({
-          ...coiffeur,
-          photo: result.photo.url
-        });
-        setPhotoSuccess('Photo de profil mise à jour avec succès !');
-      } else {
-        setPhotoError('Erreur lors de l\'upload de la photo');
-      }
-    } catch (error: any) {
-      console.error('Erreur upload photo:', error);
-      setPhotoError(error.response?.data?.message || 'Erreur lors de l\'upload de la photo');
-    } finally {
-      setIsUploadingPhoto(false);
-    }
-  };
-
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -164,17 +117,14 @@ const CoiffeurProfilePage = () => {
       {/* En-tête du profil */}
       <div className="bg-fashion-light-gray rounded-lg shadow-lg p-6 mb-6">
         <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
-          {/* Photo de profil avec upload pour le propriétaire */}
+          {/* Photo de profil en lecture seule */}
           <div className="relative">
-            <div className="relative group">
+            <div className="relative">
               <img
-                src={coiffeur.photo || '/default-avatar.png'}
+                src={getImageUrl(coiffeur.photo, '/default-avatar.png')}
                 alt={coiffeur.name}
                 className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-lg"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.src = '/default-avatar.png';
-                }}
+                onError={(e) => handleImageError(e, '/default-avatar.png')}
               />
               
               {/* Badge vérifié */}
@@ -183,40 +133,7 @@ const CoiffeurProfilePage = () => {
                   <MdVerified className="text-lg" />
                 </div>
               )}
-              
-              {/* Bouton upload pour le propriétaire - TOUJOURS VISIBLE */}
-              {isOwner && (
-                <div className="absolute inset-0 rounded-full bg-black/30 flex items-center justify-center">
-                  <label className="cursor-pointer">
-                    <input
-                      type="file"
-                      accept="image/jpeg,image/jpg,image/png,image/webp"
-                      onChange={handlePhotoUpload}
-                      className="hidden"
-                      disabled={isUploadingPhoto}
-                    />
-                    <div className="p-2 bg-fashion-light-gray/80 hover:bg-fashion-light-gray text-gray-800 rounded-full transition-colors duration-200">
-                      {isUploadingPhoto ? <FaSpinner className="animate-spin" /> : <FaCamera />}
-                    </div>
-                  </label>
-                </div>
-              )}
             </div>
-            
-            {/* Messages d'état pour l'upload - TOUJOURS VISIBLE */}
-            {isOwner && (
-              <div className="mt-2 text-center">
-                {photoError && (
-                  <div className="text-red-600 text-xs mb-1">{photoError}</div>
-                )}
-                {photoSuccess && (
-                  <div className="text-green-600 text-xs mb-1">{photoSuccess}</div>
-                )}
-                <div className="text-xs text-gray-500">
-                  {isUploadingPhoto ? 'Upload en cours...' : 'Cliquez pour changer'}
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Informations principales */}
@@ -332,11 +249,7 @@ const CoiffeurProfilePage = () => {
 
       {/* Contenu des onglets */}
       {activeTab === 'gallery' ? (
-        <Gallery
-          coiffeurId={id || ''}
-          isOwner={isOwner || false}
-          onServiceBook={handleServiceBook}
-        />
+        <Gallery coiffeurId={id || ''} isOwner={isOwner || false} />
       ) : activeTab === 'services' ? (
         <ServicesSection
           coiffeurId={id || ''}

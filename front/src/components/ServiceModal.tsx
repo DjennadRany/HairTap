@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FaTimes, FaImage, FaTags, FaPlus, FaTrash } from 'react-icons/fa';
+import { getImageUrl, handleImageError } from '../utils/imageUtils';
 
 interface ServiceModalProps {
   isOpen: boolean;
@@ -99,7 +100,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
       await onSubmit(submitData);
       onClose();
     } catch (error: any) {
-      setError(error.response?.data?.message || 'Erreur lors de la sauvegarde');
+      setError(error.message || 'Erreur lors de la sauvegarde');
     }
   };
 
@@ -313,9 +314,10 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
                   {existingPhotos.map((photo, index) => (
                     <div key={index} className="relative">
                       <img
-                        src={photo}
+                        src={getImageUrl(photo, 'http://localhost:5000/default-service-image.png')}
                         alt={`Exemple ${index + 1}`}
                         className="w-full h-20 object-cover rounded-lg"
+                        onError={(e) => handleImageError(e, 'http://localhost:5000/default-service-image.png')}
                       />
                       <button
                         type="button"

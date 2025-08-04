@@ -5,7 +5,7 @@ import { coiffeurService } from '../services/api/coiffeurs';
 import { FaPlus, FaEdit, FaTrash, FaHeart, FaHeartBroken, FaImage, FaTags, FaClock, FaEuroSign, FaStar, FaSearch } from 'react-icons/fa';
 import { MdVerified } from 'react-icons/md';
 import ServiceModal from './ServiceModal';
-import ServiceImage from './ServiceImage';
+// ServiceImage component removed - will be reimplemented later
 import ServiceCard from './ServiceCard';
 
 // Type pour les services coiffeur avec nouvelles propriétés

@@ -6,7 +6,8 @@ import { coiffeurService } from '../services/api/coiffeurs';
 import { FaStar, FaMapMarkerAlt, FaClock, FaHeart, FaImages, FaEuroSign } from 'react-icons/fa';
 import { MdVerified } from 'react-icons/md';
 import Modal from './ui/Modal';
-import ImageOptimized from './ui/ImageOptimized';
+import { getImageUrl, handleImageError } from '../utils/imageUtils';
+// ImageOptimized component removed - will be reimplemented later
 import type { User } from '../types/models';
 
 interface CoiffeurCardProps {
@@ -93,11 +94,11 @@ const CoiffeurCard: React.FC<CoiffeurCardProps> = ({
         <div className="relative">
           {/* Photo de profil avec fallback */}
           <div className="h-48 bg-gradient-to-br from-accent/10 to-accent/20 relative">
-            <ImageOptimized
-              src={coiffeur.photo || '/default-avatar.png'}
+            <img
+              src={getImageUrl(coiffeur.photo, 'http://localhost:5000/default-avatar.png')}
               alt={coiffeur.name}
               className="w-full h-full object-cover"
-              fallbackSrc="/default-avatar.png"
+              onError={(e) => handleImageError(e, 'http://localhost:5000/default-avatar.png')}
             />
             
             {/* Badge vérifié */}
@@ -192,11 +193,11 @@ const CoiffeurCard: React.FC<CoiffeurCardProps> = ({
                           handleImageClick(image);
                         }}
                       >
-                        <ImageOptimized
-                          src={image.url}
+                        <img
+                          src={getImageUrl(image.url, 'http://localhost:5000/default-service-image.png')}
                           alt={image.serviceName}
                           className="w-full h-full object-cover"
-                          fallbackSrc="/default-service-image.png"
+                          onError={(e) => handleImageError(e, 'http://localhost:5000/default-service-image.png')}
                         />
                       </div>
                     ))}
@@ -231,11 +232,11 @@ const CoiffeurCard: React.FC<CoiffeurCardProps> = ({
           title=""
         >
           <div className="relative">
-            <ImageOptimized
-              src={selectedImage.url}
+            <img
+              src={getImageUrl(selectedImage.url, 'http://localhost:5000/default-service-image.png')}
               alt={selectedImage.serviceName}
               className="w-full h-auto max-h-96 object-contain rounded-lg"
-              fallbackSrc="/default-service-image.png"
+              onError={(e) => handleImageError(e, 'http://localhost:5000/default-service-image.png')}
             />
             <div className="mt-4 text-center">
               <h3 className="text-xl font-bold mb-2">{selectedImage.serviceName}</h3>

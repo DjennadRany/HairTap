@@ -1,5 +1,6 @@
 import React from 'react';
 import { FaHeart, FaCalendarAlt } from 'react-icons/fa';
+import { getImageUrl, handleImageError } from '../utils/imageUtils';
 
 interface ServiceCardProps {
   service: {
@@ -95,16 +96,12 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
         <div className="mb-3">
           <div className="flex gap-2">
             {service.examplePhotos.slice(0, 2).map((photo, index) => (
-              <img 
+              <img
                 key={index}
-                src={photo} 
+                src={getImageUrl(photo, 'http://localhost:5000/default-service-image.png')}
                 alt={`Exemple ${index + 1}`}
                 className="w-16 h-16 object-cover rounded-lg"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.src = '/default-service-image.png';
-                  target.onerror = null; // Éviter les boucles infinies
-                }}
+                onError={(e) => handleImageError(e, 'http://localhost:5000/default-service-image.png')}
               />
             ))}
           </div>

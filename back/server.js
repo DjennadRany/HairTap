@@ -22,7 +22,7 @@ import serviceRoutes from './routes/services.js';
 import chatRoutes from './routes/chat.js';
 import favoriteRoutes from './routes/favorites.js';
 import reviewRoutes from './routes/reviews.js';
-import imageRoutes from './routes/images.js';
+// imageRoutes removed - simplified photo system
 
 const envPath = path.resolve(process.cwd(), '.env');
 console.log('[DEBUG] .env path:', envPath, 'Exists:', fs.existsSync(envPath));
@@ -31,13 +31,31 @@ console.log('[DEBUG] JWT_SECRET:', process.env.JWT_SECRET);
 
 const app = express();
 
-// Security Middleware
-app.use(helmet());
+// Configuration CORS plus permissive pour le développement
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:3000'],
+  origin: ['http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+}));
+
+// Configuration Helmet plus permissive pour les images
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  crossOriginEmbedderPolicy: false,
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'"],
+      imgSrc: ["'self'", "data:", "blob:", "http://localhost:5000", "http://127.0.0.1:5000"],
+      connectSrc: ["'self'", "http://localhost:5000", "http://127.0.0.1:5000"],
+      fontSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      mediaSrc: ["'self'"],
+      frameSrc: ["'none'"],
+    },
+  },
 }));
 
 // Rate Limiting - Désactivé pour le développement
@@ -88,10 +106,17 @@ app.use('/api/services', serviceRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/favorites', favoriteRoutes);
 app.use('/api/reviews', reviewRoutes);
-app.use('/api/images', imageRoutes);
+// app.use('/api/images', imageRoutes); // Removed - simplified photo system
 
-// Configuration pour servir les fichiers statiques
-app.use('/uploads', express.static('uploads'));
+// Configuration pour servir les fichiers statiques avec CORS
+app.use('/uploads', (req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+  next();
+}, express.static('uploads'));
+
+app.use('/', express.static('public')); // Pour servir default-avatar.png
 
 // Error Handling
 app.use(errorHandler);

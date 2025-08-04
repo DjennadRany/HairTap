@@ -15,8 +15,11 @@ export function useChat(currentUserId: string, otherUserId: string) {
         const data = await chatService.getMessages(otherUserId);
         setMessages(data);
         setError(null);
-      } catch (err) {
-        setError('Erreur lors du chargement des messages');
+      } catch (err: any) {
+        // Ne pas afficher d'erreur si c'est une erreur d'authentification
+        if (err?.response?.status !== 401) {
+          setError('Erreur lors du chargement des messages');
+        }
         console.error('Error fetching messages:', err);
       } finally {
         setLoading(false);
@@ -42,8 +45,11 @@ export function useChat(currentUserId: string, otherUserId: string) {
     try {
       const newMessage = await chatService.sendMessage(otherUserId, content);
       setMessages(prev => [...prev, newMessage]);
-    } catch (err) {
-      setError('Erreur lors de l\'envoi du message');
+    } catch (err: any) {
+      // Ne pas afficher d'erreur si c'est une erreur d'authentification
+      if (err?.response?.status !== 401) {
+        setError('Erreur lors de l\'envoi du message');
+      }
       console.error('Error sending message:', err);
     }
   }, [otherUserId]);
@@ -55,8 +61,11 @@ export function useChat(currentUserId: string, otherUserId: string) {
 export async function getUnreadCount(): Promise<number> {
   try {
     return await chatService.getUnreadCount();
-  } catch (err) {
-    console.error('Error getting unread count:', err);
+  } catch (err: any) {
+    // Ne pas logger d'erreur si c'est une erreur d'authentification
+    if (err?.response?.status !== 401) {
+      console.error('Error getting unread count:', err);
+    }
     return 0;
   }
 }
@@ -65,8 +74,11 @@ export async function getUnreadCount(): Promise<number> {
 export async function getConversations(): Promise<Conversation[]> {
   try {
     return await chatService.getConversations();
-  } catch (err) {
-    console.error('Error getting conversations:', err);
+  } catch (err: any) {
+    // Ne pas logger d'erreur si c'est une erreur d'authentification
+    if (err?.response?.status !== 401) {
+      console.error('Error getting conversations:', err);
+    }
     return [];
   }
 } 

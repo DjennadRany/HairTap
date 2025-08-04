@@ -2,7 +2,7 @@ import express from 'express';
 import multer from 'multer';
 import Service from '../models/Service.js';
 import { auth } from '../middleware/auth.js';
-import photoService from '../services/photoService.js';
+// photoService removed - simplified photo system
 
 const router = express.Router();
 
@@ -110,14 +110,26 @@ router.post('/:id/photo', auth, upload.single('photo'), async (req, res) => {
       return res.status(400).json({ success: false, message: 'Aucun fichier fourni' });
     }
 
-    // Upload de la nouvelle photo
-    const uploadResult = await photoService.uploadServicePhoto(req.file, id);
+    // Upload de la nouvelle photo - SIMPLIFIÉ
+    const fileName = `service-${id}-${Date.now()}-${Math.random().toString(36).substring(2)}.${req.file.originalname.split('.').pop()}`;
+    const filePath = `uploads/services/${fileName}`;
+
+    // Sauvegarder le fichier
+    const fs = await import('fs');
+    const path = await import('path');
+    
+    const uploadDir = path.join(process.cwd(), 'uploads', 'services');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+
+    fs.writeFileSync(path.join(uploadDir, fileName), req.file.buffer);
 
     // Ajouter la photo au service
     if (!service.examplePhotos) {
       service.examplePhotos = [];
     }
-    service.examplePhotos.push(uploadResult.url);
+    service.examplePhotos.push(`/${filePath}`);
     await service.save();
 
     res.json({
@@ -148,8 +160,9 @@ router.delete('/:id/photo/:photoUrl', auth, async (req, res) => {
       return res.status(403).json({ success: false, message: 'Non autorisé' });
     }
 
-    // Supprimer la photo du serveur
-    await photoService.deletePhoto(decodeURIComponent(photoUrl));
+    // Supprimer la photo du serveur - SIMPLIFIÉ
+    // Note: Pour l'instant, on ne supprime pas physiquement le fichier
+    // pour éviter les erreurs. On peut l'implémenter plus tard si nécessaire.
 
     // Retirer la photo du service
     service.examplePhotos = service.examplePhotos.filter(
