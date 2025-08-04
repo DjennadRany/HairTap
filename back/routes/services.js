@@ -135,7 +135,7 @@ router.post('/:id/photo', auth, upload.single('photo'), async (req, res) => {
     res.json({
       success: true,
       message: 'Photo ajoutée au service',
-      photo: { url: uploadResult.url }
+      photo: { url: `/${filePath}` }
     });
   } catch (error) {
     console.error('Upload service photo error:', error);
