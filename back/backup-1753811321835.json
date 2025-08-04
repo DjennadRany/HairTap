@@ -1,0 +1,544 @@
+{
+  "timestamp": "2025-07-29T17:48:41.801Z",
+  "users": [
+    {
+      "_id": "6839ca0736ec3cfc09c649ea",
+      "name": "Alice Martin",
+      "email": "alice.martin@test.com",
+      "role": "user",
+      "photo": "default-avatar.png",
+      "phone": "0600000001",
+      "address": {
+        "street": "12 rue des Artistes",
+        "city": "Paris",
+        "postalCode": "75010",
+        "coordinates": {
+          "lat": 48.8742,
+          "lng": 2.3708
+        }
+      },
+      "speciality": [],
+      "rating": 0,
+      "photos": [],
+      "mode": [],
+      "cancellationPolicy": "Annulation gratuite jusqu'à 24h avant le rendez-vous.",
+      "favorites": [
+        "6839ca0736ec3cfc09c649ec"
+      ],
+      "preferences": {
+        "notifications": {
+          "email": true,
+          "sms": false,
+          "push": true
+        },
+        "language": "fr",
+        "theme": "light",
+        "privacy": {
+          "showAddress": true,
+          "showPhone": false
+        }
+      },
+      "gallery": [],
+      "coiffeurProfile": {
+        "settings": {
+          "acceptsOnlineBooking": true,
+          "showProfile": true
+        },
+        "prestations": [],
+        "agenda": []
+      },
+      "availability": [],
+      "createdAt": "2025-05-30T15:08:55.729Z",
+      "updatedAt": "2025-07-29T17:05:22.541Z",
+      "services": [],
+      "__v": 2,
+      "_photoChanged": false,
+      "blockedUsers": [],
+      "isBlocked": false,
+      "likes": 0,
+      "sirenStatus": "none",
+      "socialPosts": [],
+      "specialities": [],
+      "stats": {
+        "averageRating": 0,
+        "cancelledBookings": 0,
+        "completedBookings": 0,
+        "profileViews": 0,
+        "totalBookings": 0
+      },
+      "totalRatings": 0,
+      "travelRadius": 10,
+      "workingMode": []
+    },
+    {
+      "_id": "6839ca0736ec3cfc09c649eb",
+      "name": "Bob Dupont",
+      "email": "bob.dupont@test.com",
+      "role": "user",
+      "photo": "default-avatar.png",
+      "phone": "0600000002",
+      "address": {
+        "street": "34 avenue de Lyon",
+        "city": "Lyon",
+        "postalCode": "69000",
+        "coordinates": {
+          "lat": 45.7578,
+          "lng": 4.832
+        }
+      },
+      "speciality": [],
+      "rating": 0,
+      "photos": [],
+      "mode": [],
+      "cancellationPolicy": "Annulation gratuite jusqu'à 24h avant le rendez-vous.",
+      "favorites": [
+        "6839ca0736ec3cfc09c649ed"
+      ],
+      "preferences": {
+        "notifications": {
+          "email": true,
+          "sms": true,
+          "push": true
+        },
+        "language": "fr",
+        "theme": "dark",
+        "privacy": {
+          "showAddress": true,
+          "showPhone": false
+        }
+      },
+      "gallery": [],
+      "coiffeurProfile": {
+        "settings": {
+          "acceptsOnlineBooking": true,
+          "showProfile": true
+        },
+        "prestations": [],
+        "agenda": []
+      },
+      "availability": [],
+      "createdAt": "2025-05-30T15:08:55.730Z",
+      "updatedAt": "2025-07-29T17:05:22.548Z",
+      "services": [],
+      "__v": 2,
+      "_photoChanged": false,
+      "blockedUsers": [],
+      "isBlocked": false,
+      "likes": 0,
+      "sirenStatus": "none",
+      "socialPosts": [],
+      "specialities": [],
+      "stats": {
+        "averageRating": 0,
+        "cancelledBookings": 0,
+        "completedBookings": 0,
+        "profileViews": 0,
+        "totalBookings": 0
+      },
+      "totalRatings": 0,
+      "travelRadius": 10,
+      "workingMode": []
+    },
+    {
+      "_id": "6839ca0736ec3cfc09c649ec",
+      "name": "Marie Dubois",
+      "email": "marie.dubois@taphair.com",
+      "role": "coiffeur",
+      "photo": "/uploads/profiles/profile-6839ca0736ec3cfc09c649ec-74760782-bdce-4d45-a583-30825cb85e8c.jpg",
+      "phone": "",
+      "address": {
+        "street": "12 rue des Artistes",
+        "city": "Paris",
+        "postalCode": "75010",
+        "coordinates": {
+          "lat": 48.8742,
+          "lng": 2.3708
+        }
+      },
+      "speciality": [
+        "coupe femme",
+        "coloration"
+      ],
+      "rating": 5,
+      "priceRange": "€€",
+      "workingHours": {
+        "monday": {
+          "start": "09:00",
+          "end": "19:00"
+        },
+        "tuesday": {
+          "start": "09:00",
+          "end": "19:00"
+        },
+        "wednesday": {
+          "start": "09:00",
+          "end": "19:00"
+        },
+        "thursday": {
+          "start": "09:00",
+          "end": "19:00"
+        },
+        "friday": {
+          "start": "09:00",
+          "end": "19:00"
+        },
+        "saturday": {
+          "start": "10:00",
+          "end": "18:00"
+        },
+        "sunday": {
+          "start": "",
+          "end": ""
+        }
+      },
+      "description": "Spécialiste en coupe et coloration pour femme",
+      "photos": [],
+      "mode": [],
+      "cancellationPolicy": "Annulation gratuite jusqu'à 24h avant le rendez-vous.",
+      "favorites": [],
+      "preferences": {
+        "notifications": {
+          "email": true,
+          "sms": true,
+          "push": true
+        },
+        "language": "fr",
+        "theme": "light",
+        "privacy": {
+          "showAddress": true,
+          "showPhone": false
+        }
+      },
+      "gallery": [
+        {
+          "url": "blob:http://localhost:5173/9bfbccc0-b8e8-455b-a75c-438df2b9c474",
+          "description": "Photo d'exemple - Coloration",
+          "isVerified": true,
+          "_id": "6888e97e62e228e62a8a2d4c",
+          "_stable": true
+        },
+        {
+          "url": "blob:http://localhost:5173/1cf5c1bc-84f4-41da-ac40-9b3392ab2382",
+          "description": "Photo d'exemple - Coloration",
+          "isVerified": true,
+          "_id": "6888e97e62e228e62a8a2d4d",
+          "_stable": true
+        },
+        {
+          "url": "blob:http://localhost:5173/91af59f8-49ef-476b-bc20-3dd48e6f16ab",
+          "description": "Photo d'exemple - Coupe femme",
+          "isVerified": true,
+          "_id": "6888e97e62e228e62a8a2d4e",
+          "_stable": true
+        },
+        {
+          "url": "blob:http://localhost:5173/b6f6ec7a-dacb-4c7c-9b26-628455a7c27e",
+          "description": "Photo d'exemple - dégradé",
+          "isVerified": true,
+          "_id": "6888e97e62e228e62a8a2d4f",
+          "_stable": true
+        },
+        {
+          "url": "blob:http://localhost:5173/3265fd6a-d2f3-4784-a7e8-fd413a8bb8e0",
+          "description": "Photo d'exemple - dégradé",
+          "isVerified": true,
+          "_id": "6888e97e62e228e62a8a2d50",
+          "_stable": true
+        }
+      ],
+      "coiffeurProfile": {
+        "settings": {
+          "acceptsOnlineBooking": true,
+          "showProfile": true
+        },
+        "prestations": [],
+        "agenda": []
+      },
+      "availability": [],
+      "createdAt": "2025-05-30T15:08:55.732Z",
+      "updatedAt": "2025-07-29T17:48:00.401Z",
+      "services": [],
+      "__v": 4,
+      "blockedUsers": [],
+      "isBlocked": false,
+      "likes": 0,
+      "loginHistory": [],
+      "sirenStatus": "none",
+      "socialPosts": [],
+      "specialities": [],
+      "stats": {
+        "averageRating": 0,
+        "cancelledBookings": 0,
+        "completedBookings": 0,
+        "profileViews": 0,
+        "totalBookings": 0
+      },
+      "totalRatings": 1,
+      "travelRadius": 10,
+      "workingMode": [],
+      "_photoChanged": false,
+      "bio": ""
+    },
+    {
+      "_id": "6839ca0736ec3cfc09c649ed",
+      "name": "Pierre Martin",
+      "email": "pierre.martin@taphair.com",
+      "role": "coiffeur",
+      "photo": "default-avatar.png",
+      "phone": "0700000002",
+      "address": {
+        "street": "56 avenue de la République",
+        "city": "Paris",
+        "postalCode": "75011",
+        "coordinates": {
+          "lat": 48.8655,
+          "lng": 2.3802
+        }
+      },
+      "speciality": [
+        "barbe",
+        "coupe homme"
+      ],
+      "rating": 4.9,
+      "priceRange": "€€€",
+      "workingHours": {
+        "monday": {
+          "start": "10:00",
+          "end": "20:00"
+        },
+        "tuesday": {
+          "start": "10:00",
+          "end": "20:00"
+        },
+        "wednesday": {
+          "start": "10:00",
+          "end": "20:00"
+        },
+        "thursday": {
+          "start": "10:00",
+          "end": "20:00"
+        },
+        "friday": {
+          "start": "10:00",
+          "end": "20:00"
+        },
+        "saturday": {
+          "start": "10:00",
+          "end": "18:00"
+        },
+        "sunday": {
+          "start": "",
+          "end": ""
+        }
+      },
+      "description": "Expert en coupe homme et barbe",
+      "photos": [],
+      "mode": [],
+      "cancellationPolicy": "Annulation gratuite jusqu'à 24h avant le rendez-vous.",
+      "favorites": [],
+      "preferences": {
+        "notifications": {
+          "email": true,
+          "sms": true,
+          "push": true
+        },
+        "language": "fr",
+        "theme": "light",
+        "privacy": {
+          "showAddress": true,
+          "showPhone": false
+        }
+      },
+      "gallery": [],
+      "coiffeurProfile": {
+        "settings": {
+          "acceptsOnlineBooking": true,
+          "showProfile": true
+        },
+        "prestations": [],
+        "agenda": []
+      },
+      "availability": [],
+      "createdAt": "2025-05-30T15:08:55.734Z",
+      "updatedAt": "2025-07-29T17:05:22.557Z",
+      "services": [],
+      "__v": 1,
+      "_photoChanged": false,
+      "blockedUsers": [],
+      "isBlocked": false,
+      "likes": 0,
+      "sirenStatus": "none",
+      "socialPosts": [],
+      "specialities": [],
+      "stats": {
+        "averageRating": 0,
+        "cancelledBookings": 0,
+        "completedBookings": 0,
+        "profileViews": 0,
+        "totalBookings": 0
+      },
+      "totalRatings": 0,
+      "travelRadius": 10,
+      "workingMode": []
+    },
+    {
+      "_id": "6839ca0736ec3cfc09c649ee",
+      "name": "Admin System",
+      "email": "admin@taphair.com",
+      "role": "admin",
+      "photo": "default-avatar.png",
+      "phone": "0600000000",
+      "address": {
+        "street": "1 rue de l'Admin",
+        "city": "Paris",
+        "postalCode": "75001",
+        "coordinates": {
+          "lat": 48.8566,
+          "lng": 2.3522
+        }
+      },
+      "speciality": [],
+      "rating": 0,
+      "photos": [],
+      "mode": [],
+      "cancellationPolicy": "Annulation gratuite jusqu'à 24h avant le rendez-vous.",
+      "favorites": [],
+      "preferences": {
+        "notifications": {
+          "email": true,
+          "sms": true,
+          "push": true
+        },
+        "language": "fr",
+        "theme": "light",
+        "privacy": {
+          "showAddress": true,
+          "showPhone": false
+        }
+      },
+      "gallery": [],
+      "coiffeurProfile": {
+        "settings": {
+          "acceptsOnlineBooking": true,
+          "showProfile": true
+        },
+        "prestations": [],
+        "agenda": []
+      },
+      "availability": [],
+      "createdAt": "2025-05-30T15:08:55.734Z",
+      "updatedAt": "2025-07-29T17:05:22.559Z",
+      "services": [],
+      "__v": 1,
+      "_photoChanged": false,
+      "blockedUsers": [],
+      "isBlocked": false,
+      "likes": 0,
+      "sirenStatus": "none",
+      "socialPosts": [],
+      "specialities": [],
+      "stats": {
+        "averageRating": 0,
+        "cancelledBookings": 0,
+        "completedBookings": 0,
+        "profileViews": 0,
+        "totalBookings": 0
+      },
+      "totalRatings": 0,
+      "travelRadius": 10,
+      "workingMode": []
+    }
+  ],
+  "services": [
+    {
+      "_id": "6839ca0936ec3cfc09c649f8",
+      "name": "Coloration",
+      "description": "Coloration professionnelle",
+      "price": 60,
+      "duration": 60,
+      "category": "coloration",
+      "coiffeur": "6839ca0736ec3cfc09c649ec",
+      "isActive": true,
+      "createdAt": "2025-05-30T15:08:57.029Z",
+      "updatedAt": "2025-07-29T17:44:00.501Z",
+      "__v": 5,
+      "examplePhotos": [],
+      "keywords": [],
+      "likedBy": [
+        "6839ca0736ec3cfc09c649ea"
+      ],
+      "likes": 1
+    },
+    {
+      "_id": "6839ca0936ec3cfc09c649f7",
+      "name": "Coupe femme",
+      "description": "Coupe personnalisée pour femme",
+      "price": 40,
+      "duration": 30,
+      "category": "coupe",
+      "coiffeur": "6839ca0736ec3cfc09c649ec",
+      "isActive": true,
+      "createdAt": "2025-05-30T15:08:57.029Z",
+      "updatedAt": "2025-07-29T17:44:00.504Z",
+      "__v": 5,
+      "examplePhotos": [],
+      "keywords": [],
+      "likedBy": [
+        "6839ca0736ec3cfc09c649ea"
+      ],
+      "likes": 1
+    },
+    {
+      "_id": "6839ca0936ec3cfc09c649fb",
+      "name": "Barbe",
+      "description": "Taille et soin de la barbe",
+      "price": 20,
+      "duration": 20,
+      "category": "barbe",
+      "coiffeur": "6839ca0736ec3cfc09c649ed",
+      "isActive": true,
+      "createdAt": "2025-05-30T15:08:57.032Z",
+      "updatedAt": "2025-05-30T15:08:57.033Z",
+      "__v": 0
+    },
+    {
+      "_id": "6839ca0936ec3cfc09c649fc",
+      "name": "Coupe homme",
+      "description": "Coupe personnalisée pour homme",
+      "price": 25,
+      "duration": 25,
+      "category": "coupe",
+      "coiffeur": "6839ca0736ec3cfc09c649ed",
+      "isActive": true,
+      "createdAt": "2025-05-30T15:08:57.032Z",
+      "updatedAt": "2025-07-28T15:42:16.516Z",
+      "__v": 1,
+      "examplePhotos": [],
+      "keywords": [],
+      "likedBy": [
+        "6839ca0736ec3cfc09c649ea"
+      ],
+      "likes": 1
+    },
+    {
+      "_id": "6887883e89430382f7762f50",
+      "name": "dégradé",
+      "description": "bobdoh",
+      "price": 20,
+      "duration": 30,
+      "category": "coupe",
+      "keywords": [],
+      "examplePhotos": [],
+      "likes": 2,
+      "likedBy": [
+        "6839ca0736ec3cfc09c649ec",
+        "6839ca0736ec3cfc09c649ea"
+      ],
+      "coiffeur": "6839ca0736ec3cfc09c649ec",
+      "isActive": true,
+      "createdAt": "2025-07-28T14:25:02.818Z",
+      "updatedAt": "2025-07-29T17:44:00.507Z",
+      "__v": 11
+    }
+  ]
+}
