@@ -3,10 +3,12 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { selectCurrentUser } from '../store/slices/authSlice';
 import { coiffeurService } from '../services/api/coiffeurs';
+import { favoriteService } from '../services/api/favorites';
+import { useNotification } from './ui/NotificationManager';
 import { FaStar, FaMapMarkerAlt, FaClock, FaHeart, FaImages, FaEuroSign } from 'react-icons/fa';
 import { MdVerified } from 'react-icons/md';
 import Modal from './ui/Modal';
-import { getImageUrl, handleImageError } from '../utils/imageUtils';
+import { getImageUrl, handleImageError, DEFAULT_COIFFEUR_IMAGE, DEFAULT_SERVICE_IMAGE } from '../utils/imageUtils';
 // ImageOptimized component removed - will be reimplemented later
 import type { User } from '../types/models';
 
@@ -36,14 +38,21 @@ const CoiffeurCard: React.FC<CoiffeurCardProps> = ({
 }) => {
   const user = useSelector(selectCurrentUser);
   const navigate = useNavigate();
+  const { showNotification } = useNotification();
   const [serviceImages, setServiceImages] = useState<ServiceImage[]>([]);
   const [selectedImage, setSelectedImage] = useState<ServiceImage | null>(null);
   const [showImageModal, setShowImageModal] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const [favoriteState, setFavoriteState] = useState(isFavorite);
 
   useEffect(() => {
     fetchServiceImages();
   }, [coiffeur._id]);
+
+  // Mettre à jour l'état des favoris quand la prop change
+  useEffect(() => {
+    setFavoriteState(isFavorite);
+  }, [isFavorite]);
 
   const fetchServiceImages = async () => {
     try {
@@ -84,6 +93,50 @@ const CoiffeurCard: React.FC<CoiffeurCardProps> = ({
     }
   };
 
+  // Fonction pour gérer les favoris
+  const handleFavoriteToggle = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    if (!user || user.role !== 'client') {
+      showNotification({
+        type: 'error',
+        title: 'Accès refusé',
+        message: 'Vous devez être connecté en tant que client pour ajouter des favoris'
+      });
+      return;
+    }
+
+    try {
+      if (favoriteState) {
+        await favoriteService.removeFavorite(coiffeur._id);
+        setFavoriteState(false);
+        showNotification({
+          type: 'success',
+          title: 'Favori retiré',
+          message: 'Coiffeur retiré des favoris'
+        });
+      } else {
+        await favoriteService.addFavorite(coiffeur._id);
+        setFavoriteState(true);
+        showNotification({
+          type: 'success',
+          title: 'Favori ajouté',
+          message: 'Coiffeur ajouté aux favoris'
+        });
+      }
+      
+      // Appeler la fonction parent si elle existe
+      onFavoriteToggle?.(coiffeur._id);
+    } catch (error) {
+      console.error('Erreur lors de la gestion des favoris:', error);
+      showNotification({
+        type: 'error',
+        title: 'Erreur',
+        message: 'Erreur lors de la gestion des favoris'
+      });
+    }
+  };
+
   return (
     <>
       <div 
@@ -95,10 +148,10 @@ const CoiffeurCard: React.FC<CoiffeurCardProps> = ({
           {/* Photo de profil avec fallback */}
           <div className="h-48 bg-gradient-to-br from-accent/10 to-accent/20 relative">
             <img
-              src={getImageUrl(coiffeur.photo, 'http://localhost:5000/default-avatar.png')}
+              src={getImageUrl(coiffeur.photo, DEFAULT_COIFFEUR_IMAGE)}
               alt={coiffeur.name}
               className="w-full h-full object-cover"
-              onError={(e) => handleImageError(e, 'http://localhost:5000/default-avatar.png')}
+              onError={(e) => handleImageError(e, DEFAULT_COIFFEUR_IMAGE)}
             />
             
             {/* Badge vérifié */}
@@ -111,18 +164,15 @@ const CoiffeurCard: React.FC<CoiffeurCardProps> = ({
             {/* Bouton favori - ÉTOILE au lieu du cœur */}
             {user && user.role === 'client' && (
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onFavoriteToggle?.(coiffeur._id);
-                }}
+                onClick={handleFavoriteToggle}
                 className={`absolute top-3 left-3 p-2 rounded-full transition-all duration-300 ${
-                  isFavorite 
-                    ? 'bg-yellow-500 text-white shadow-lg' 
-                    : 'bg-white/80 text-gray-600 hover:bg-yellow-500 hover:text-white'
+                  favoriteState 
+                    ? 'bg-red-500 text-white hover:bg-red-600 hover:scale-110'
+                    : 'bg-gray-600 text-white hover:bg-black hover:scale-110'
                 }`}
-                title={isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+                title={favoriteState ? "Retirer des favoris" : "Ajouter aux favoris"}
               >
-                <FaStar className={`text-lg ${isFavorite ? 'text-white' : 'text-gray-600'}`} />
+                <FaHeart className="text-lg" />
               </button>
             )}
           </div>
@@ -194,10 +244,10 @@ const CoiffeurCard: React.FC<CoiffeurCardProps> = ({
                         }}
                       >
                         <img
-                          src={getImageUrl(image.url, 'http://localhost:5000/default-service-image.png')}
+                          src={getImageUrl(image.url, DEFAULT_SERVICE_IMAGE)}
                           alt={image.serviceName}
                           className="w-full h-full object-cover"
-                          onError={(e) => handleImageError(e, 'http://localhost:5000/default-service-image.png')}
+                          onError={(e) => handleImageError(e, DEFAULT_SERVICE_IMAGE)}
                         />
                       </div>
                     ))}
@@ -215,7 +265,7 @@ const CoiffeurCard: React.FC<CoiffeurCardProps> = ({
             <div className="flex gap-2">
               <Link
                 to={`/coiffeur/${coiffeur._id}`}
-                className="flex-1 bg-accent text-white py-2 px-4 rounded-lg text-center font-medium hover:bg-accent/90 transition-colors"
+                className="flex-1 bg-gray-400 text-white py-2 px-4 rounded-lg text-center font-medium hover:bg-black transition-colors"
               >
                 Voir le profil
               </Link>
@@ -233,10 +283,10 @@ const CoiffeurCard: React.FC<CoiffeurCardProps> = ({
         >
           <div className="relative">
             <img
-              src={getImageUrl(selectedImage.url, 'http://localhost:5000/default-service-image.png')}
+              src={getImageUrl(selectedImage.url, DEFAULT_SERVICE_IMAGE)}
               alt={selectedImage.serviceName}
               className="w-full h-auto max-h-96 object-contain rounded-lg"
-              onError={(e) => handleImageError(e, 'http://localhost:5000/default-service-image.png')}
+              onError={(e) => handleImageError(e, DEFAULT_SERVICE_IMAGE)}
             />
             <div className="mt-4 text-center">
               <h3 className="text-xl font-bold mb-2">{selectedImage.serviceName}</h3>
@@ -252,7 +302,7 @@ const CoiffeurCard: React.FC<CoiffeurCardProps> = ({
               </div>
               <button
                 onClick={handleReservation}
-                className="bg-accent text-white px-6 py-2 rounded-lg hover:bg-accent/90 transition-colors"
+                className="bg-gray-400 text-white px-6 py-2 rounded-lg hover:bg-black transition-colors"
               >
                 Réserver ce service
               </button>
