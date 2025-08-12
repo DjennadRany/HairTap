@@ -3,6 +3,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { PublicLayout } from './layouts/PublicLayout';
 import { ClientDashboardLayout } from './layouts/ClientDashboardLayout';
 import { CoiffeurDashboardLayout } from './layouts/CoiffeurDashboardLayout';
+import NotificationManager from './components/ui/NotificationManager';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import { SearchPage } from './features/search/presentation/SearchPage';
@@ -28,117 +29,54 @@ import CookiesPage from './pages/CookiesPage';
 
 function App() {
   return (
-    <Routes>
-      {/* Routes publiques */}
-      <Route element={<PublicLayout />}>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/search" element={<SearchPage />} />
-        <Route path="/coiffeur/:id" element={<CoiffeurProfilePage />} />
-        <Route path="/coiffeur/:coiffeurId/services" element={<ClientServicesPage />} />
-        <Route path="/about" element={<AboutPage />} />
-        <Route path="/contact" element={<ContactPage />} />
-        <Route path="/terms" element={<TermsPage />} />
-        <Route path="/privacy" element={<PrivacyPage />} />
-        <Route path="/cookies" element={<CookiesPage />} />
-      </Route>
-      {/* Routes client */}
-      <Route element={<ClientDashboardLayout />}>
+    <NotificationManager>
+      <Routes>
+        {/* Routes publiques */}
+        <Route element={<PublicLayout />}>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/search" element={<SearchPage />} />
+          <Route path="/coiffeur/:id" element={<CoiffeurProfilePage />} />
+          <Route path="/coiffeur/:coiffeurId/services" element={<ClientServicesPage />} />
+          <Route path="/about" element={<AboutPage />} />
+          <Route path="/contact" element={<ContactPage />} />
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/cookies" element={<CookiesPage />} />
+        </Route>
+        {/* Routes client */}
         <Route
-          path="/client/dashboard"
           element={
             <ProtectedRoute requiredRole="client">
-              <ClientDashboardPage />
+              <ClientDashboardLayout />
             </ProtectedRoute>
           }
-        />
+        >
+          <Route path="/client/dashboard" element={<ClientDashboardPage />} />
+          <Route path="/client/favorites" element={<ClientFavoritesPage />} />
+          <Route path="/client/profile" element={<ClientProfilePage />} />
+          <Route path="/client/bookings" element={<ClientBookingsPage />} />
+          <Route path="/booking/:id" element={<BookingPage />} />
+          <Route path="/client/chat" element={<ClientChatPage />} />
+        </Route>
+        {/* Routes coiffeur */}
         <Route
-          path="/client/favorites"
-          element={
-            <ProtectedRoute requiredRole="client">
-              <ClientFavoritesPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/client/profile"
-          element={
-            <ProtectedRoute requiredRole="client">
-              <ClientProfilePage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/client/bookings"
-          element={
-            <ProtectedRoute requiredRole="client">
-              <ClientBookingsPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/booking/:id"
-          element={
-            <ProtectedRoute requiredRole="client">
-              <BookingPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/client/chat"
-          element={
-            <ProtectedRoute requiredRole="client">
-              <ClientChatPage />
-            </ProtectedRoute>
-          }
-        />
-      </Route>
-      {/* Routes coiffeur */}
-      <Route element={<CoiffeurDashboardLayout />}>
-        <Route
-          path="/coiffeur/dashboard"
           element={
             <ProtectedRoute requiredRole="coiffeur">
-              <CoiffeurDashboardPage />
+              <CoiffeurDashboardLayout />
             </ProtectedRoute>
           }
-        />
-        <Route
-          path="/coiffeur/profile"
-          element={
-            <ProtectedRoute requiredRole="coiffeur">
-              <CoiffeurProfileEditPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/coiffeur/reservations"
-          element={
-            <ProtectedRoute requiredRole="coiffeur">
-              <CoiffeurReservationsPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/coiffeur/revenue"
-          element={
-            <ProtectedRoute requiredRole="coiffeur">
-              <CoiffeurRevenuePage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/coiffeur/chat"
-          element={
-            <ProtectedRoute requiredRole="coiffeur">
-              <CoiffeurChatPage />
-            </ProtectedRoute>
-          }
-        />
-      </Route>
-      {/* Route 404 */}
-      <Route path="*" element={<NotFoundPage />} />
-    </Routes>
+        >
+          <Route path="/coiffeur/dashboard" element={<CoiffeurDashboardPage />} />
+          <Route path="/coiffeur/profile" element={<CoiffeurProfileEditPage />} />
+          <Route path="/coiffeur/reservations" element={<CoiffeurReservationsPage />} />
+          <Route path="/coiffeur/revenue" element={<CoiffeurRevenuePage />} />
+          <Route path="/coiffeur/chat" element={<CoiffeurChatPage />} />
+        </Route>
+        {/* Route 404 */}
+        <Route path="*" element={<NotFoundPage />} />
+      </Routes>
+    </NotificationManager>
   );
 }
 
