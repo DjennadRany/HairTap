@@ -46,6 +46,17 @@ export const ClientChatPage: React.FC = () => {
     return () => clearInterval(interval);
   }, [user]);
 
+  // Sélectionner automatiquement la première conversation si aucune n'est sélectionnée
+  useEffect(() => {
+    if (conversations.length > 0 && !selectedCoiffeurId) {
+      setSelectedCoiffeurId(conversations[0].userId);
+    }
+  }, [conversations, selectedCoiffeurId]);
+
+  const handleConversationClick = (coiffeurId: string) => {
+    setSelectedCoiffeurId(coiffeurId);
+  };
+
   if (!user) return <div>Veuillez vous connecter.</div>;
 
   return (
@@ -59,13 +70,27 @@ export const ClientChatPage: React.FC = () => {
             if (!coiffeur) return null;
             const lastMsg = conv.lastMessage;
             const isUnread = conv.unread > 0;
+            const isSelected = selectedCoiffeurId === conv.userId;
+            
             return (
-              <li key={coiffeur._id} className="bg-fashion-light-gray rounded-lg shadow p-4 flex items-center gap-4">
-                <img
-                  src={coiffeur.photo || '/default-avatar.png'}
-                  alt={coiffeur.name}
-                  className="w-16 h-16 rounded-full object-cover"
-                />
+              <li 
+                key={coiffeur._id} 
+                className={`bg-fashion-light-gray rounded-lg shadow p-4 flex items-center gap-4 cursor-pointer transition-all duration-200 hover:bg-gray-100 ${
+                  isSelected ? 'ring-2 ring-accent bg-accent/10' : ''
+                }`}
+                onClick={() => handleConversationClick(coiffeur._id)}
+              >
+                <div className="relative">
+                  <img
+                    src={coiffeur.photo || '/default-avatar.png'}
+                    alt={coiffeur.name}
+                    className="w-16 h-16 rounded-full object-cover"
+                  />
+                  {/* Indicateur de statut de connexion */}
+                  <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white ${
+                    coiffeur.connectionStatus?.isOnline ? 'bg-green-500' : 'bg-gray-400'
+                  }`} />
+                </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className={`font-semibold truncate ${isUnread ? 'text-accent font-bold' : ''}`}>{coiffeur.name}</span>
@@ -76,6 +101,9 @@ export const ClientChatPage: React.FC = () => {
                       {lastMsg.from === user._id ? 'Moi: ' : coiffeur.name + ': '}{lastMsg.content}
                     </span>
                   )}
+                  <div className="text-xs text-gray-400 mt-1">
+                    {coiffeur.connectionStatus?.isOnline ? '🟢 En ligne' : '⚪ Hors ligne'}
+                  </div>
                 </div>
               </li>
             );

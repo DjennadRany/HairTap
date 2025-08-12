@@ -22,6 +22,9 @@ import serviceRoutes from './routes/services.js';
 import chatRoutes from './routes/chat.js';
 import favoriteRoutes from './routes/favorites.js';
 import reviewRoutes from './routes/reviews.js';
+import productRoutes from './routes/products.js';
+import orderRoutes from './routes/orders.js';
+import connectionRoutes from './routes/connections.js';
 // imageRoutes removed - simplified photo system
 
 const envPath = path.resolve(process.cwd(), '.env');
@@ -106,6 +109,9 @@ app.use('/api/services', serviceRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/favorites', favoriteRoutes);
 app.use('/api/reviews', reviewRoutes);
+app.use('/api/products', productRoutes);
+app.use('/api/orders', orderRoutes);
+app.use('/api/connections', connectionRoutes);
 // app.use('/api/images', imageRoutes); // Removed - simplified photo system
 
 // Configuration pour servir les fichiers statiques avec CORS

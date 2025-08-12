@@ -7,7 +7,8 @@ import { logout } from '../store/slices/authSlice';
 import type { RootState } from '../store/store';
 import { FaUser, FaSignOutAlt, FaCog, FaBell, FaSearch } from 'react-icons/fa';
 import { PHOTO_URLS } from '../config/api';
-import { getImageUrl, handleImageError } from '../utils/imageUtils';
+import { getImageUrl, handleImageError, DEFAULT_USER_IMAGE } from '../utils/imageUtils';
+import { ConnectionStatusManager } from './ConnectionStatusManager';
 
 const Header: FC = () => {
   const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
@@ -132,7 +133,7 @@ const Header: FC = () => {
                     Revenus
                   </Link>
                   <Link 
-                    to={`/coiffeur/${user._id}`} 
+                    to={`/coiffeur/${user._id}?tab=services`}
                     className="text-fashion-gray-700 hover:text-fashion-black font-fashion font-medium transition-colors duration-200"
                   >
                     Mes Services & Produits
@@ -155,6 +156,13 @@ const Header: FC = () => {
 
           <div className="flex-1" />
 
+          {/* Gestionnaire de statut de connexion pour les coiffeurs */}
+          {isUserValid && user.role === 'coiffeur' && (
+            <div className="mr-4">
+              <ConnectionStatusManager />
+            </div>
+          )}
+
           {/* User dropdown ou Connexion */}
           {!isUserValid ? (
             <Link
@@ -171,10 +179,10 @@ const Header: FC = () => {
               >
                 {user.photo && user.photo !== PHOTO_URLS.DEFAULT_AVATAR ? (
                   <img
-                    src={getImageUrl(user.photo, 'http://localhost:5000/default-avatar.png')}
+                    src={getImageUrl(user.photo, DEFAULT_USER_IMAGE)}
                     alt={user.name || 'Photo de profil'}
                     className="w-8 h-8 rounded-full object-cover border-2 border-fashion-gray-200 group-hover:border-fashion-gray-300 transition-colors duration-200"
-                    onError={(e) => handleImageError(e, 'http://localhost:5000/default-avatar.png')}
+                    onError={(e) => handleImageError(e, DEFAULT_USER_IMAGE)}
                   />
                 ) : null}
                 <div className={`w-8 h-8 rounded-full bg-fashion-black text-white flex items-center justify-center font-fashion font-medium group-hover:bg-fashion-gray-800 transition-colors duration-200 ${user.photo && user.photo !== PHOTO_URLS.DEFAULT_AVATAR ? 'hidden' : ''}`}>

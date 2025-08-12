@@ -5,8 +5,10 @@ import { userService } from '../services/api/users';
 import { reviewService } from '../services/api/reviews';
 import { favoriteService } from '../services/api/favorites';
 import type { User } from '../types/models';
-import { FaStar, FaMapMarkerAlt, FaClock, FaPhone, FaEnvelope, FaHeart, FaHeartBroken, FaCamera, FaSpinner, FaEdit, FaPlus } from 'react-icons/fa';
+import { FaStar, FaMapMarkerAlt, FaHeart, FaEdit, FaPlus, FaClock, FaPhone, FaEnvelope, FaEuroSign, FaImages, FaSpinner } from 'react-icons/fa';
 import { MdVerified } from 'react-icons/md';
+import { useNotification } from '../components/ui/NotificationManager';
+import { ConnectionIndicator } from '../components/ConnectionIndicator';
 
 import Gallery from '../components/Gallery';
 import BookingForm from '../components/BookingForm';
@@ -183,14 +185,14 @@ const CoiffeurProfilePage = () => {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      {/* Section principale du profil - Layout inversé comme capture d'écran */}
+      {/* Section principale du profil - Layout comme capture d'écran */}
       <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-          {/* Colonne gauche - Photo + Infos (col-span-1) */}
-          <div className="xl:col-span-1">
-            <div className="space-y-2">
-              {/* Photo plus grande */}
-              <div className="flex justify-center">
+        <div className="flex flex-col xl:flex-row gap-6">
+          {/* Colonne gauche - Photo ET Informations (flex-1) */}
+          <div className="flex-1">
+            <div className="flex flex-col xl:flex-row gap-6">
+              {/* Photo du coiffeur */}
+              <div className="flex justify-center xl:justify-start">
                 <div className="relative">
                   <img
                     src={getImageUrl(coiffeur.photo, DEFAULT_COIFFEUR_IMAGE)}
@@ -204,28 +206,37 @@ const CoiffeurProfilePage = () => {
                 </div>
               </div>
 
-              {/* Informations complètes du coiffeur - Nom centré, reste à gauche */}
-              <div className="space-y-1">
+              {/* Informations du coiffeur */}
+              <div className="flex-1 space-y-2">
                 {/* Nom et rating - CENTRÉS */}
-                <div className="text-center">
+                <div className="text-center xl:text-left">
                   <h1 className="text-2xl font-bold text-gray-800 mb-1">
                     {coiffeur.name}
                   </h1>
-                  <div className="flex items-center justify-center gap-2">
+                  <div className="flex items-center justify-center xl:justify-start gap-2">
                     <FaStar className="text-yellow-400" />
                     <span className="font-semibold text-gray-700">
                       {coiffeur.rating || 0} (avis)
                     </span>
                   </div>
+                  
+                  {/* Indicateur de statut de connexion */}
+                  <div className="flex items-center justify-center xl:justify-start gap-2 mt-2">
+                    <ConnectionIndicator 
+                      status={coiffeur.connectionStatus} 
+                      size="md" 
+                      showLabel={true}
+                    />
+                  </div>
                 </div>
 
                 {/* Email - CENTRÉ */}
-                <p className="text-center text-gray-600 text-sm">
+                <p className="text-center xl:text-left text-gray-600 text-sm">
                   {coiffeur.email}
                 </p>
 
                 {/* Boutons d'action - CENTRÉS */}
-                <div className="flex items-center justify-center gap-2">
+                <div className="flex items-center justify-center xl:justify-start gap-2">
                   {user && user.role === 'user' && (
                     <button
                       onClick={handleToggleFavorite}
@@ -250,6 +261,18 @@ const CoiffeurProfilePage = () => {
                     </button>
                   )}
                 </div>
+
+                {/* Bouton Envoyer un message - CENTRÉ */}
+                {user && user.role === 'user' && (
+                  <div className="text-center xl:text-left">
+                    <button
+                      onClick={() => navigate(`/chat/${coiffeur._id}`)}
+                      className="bg-gray-600 text-white py-2 px-4 rounded-lg hover:bg-black transition-all duration-300 font-medium"
+                    >
+                      📱 Envoyer un message
+                    </button>
+                  </div>
+                )}
 
                 {/* Bio - À GAUCHE */}
                 {coiffeur.bio && (
@@ -320,58 +343,48 @@ const CoiffeurProfilePage = () => {
               </div>
             </div>
           </div>
-
-          {/* Colonne droite - Carte plus grande (col-span-2) */}
-          <div className="xl:col-span-2">
-            <div className="space-y-4">
-              {/* Carte plus grande - Non interactive, contrôles supprimés */}
-              <div className="relative">
-                {coiffeur.address?.coordinates ? (
-                  <div className="relative w-full h-72 rounded-lg border border-gray-200 overflow-hidden">
-                    <iframe
-                      src={`https://www.openstreetmap.org/export/embed.html?bbox=${coiffeur.address.coordinates.lng - 0.001},${coiffeur.address.coordinates.lat - 0.001},${coiffeur.address.coordinates.lng + 0.001},${coiffeur.address.coordinates.lat + 0.001}&layer=mapnik&marker=${coiffeur.address.coordinates.lat},${coiffeur.address.coordinates.lng}&zoom=16&scrollWheelZoom=false&doubleClickZoom=false&dragPan=false&keyboard=false&touchZoom=false&zoomControl=false&attributionControl=false`}
-                      width="100%"
-                      height="100%"
-                      frameBorder="0"
-                      scrolling="no"
-                      marginHeight={0}
-                      marginWidth={0}
-                      title="Localisation du salon"
-                      className="pointer-events-none"
-                    />
-                    {/* Overlay pour désactiver complètement les interactions */}
-                    <div className="absolute inset-0 pointer-events-none"></div>
-                  </div>
-                ) : (
-                  <div className="w-full h-72 bg-gray-100 rounded-lg border border-gray-200 flex items-center justify-center">
-                    <p className="text-gray-500 text-sm">Carte non disponible</p>
-                  </div>
-                )}
-                
-                {/* Badge "Carte fixe" */}
-                <div className="absolute top-2 right-2 bg-gray-800 text-white text-xs px-2 py-1 rounded">
-                  Carte fixe
-                </div>
-              </div>
-
-              {/* Bouton itinéraire - SOUS LA CARTE À DROITE */}
-              {coiffeur.address?.coordinates && (
-                <button
-                  onClick={() => {
-                    if (coiffeur.address?.coordinates) {
-                      const url = `https://waze.com/ul?ll=${coiffeur.address.coordinates.lat},${coiffeur.address.coordinates.lng}&navigate=yes`;
-                      window.open(url, '_blank');
-                    }
-                  }}
-                  className="w-full bg-gray-600 text-white py-2 px-4 rounded-lg hover:bg-black transition-colors text-sm flex items-center justify-center gap-2"
-                >
-                  <FaMapMarkerAlt className="text-sm" />
-                  Itinéraire
-                </button>
-              )}
-            </div>
-          </div>
         </div>
+
+        {/* Carte - EN DESSOUS des informations, SANS contrôles de zoom */}
+        {coiffeur.address?.coordinates && (
+          <div className="mt-6">
+            <div className="relative w-full h-64 rounded-lg border border-gray-200 overflow-hidden">
+              <iframe
+                src={`https://www.openstreetmap.org/export/embed.html?bbox=${coiffeur.address.coordinates.lng - 0.001},${coiffeur.address.coordinates.lat - 0.001},${coiffeur.address.coordinates.lng + 0.001},${coiffeur.address.coordinates.lat + 0.001}&layer=mapnik&marker=${coiffeur.address.coordinates.lat},${coiffeur.address.coordinates.lng}&zoom=16&scrollWheelZoom=false&doubleClickZoom=false&dragPan=false&keyboard=false&touchZoom=false&zoomControl=false&attributionControl=false&minZoom=16&maxZoom=16`}
+                width="100%"
+                height="100%"
+                frameBorder="0"
+                scrolling="no"
+                marginHeight={0}
+                marginWidth={0}
+                title="Localisation du salon"
+                className="pointer-events-none"
+              />
+              {/* Overlay pour désactiver complètement les interactions */}
+              <div className="absolute inset-0 pointer-events-none"></div>
+              
+              {/* Badge "Carte fixe" */}
+              <div className="absolute top-2 right-2 bg-gray-800 text-white text-xs px-2 py-1 rounded">
+                Carte fixe
+              </div>
+            </div>
+
+            {/* Bouton itinéraire - SOUS LA CARTE */}
+            <button
+              onClick={() => {
+                if (coiffeur.address?.coordinates) {
+                  const url = `https://waze.com/ul?ll=${coiffeur.address.coordinates.lat},${coiffeur.address.coordinates.lng}&navigate=yes`;
+                  window.open(url, '_blank');
+                }
+              }}
+              className="w-full bg-gray-600 text-white py-2 px-4 rounded-lg hover:bg-black transition-colors text-sm flex items-center justify-center gap-2 mt-3"
+            >
+              <FaMapMarkerAlt className="text-sm" />
+              Itinéraire
+            </button>
+          </div>
+        )}
+
       </div>
 
       {/* Section Services & Produits - COMPACTE pour propriétaires */}

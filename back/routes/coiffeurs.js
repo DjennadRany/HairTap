@@ -251,6 +251,39 @@ router.get('/:id/services', async (req, res) => {
   }
 });
 
+// Ajouter un service à un coiffeur
+router.post('/:coiffeurId/services', auth, async (req, res) => {
+  try {
+    const { coiffeurId } = req.params;
+    const serviceData = req.body;
+    
+    // Vérifier que le coiffeur existe
+    const coiffeur = await User.findById(coiffeurId);
+    if (!coiffeur || coiffeur.role !== 'coiffeur') {
+      return res.status(404).json({ message: 'Coiffeur non trouvé' });
+    }
+
+    // Vérifier que l'utilisateur est autorisé
+    if (req.user._id.toString() !== coiffeurId && req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Non autorisé' });
+    }
+
+    // Créer le nouveau service
+    const newService = new Service({
+      ...serviceData,
+      coiffeur: coiffeurId,
+      isActive: true
+    });
+
+    await newService.save();
+
+    res.status(201).json(newService);
+  } catch (error) {
+    console.error('Add service error:', error);
+    res.status(500).json({ message: 'Erreur lors de l\'ajout du service' });
+  }
+});
+
 // Mettre à jour un service d'un coiffeur
 router.put('/:coiffeurId/services/:serviceId', auth, async (req, res) => {
   try {
@@ -286,10 +319,41 @@ router.put('/:coiffeurId/services/:serviceId', auth, async (req, res) => {
   }
 });
 
-// Toggle like sur un service
+// Supprimer un service d'un coiffeur
+router.delete('/:coiffeurId/services/:serviceId', auth, async (req, res) => {
+  try {
+    const { coiffeurId, serviceId } = req.params;
+    
+    // Vérifier que le service existe et appartient au coiffeur
+    const service = await Service.findById(serviceId);
+    if (!service) {
+      return res.status(404).json({ message: 'Service introuvable' });
+    }
+
+    if (service.coiffeur.toString() !== coiffeurId) {
+      return res.status(400).json({ message: 'Service ne correspond pas au coiffeur' });
+    }
+
+    // Vérifier que l'utilisateur est autorisé
+    if (req.user._id.toString() !== coiffeurId && req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Non autorisé' });
+    }
+
+    // Supprimer le service
+    await Service.findByIdAndDelete(serviceId);
+
+    res.json({ message: 'Service supprimé avec succès' });
+  } catch (error) {
+    console.error('Delete service error:', error);
+    res.status(500).json({ message: 'Erreur lors de la suppression du service' });
+  }
+});
+
+// Toggle like sur un service - UTILISE LES MÉTHODES DU MODÈLE
 router.post('/:coiffeurId/services/:serviceId/like', auth, async (req, res) => {
   try {
     const { coiffeurId, serviceId } = req.params;
+    const userId = req.user._id;
     
     const service = await Service.findById(serviceId);
     if (!service) {
@@ -300,29 +364,69 @@ router.post('/:coiffeurId/services/:serviceId/like', auth, async (req, res) => {
       return res.status(400).json({ message: 'Service ne correspond pas au coiffeur' });
     }
 
-    // Vérifier si l'utilisateur a déjà liké ce service
-    const userLiked = service.likedBy && service.likedBy.includes(req.user.id);
+    // Utiliser les méthodes du modèle
+    const userLiked = service.isLikedBy(userId);
     
     if (userLiked) {
-      // Unlike
-      service.likes = Math.max(0, service.likes - 1);
-      service.likedBy = service.likedBy.filter(id => id !== req.user.id);
+      // Unlike - Utilise la méthode du modèle
+      await service.removeLike(userId);
     } else {
-      // Like
-      service.likes = service.likes + 1;
-      if (!service.likedBy) service.likedBy = [];
-      service.likedBy.push(req.user.id);
+      // Like - Utilise la méthode du modèle
+      await service.addLike(userId);
     }
 
-    await service.save();
-    
-    res.json({ 
-      likes: service.likes, 
-      isLiked: !userLiked 
+    // Réponse standardisée
+    res.json({
+      success: true,
+      data: {
+        likes: service.likes,
+        isLiked: !userLiked
+      },
+      message: userLiked ? 'Like retiré' : 'Service liké'
     });
   } catch (error) {
     console.error('Toggle service like error:', error);
-    res.status(500).json({ message: 'Erreur lors du like/unlike' });
+    res.status(500).json({ 
+      success: false,
+      message: 'Erreur lors du like/unlike' 
+    });
+  }
+});
+
+// Récupérer les statistiques de likes d'un coiffeur
+router.get('/:id/likes-stats', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const coiffeur = await User.findById(id);
+    if (!coiffeur || coiffeur.role !== 'coiffeur') {
+      return res.status(404).json({ message: 'Coiffeur non trouvé' });
+    }
+
+    // Récupérer tous les services du coiffeur
+    const services = await Service.find({ 
+      coiffeur: id, 
+      isActive: true 
+    });
+
+    // Calculer les statistiques de likes
+    const totalLikes = services.reduce((sum, service) => sum + (service.likes || 0), 0);
+    const totalServices = services.length;
+    const averageLikes = totalServices > 0 ? (totalLikes / totalServices).toFixed(1) : 0;
+
+    res.json({
+      totalLikes,
+      totalServices,
+      averageLikes,
+      services: services.map(service => ({
+        _id: service._id,
+        name: service.name,
+        likes: service.likes || 0
+      }))
+    });
+  } catch (error) {
+    console.error('Get likes stats error:', error);
+    res.status(500).json({ message: 'Erreur lors de la récupération des statistiques de likes' });
   }
 });
 

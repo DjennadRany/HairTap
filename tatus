@@ -1,0 +1,5 @@
+[33m3078c57[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m v7.8.11 - Correction des images et amélioration de l'interface
+[33m952d7d2[m tapHair-v0.7.8.10: Corrections système d'adresses et réservations - Correction des modules ES6/CommonJS - Géolocalisation intégrée - Système d'adresses de réservation - Validation des créneaux améliorée - Logs détaillés pour debug
+[33mfe5019e[m[33m ([m[1;33mtag: [m[1;33mtapHair-v0.7.9[m[33m)[m tapHair-v0.7.9: Fix booking flow and service clickability
+[33me47f173[m tapHair-v0.7.9: Fix booking flow and service clickability - Fixed service booking buttons not appearing for clients - Resolved useClientBookings hook conflicts - Added proper booking flow with modal and form - Improved service card component with direct booking functionality - Added review system and notification components - Enhanced coiffeur dashboard with booking management - Fixed authentication and routing issues - Added favorites and reviews functionality - Improved error handling and user experience
+[33me8ec15e[m Sauvegarde temporaire avant retour à v0.7.8

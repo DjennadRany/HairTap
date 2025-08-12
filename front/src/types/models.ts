@@ -53,7 +53,33 @@ export interface User {
   siren?: string;
   sirenStatus?: 'pending' | 'verified' | 'none';
   sirenVerificationDate?: Date;
+  experience?: number;
+  formation?: string;
   specialities?: string[];
+  salonAddress?: {
+    street?: string;
+    streetNumber?: string;
+    city?: string;
+    postalCode?: string;
+    floor?: string;
+    apartment?: string;
+    buildingCode?: string;
+    additionalInfo?: string;
+    coordinates?: {
+      lat: number;
+      lng: number;
+    };
+    phone?: string;
+    openingHours?: {
+      monday: { open: string; close: string; closed: boolean };
+      tuesday: { open: string; close: string; closed: boolean };
+      wednesday: { open: string; close: string; closed: boolean };
+      thursday: { open: string; close: string; closed: boolean };
+      friday: { open: string; close: string; closed: boolean };
+      saturday: { open: string; close: string; closed: boolean };
+      sunday: { open: string; close: string; closed: boolean };
+    };
+  };
   rating: number;
   totalRatings: number;
   workingMode?: ('salon' | 'domicile' | 'both')[];
@@ -69,6 +95,22 @@ export interface User {
   gallery?: GalleryImage[];
   likes?: number;
   socialPosts?: SocialPost[];
+  connectionStatus?: {
+    isOnline: boolean;
+    lastSeen: Date;
+    status: 'online' | 'busy' | 'offline' | 'away';
+    availability: {
+      isAvailable: boolean;
+      nextAvailable?: Date;
+      workingHours: {
+        [key: string]: {
+          start: string;
+          end: string;
+          isAvailable: boolean;
+        };
+      };
+    };
+  };
   preferences?: {
     notifications: {
       email: boolean;

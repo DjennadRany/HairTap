@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FaTimes, FaImage, FaTags, FaPlus, FaTrash } from 'react-icons/fa';
-import { getImageUrl, handleImageError } from '../utils/imageUtils';
+import { getImageUrl, handleImageError, DEFAULT_SERVICE_IMAGE } from '../utils/imageUtils';
+import { coiffeurService } from '../services/api/coiffeurs';
 
 interface ServiceModalProps {
   isOpen: boolean;
@@ -53,11 +54,11 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
   useEffect(() => {
     if (service) {
       setFormData({
-        name: service.name,
-        description: service.description,
-        duration: service.duration,
-        price: service.price,
-        category: service.category,
+        name: service.name || '',
+        description: service.description || '',
+        duration: service.duration || 30,
+        price: service.price || 0,
+        category: service.category || 'coupe',
         keywords: service.keywords || [],
         examplePhotos: []
       });
@@ -87,20 +88,41 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
     }
 
     try {
-      // Préparer les données avec les images existantes et nouvelles
+      // Préparer les données de base
       const submitData = {
         ...formData,
-        examplePhotos: [
-          ...existingPhotos,
-          ...formData.examplePhotos.filter(photo => typeof photo === 'string').map(photo => photo as string),
-          ...formData.examplePhotos.filter(photo => photo instanceof File).map(photo => (photo as File).name)
-        ]
+        examplePhotos: [...existingPhotos]
       };
       
-      await onSubmit(submitData);
-      onClose();
-    } catch (error: any) {
-      setError(error.message || 'Erreur lors de la sauvegarde');
+      // Si c'est une modification
+      if (service) {
+        // Mettre à jour le service
+        await onSubmit(submitData);
+        
+        // Uploader les nouvelles images
+        const newPhotos = formData.examplePhotos.filter(photo => photo instanceof File) as File[];
+        for (const photo of newPhotos) {
+          try {
+            await coiffeurService.uploadServicePhoto(service._id, photo);
+            console.log('Uploading new photo:', photo.name);
+          } catch (error) {
+            console.error('Erreur upload image:', error);
+          }
+        }
+      } else {
+        // Pour un nouveau service, créer le service sans images
+        const serviceWithoutPhotos = {
+          ...submitData,
+          examplePhotos: []
+        };
+        
+        await onSubmit(serviceWithoutPhotos);
+        console.log('Service créé avec succès');
+      }
+      
+    } catch (error) {
+      console.error('Erreur soumission service:', error);
+      setError('Erreur lors de la création du service');
     }
   };
 
@@ -225,8 +247,11 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
               </label>
               <input
                 type="number"
-                value={formData.duration}
-                onChange={(e) => setFormData({ ...formData, duration: parseInt(e.target.value) })}
+                value={formData.duration || ''}
+                onChange={(e) => {
+                  const value = parseInt(e.target.value);
+                  setFormData({ ...formData, duration: isNaN(value) ? 30 : value });
+                }}
                 min="15"
                 step="15"
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
@@ -240,8 +265,11 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
               </label>
               <input
                 type="number"
-                value={formData.price}
-                onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) })}
+                value={formData.price || ''}
+                onChange={(e) => {
+                  const value = parseFloat(e.target.value);
+                  setFormData({ ...formData, price: isNaN(value) ? 0 : value });
+                }}
                 min="0"
                 step="0.01"
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
@@ -267,7 +295,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
               <button
                 type="button"
                 onClick={handleAddKeyword}
-                className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent/90 transition-colors"
+                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-black transition-colors"
               >
                 <FaPlus />
               </button>
@@ -314,10 +342,10 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
                   {existingPhotos.map((photo, index) => (
                     <div key={index} className="relative">
                       <img
-                        src={getImageUrl(photo, 'http://localhost:5000/default-service-image.png')}
+                        src={getImageUrl(photo, DEFAULT_SERVICE_IMAGE)}
                         alt={`Exemple ${index + 1}`}
                         className="w-full h-20 object-cover rounded-lg"
-                        onError={(e) => handleImageError(e, 'http://localhost:5000/default-service-image.png')}
+                        onError={(e) => handleImageError(e, DEFAULT_SERVICE_IMAGE)}
                       />
                       <button
                         type="button"
@@ -373,9 +401,9 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
             <button
               type="submit"
               disabled={isLoading}
-              className="bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 font-medium shadow-lg"
+              className="bg-gray-600 text-white px-8 py-3 rounded-lg hover:bg-black transition-colors disabled:opacity-50 font-medium shadow-lg"
             >
-              {isLoading ? 'Sauvegarde...' : 'Modifier'}
+              {isLoading ? 'Sauvegarde...' : (service ? 'Modifier' : 'Ajouter')}
             </button>
           </div>
         </form>

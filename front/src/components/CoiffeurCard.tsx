@@ -9,6 +9,7 @@ import { FaStar, FaMapMarkerAlt, FaClock, FaHeart, FaImages, FaEuroSign } from '
 import { MdVerified } from 'react-icons/md';
 import Modal from './ui/Modal';
 import { getImageUrl, handleImageError, DEFAULT_COIFFEUR_IMAGE, DEFAULT_SERVICE_IMAGE } from '../utils/imageUtils';
+import { ConnectionIndicator } from './ConnectionIndicator';
 // ImageOptimized component removed - will be reimplemented later
 import type { User } from '../types/models';
 
@@ -44,12 +45,58 @@ const CoiffeurCard: React.FC<CoiffeurCardProps> = ({
   const [showImageModal, setShowImageModal] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [favoriteState, setFavoriteState] = useState(isFavorite);
+  const [connectionStatus, setConnectionStatus] = useState(coiffeur.connectionStatus);
 
   useEffect(() => {
     fetchServiceImages();
   }, [coiffeur._id]);
 
-  // Mettre à jour l'état des favoris quand la prop change
+  // Rafraîchir le statut de connexion périodiquement
+  useEffect(() => {
+    const updateConnectionStatus = async () => {
+      try {
+        // Vérifier si le coiffeur est vraiment en ligne
+        const now = new Date();
+        const lastSeen = new Date(coiffeur.connectionStatus?.lastSeen || new Date());
+        const timeDiff = now.getTime() - lastSeen.getTime();
+        const timeoutMinutes = 2; // 2 minutes de timeout
+        
+        // Si lastSeen est trop ancien, considérer comme hors ligne
+        const isReallyOnline = coiffeur.connectionStatus?.isOnline && timeDiff < (timeoutMinutes * 60 * 1000);
+        
+        setConnectionStatus({
+          isOnline: isReallyOnline || false,
+          lastSeen: coiffeur.connectionStatus?.lastSeen || new Date(),
+          status: isReallyOnline ? (coiffeur.connectionStatus?.status || 'offline') : 'offline',
+          availability: {
+            isAvailable: isReallyOnline && (coiffeur.connectionStatus?.availability?.isAvailable === true),
+            nextAvailable: coiffeur.connectionStatus?.availability?.nextAvailable,
+            workingHours: coiffeur.connectionStatus?.availability?.workingHours || {
+              monday: { start: '09:00', end: '18:00', isAvailable: false },
+              tuesday: { start: '09:00', end: '18:00', isAvailable: false },
+              wednesday: { start: '09:00', end: '18:00', isAvailable: false },
+              thursday: { start: '09:00', end: '18:00', isAvailable: false },
+              friday: { start: '09:00', end: '18:00', isAvailable: false },
+              saturday: { start: '09:00', end: '18:00', isAvailable: false },
+              sunday: { start: '09:00', end: '18:00', isAvailable: false }
+            }
+          }
+        });
+      } catch (error) {
+        console.error('Erreur mise à jour statut connexion:', error);
+      }
+    };
+
+    // Mettre à jour immédiatement
+    updateConnectionStatus();
+    
+    // Puis toutes les 30 secondes
+    const interval = setInterval(updateConnectionStatus, 30000);
+    
+    return () => clearInterval(interval);
+  }, [coiffeur.connectionStatus]);
+
+  // Synchroniser l'état des favoris
   useEffect(() => {
     setFavoriteState(isFavorite);
   }, [isFavorite]);
@@ -146,36 +193,35 @@ const CoiffeurCard: React.FC<CoiffeurCardProps> = ({
         {/* En-tête avec photo et infos principales */}
         <div className="relative">
           {/* Photo de profil avec fallback */}
-          <div className="h-48 bg-gradient-to-br from-accent/10 to-accent/20 relative">
-            <img
-              src={getImageUrl(coiffeur.photo, DEFAULT_COIFFEUR_IMAGE)}
-              alt={coiffeur.name}
-              className="w-full h-full object-cover"
-              onError={(e) => handleImageError(e, DEFAULT_COIFFEUR_IMAGE)}
+          <img
+            src={getImageUrl(coiffeur.photo, DEFAULT_COIFFEUR_IMAGE)}
+            alt={coiffeur.name}
+            className="w-full h-48 object-cover rounded-t-lg"
+            onError={(e) => handleImageError(e, DEFAULT_COIFFEUR_IMAGE)}
+          />
+          
+          {/* Indicateur de connexion - EN HAUT À DROITE */}
+          <div className="absolute top-3 right-3">
+            <ConnectionIndicator
+              status={connectionStatus || undefined}
+              size="sm"
+              className="bg-white/90 rounded-full p-1"
             />
-            
-            {/* Badge vérifié */}
-            {coiffeur.sirenStatus === 'verified' && (
-              <div className="absolute top-3 right-3 bg-blue-500 text-white rounded-full p-1">
-                <MdVerified className="text-lg" />
-              </div>
-            )}
-
-            {/* Bouton favori - ÉTOILE au lieu du cœur */}
-            {user && user.role === 'client' && (
-              <button
-                onClick={handleFavoriteToggle}
-                className={`absolute top-3 left-3 p-2 rounded-full transition-all duration-300 ${
-                  favoriteState 
-                    ? 'bg-red-500 text-white hover:bg-red-600 hover:scale-110'
-                    : 'bg-gray-600 text-white hover:bg-black hover:scale-110'
-                }`}
-                title={favoriteState ? "Retirer des favoris" : "Ajouter aux favoris"}
-              >
-                <FaHeart className="text-lg" />
-              </button>
-            )}
           </div>
+          
+          {/* Bouton favori - EN HAUT À GAUCHE */}
+          <button
+            onClick={handleFavoriteToggle}
+            className={`absolute top-3 left-3 p-2 rounded-full transition-all duration-300 ${
+              isFavorite 
+                ? 'bg-red-500 text-white hover:bg-red-600 hover:scale-110'
+                : 'bg-gray-600 text-white hover:bg-black hover:scale-110'
+            }`}
+            title={isFavorite ? "Retirer des favoris" : "Ajouter aux favoris"}
+          >
+            <FaHeart className="text-sm" />
+          </button>
+        </div>
 
           {/* Infos principales */}
           <div className="p-4">
@@ -272,7 +318,6 @@ const CoiffeurCard: React.FC<CoiffeurCardProps> = ({
             </div>
           </div>
         </div>
-      </div>
 
       {/* Modal pour l'image et réservation */}
       {showImageModal && selectedImage && (

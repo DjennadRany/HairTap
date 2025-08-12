@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { selectCurrentUser } from '../store/slices/authSlice';
 import { Card } from './ui/card';
-import { FaCalendarAlt, FaUsers, FaStar, FaEuroSign, FaClock } from 'react-icons/fa';
+import { FaCalendarAlt, FaUsers, FaStar, FaEuroSign, FaClock, FaHeart } from 'react-icons/fa';
 import { userService } from '../services/api/users';
 import { bookingService } from '../services/api/bookings';
+import { coiffeurService } from '../services/api/coiffeurs';
 import type { User } from '../types/models';
 
 interface DashboardProps {
@@ -18,6 +19,7 @@ interface DashboardStats {
   totalRevenue: number;
   averageRating: number;
   totalClients: number;
+  totalLikes: number;
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ user, isCoiffeur = false }) => {
@@ -26,7 +28,8 @@ const Dashboard: React.FC<DashboardProps> = ({ user, isCoiffeur = false }) => {
     upcomingBookings: 0,
     totalRevenue: 0,
     averageRating: 0,
-    totalClients: 0
+    totalClients: 0,
+    totalLikes: 0
   });
   const [recentBookings, setRecentBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,12 +52,22 @@ const Dashboard: React.FC<DashboardProps> = ({ user, isCoiffeur = false }) => {
           
           const uniqueClients = new Set(bookings.map((b: any) => b.client)).size;
           
+          // Récupérer les statistiques de likes
+          let totalLikes = 0;
+          try {
+            const likesStats = await coiffeurService.getLikesStats(user._id);
+            totalLikes = likesStats.totalLikes || 0;
+          } catch (error) {
+            console.error('Error fetching likes stats:', error);
+          }
+
           setStats({
             totalBookings: bookings.length,
             upcomingBookings: upcomingBookings.length,
             totalRevenue,
             averageRating: user.rating || 0,
-            totalClients: uniqueClients
+            totalClients: uniqueClients,
+            totalLikes
           });
           
           setRecentBookings(bookings.slice(0, 5));
@@ -70,7 +83,8 @@ const Dashboard: React.FC<DashboardProps> = ({ user, isCoiffeur = false }) => {
             upcomingBookings: upcomingBookings.length,
             totalRevenue: 0, // Pas de revenus pour les clients
             averageRating: 0,
-            totalClients: 0
+            totalClients: 0,
+            totalLikes: 0
           });
           
           setRecentBookings(bookings.slice(0, 5));
@@ -152,6 +166,16 @@ const Dashboard: React.FC<DashboardProps> = ({ user, isCoiffeur = false }) => {
                   <p className="text-2xl font-bold">{stats.averageRating.toFixed(1)}</p>
                 </div>
                 <FaStar className="text-yellow-500 text-2xl" />
+              </div>
+            </Card>
+
+            <Card className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Likes totaux</p>
+                  <p className="text-2xl font-bold">{stats.totalLikes}</p>
+                </div>
+                <FaHeart className="text-red-500 text-2xl" />
               </div>
             </Card>
           </>

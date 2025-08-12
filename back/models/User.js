@@ -110,12 +110,34 @@ const userSchema = new mongoose.Schema({
     coordinates: {
       lat: Number,
       lng: Number
-    },
-    createdAt: {
-      type: Date,
-      default: Date.now
     }
   }],
+  
+  // Adresse de salon (pour les coiffeurs)
+  salonAddress: {
+    street: String,
+    streetNumber: String,
+    city: String,
+    postalCode: String,
+    floor: String,
+    apartment: String,
+    buildingCode: String,
+    additionalInfo: String,
+    coordinates: {
+      lat: Number,
+      lng: Number
+    },
+    phone: String,
+    openingHours: {
+      monday: { open: String, close: String, closed: { type: Boolean, default: false } },
+      tuesday: { open: String, close: String, closed: { type: Boolean, default: false } },
+      wednesday: { open: String, close: String, closed: { type: Boolean, default: false } },
+      thursday: { open: String, close: String, closed: { type: Boolean, default: false } },
+      friday: { open: String, close: String, closed: { type: Boolean, default: false } },
+      saturday: { open: String, close: String, closed: { type: Boolean, default: false } },
+      sunday: { open: String, close: String, closed: { type: Boolean, default: false } }
+    }
+  },
   
   // Champs spécifiques aux coiffeurs
   siren: {
@@ -126,6 +148,15 @@ const userSchema = new mongoose.Schema({
     type: String,
     enum: ['pending', 'verified', 'none'],
     default: 'none'
+  },
+  experience: {
+    type: Number,
+    min: 0,
+    max: 50
+  },
+  formation: {
+    type: String,
+    maxlength: 200
   },
   specialities: [String],
   rating: {

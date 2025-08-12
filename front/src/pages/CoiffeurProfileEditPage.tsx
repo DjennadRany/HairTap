@@ -6,9 +6,9 @@ import { userService } from '../services/api/users';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/Button';
 import RichTextEditor from '../components/RichTextEditor';
-import ServiceManager from '../components/ServiceManager';
-import PhotoUpload from '../components/PhotoUpload';
-import { FaCamera, FaSpinner } from 'react-icons/fa';
+import SimplePhotoUpload from '../components/SimplePhotoUpload';
+import { FaCamera, FaSpinner, FaBriefcase, FaGraduationCap, FaMapMarkerAlt } from 'react-icons/fa';
+import { MdVerified } from 'react-icons/md';
 import type { User } from '../types/models';
 
 const CoiffeurProfileEditPage = () => {
@@ -29,7 +29,20 @@ const CoiffeurProfileEditPage = () => {
   );
   const [travelRadius, setTravelRadius] = useState(user?.travelRadius || 10);
   const [phone, setPhone] = useState(user?.phone || '');
-  const [activeTab, setActiveTab] = useState<'profile' | 'services'>('profile');
+  const [siren, setSiren] = useState(user?.siren || '');
+  const [experience, setExperience] = useState(user?.experience || 0);
+  const [formation, setFormation] = useState(user?.formation || '');
+  const [salonAddress, setSalonAddress] = useState({
+    street: user?.salonAddress?.street || '',
+    streetNumber: user?.salonAddress?.streetNumber || '',
+    city: user?.salonAddress?.city || '',
+    postalCode: user?.salonAddress?.postalCode || '',
+    phone: user?.salonAddress?.phone || '',
+    coordinates: user?.salonAddress?.coordinates || null
+  });
+  const [isSalonAddressSaved, setIsSalonAddressSaved] = useState(false);
+  const [savedSalonAddress, setSavedSalonAddress] = useState<any>({});
+  const [activeTab, setActiveTab] = useState<'profile'>('profile');
 
   // Charger les données utilisateur depuis la base
   useEffect(() => {
@@ -39,6 +52,24 @@ const CoiffeurProfileEditPage = () => {
       setWorkingMode(Array.isArray(user.workingMode) ? user.workingMode as ('salon' | 'domicile' | 'both')[] : []);
       setTravelRadius(user.travelRadius || 10);
       setPhone(user.phone || '');
+      setSiren(user.siren || '');
+      setExperience(user.experience || 0);
+      setFormation(user.formation || '');
+      setSalonAddress({
+        street: user.salonAddress?.street || '',
+        streetNumber: user.salonAddress?.streetNumber || '',
+        city: user.salonAddress?.city || '',
+        postalCode: user.salonAddress?.postalCode || '',
+        phone: user.salonAddress?.phone || '',
+        coordinates: user.salonAddress?.coordinates || null
+      });
+      
+      // Initialiser l'état de sauvegarde de l'adresse
+      if (user.salonAddress?.street) {
+        setSavedSalonAddress(user.salonAddress);
+        setIsSalonAddressSaved(true);
+      }
+      
       setCurrentPhoto(user.photo || '');
     }
   }, [user]);
@@ -66,10 +97,24 @@ const CoiffeurProfileEditPage = () => {
         workingMode,
         travelRadius,
         phone,
+        siren,
+        experience,
+        formation,
+        salonAddress: {
+          ...salonAddress,
+          coordinates: salonAddress.coordinates || undefined
+        },
         photo: currentPhoto // Inclure la photo mise à jour
       };
 
       await userService.updateUser(user._id, updatedProfile);
+      
+      // Marquer l'adresse comme sauvegardée si elle existe
+      if (salonAddress.street) {
+        setSavedSalonAddress(salonAddress);
+        setIsSalonAddressSaved(true);
+      }
+      
       setSuccessMessage('Profil mis à jour avec succès !');
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (error) {
@@ -105,37 +150,13 @@ const CoiffeurProfileEditPage = () => {
     <div className="container mx-auto px-4 py-8">
       <div className="max-w-4xl mx-auto">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold mb-2">Mon Profil & Services</h1>
+          <h1 className="text-3xl font-bold mb-2">Mon Profil</h1>
           <p className="text-gray-600">
-            Gérez votre profil et vos services pour attirer plus de clients
+            Gérez votre profil pour attirer plus de clients
           </p>
         </div>
 
-        {/* Onglets */}
-        <div className="flex gap-2 mb-6">
-          <button
-            type="button"
-            onClick={() => setActiveTab('profile')}
-            className={`px-4 py-2 rounded-lg transition-colors ${
-              activeTab === 'profile'
-                ? 'bg-fashion-dark-gray text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            Mon Profil
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('services')}
-            className={`px-4 py-2 rounded-lg transition-colors ${
-              activeTab === 'services'
-                ? 'bg-fashion-dark-gray text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            Mes Services
-          </button>
-        </div>
+
 
         {/* Messages */}
         {successMessage && (
@@ -150,13 +171,12 @@ const CoiffeurProfileEditPage = () => {
           </Card>
         )}
 
-        {activeTab === 'profile' ? (
-          <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
             {/* Photo de profil */}
             <Card className="p-6">
               <h2 className="text-xl font-semibold mb-4">Photo de profil</h2>
               <div className="flex items-center gap-6">
-                <PhotoUpload
+                <SimplePhotoUpload
                   userId={user._id}
                   currentPhoto={currentPhoto}
                   onPhotoUpdate={handlePhotoUpdate}
@@ -283,13 +303,227 @@ const CoiffeurProfileEditPage = () => {
               </Card>
             )}
 
+            {/* Informations professionnelles */}
+            <Card className="p-6">
+              <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                <FaBriefcase className="text-accent" />
+                Informations professionnelles
+              </h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    SIREN
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={siren}
+                      onChange={(e) => setSiren(e.target.value)}
+                      placeholder="123456789"
+                      className="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
+                    />
+                    {user.sirenStatus === 'verified' && (
+                      <MdVerified className="text-blue-500 text-xl" />
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Années d'expérience
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="50"
+                    value={experience}
+                    onChange={(e) => setExperience(parseInt(e.target.value) || 0)}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Formation
+                  </label>
+                  <input
+                    type="text"
+                    value={formation}
+                    onChange={(e) => setFormation(e.target.value)}
+                    placeholder="CAP Coiffure, Brevet Professionnel..."
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
+                  />
+                </div>
+              </div>
+            </Card>
+
+            {/* Adresse de salon - Système utilisateur adapté */}
+            <Card className="p-6">
+              <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                <FaMapMarkerAlt className="text-accent" />
+                Adresse du salon
+              </h2>
+              <p className="text-sm text-gray-600 mb-4">
+                Configurez l'adresse de votre salon pour les clients
+              </p>
+              
+              {isSalonAddressSaved && salonAddress.street ? (
+                // Affichage en dur de l'adresse sauvegardée
+                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                  <div className="flex justify-between items-center mb-4">
+                    <h4 className="font-medium text-gray-900">Adresse du salon sauvegardée</h4>
+                    <button
+                      type="button"
+                      onClick={() => setIsSalonAddressSaved(false)}
+                      className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                    >
+                      Modifier l'adresse
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-gray-600">Numéro de rue:</span>
+                      <p className="font-medium">{salonAddress.streetNumber || '-'}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Rue:</span>
+                      <p className="font-medium">{salonAddress.street || '-'}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Code postal:</span>
+                      <p className="font-medium">{salonAddress.postalCode || '-'}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Ville:</span>
+                      <p className="font-medium">{salonAddress.city || '-'}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Téléphone:</span>
+                      <p className="font-medium">{salonAddress.phone || '-'}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Coordonnées:</span>
+                      <p className="font-medium">
+                        {salonAddress.coordinates?.lat && salonAddress.coordinates?.lng 
+                          ? `${salonAddress.coordinates.lat.toFixed(6)}, ${salonAddress.coordinates.lng.toFixed(6)}`
+                          : 'Non géolocalisé'
+                        }
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                // Formulaire d'édition de l'adresse
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Numéro de rue</label>
+                    <input
+                      type="text"
+                      value={salonAddress.streetNumber}
+                      onChange={(e) => setSalonAddress(prev => ({ ...prev, streetNumber: e.target.value }))}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="123"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Rue *</label>
+                    <input
+                      type="text"
+                      value={salonAddress.street}
+                      onChange={(e) => setSalonAddress(prev => ({ ...prev, street: e.target.value }))}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Rue de la Paix"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Code postal *</label>
+                    <input
+                      type="text"
+                      value={salonAddress.postalCode}
+                      onChange={(e) => setSalonAddress(prev => ({ ...prev, postalCode: e.target.value }))}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="75001"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Ville *</label>
+                    <input
+                      type="text"
+                      value={salonAddress.city}
+                      onChange={(e) => setSalonAddress(prev => ({ ...prev, city: e.target.value }))}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Paris"
+                      required
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Téléphone du salon</label>
+                    <input
+                      type="tel"
+                      value={salonAddress.phone}
+                      onChange={(e) => setSalonAddress(prev => ({ ...prev, phone: e.target.value }))}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="01 23 45 67 89"
+                    />
+                  </div>
+                  
+                  {/* Géolocalisation automatique */}
+                  <div className="md:col-span-2">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (navigator.geolocation) {
+                          try {
+                            const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+                              navigator.geolocation.getCurrentPosition(resolve, reject, {
+                                enableHighAccuracy: true,
+                                timeout: 10000,
+                                maximumAge: 60000
+                              });
+                            });
+                            
+                            // Reverse geocoding avec OpenStreetMap (gratuit)
+                            const { latitude, longitude } = position.coords;
+                            const response = await fetch(
+                              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1&zoom=18`
+                            );
+                            const data = await response.json();
+                            
+                            if (data.address) {
+                              // Auto-complétion directe des champs
+                              const address = data.address;
+                              setSalonAddress(prev => ({
+                                ...prev,
+                                streetNumber: address.house_number || '',
+                                street: address.road || '',
+                                postalCode: address.postcode || '',
+                                city: address.city || address.town || address.village || '',
+                                coordinates: { lat: latitude, lng: longitude }
+                              }));
+                            }
+                          } catch (error) {
+                            console.error('Erreur géolocalisation:', error);
+                          }
+                        }
+                      }}
+                      className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                    >
+                      📍 Géolocaliser automatiquement
+                    </button>
+                  </div>
+                </div>
+              )}
+            </Card>
+
             {/* Contact */}
             <Card className="p-6">
               <h2 className="text-xl font-semibold mb-4">Informations de contact</h2>
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Téléphone
+                    Téléphone personnel
                   </label>
                   <input
                     type="tel"
@@ -320,14 +554,6 @@ const CoiffeurProfileEditPage = () => {
               </Button>
             </div>
           </form>
-        ) : (
-          <div>
-            <Card className="p-6">
-              <h2 className="text-xl font-semibold mb-4">Gestion des services</h2>
-              <ServiceManager coiffeurId={user._id} isOwner={true} />
-            </Card>
-          </div>
-        )}
       </div>
     </div>
   );

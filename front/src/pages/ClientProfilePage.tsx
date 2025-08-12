@@ -5,8 +5,9 @@ import { selectCurrentUser, setUser, User as AuthUser } from '../store/slices/au
 import { useParams } from 'react-router-dom';
 import { userService } from '../services/api/users';
 import { FaUser, FaEnvelope, FaLock, FaSave, FaMapMarkerAlt, FaMapPin } from 'react-icons/fa';
-import PhotoUpload from '../components/PhotoUpload';
+import SimplePhotoUpload from '../components/SimplePhotoUpload';
 import type { User as UserModel } from '../types/models';
+import { PHOTO_URLS } from '../config/api';
 
 interface ProfileFormData {
   name: string;
@@ -154,11 +155,14 @@ const ClientProfilePage = () => {
   };
 
   const handlePhotoUpdate = (photoUrl: string) => {
+    console.log('🖼️ [ClientProfilePage] handlePhotoUpdate appelé avec:', photoUrl);
+    
     // Mettre à jour le state global pour que la photo apparaisse dans les cartes hub
     if (user) {
       let mappedRole: 'client' | 'coiffeur' = 'client';
       if (user.role === 'coiffeur') mappedRole = 'coiffeur';
       
+      console.log('🔄 [ClientProfilePage] Mise à jour du state global avec photo:', photoUrl);
       dispatch(setUser({
         ...user,
         role: mappedRole,
@@ -168,6 +172,7 @@ const ClientProfilePage = () => {
     
     // Rafraîchir les données du profil
     if (id) {
+      console.log('🔄 [ClientProfilePage] Rafraîchissement du profil pour ID:', id);
       userService.getUser(id).then(setProfile);
     }
   };
@@ -208,9 +213,9 @@ const ClientProfilePage = () => {
         <div className="bg-white rounded-lg shadow-lg p-8">
           {/* Section Photo de Profil */}
           <div className="flex flex-col items-center mb-8">
-            <PhotoUpload
+            <SimplePhotoUpload
               userId={id || ''}
-              currentPhoto={defaultPhoto}
+              currentPhoto={profile?.photo || user?.photo || PHOTO_URLS.DEFAULT_AVATAR}
               onPhotoUpdate={handlePhotoUpdate}
             />
 

@@ -98,27 +98,52 @@ serviceSchema.methods.updateDetails = async function(details) {
 
 // Méthode pour ajouter un like
 serviceSchema.methods.addLike = async function(userId) {
-  if (!this.likedBy.includes(userId)) {
+  const userIdStr = userId.toString();
+  
+  // Vérifier si l'utilisateur a déjà liké
+  const alreadyLiked = this.likedBy.some(id => id.toString() === userIdStr);
+  
+  if (!alreadyLiked) {
     this.likes += 1;
     this.likedBy.push(userId);
     await this.save();
+    console.log(`✅ Like ajouté pour l'utilisateur ${userIdStr} - Total: ${this.likes}`);
+  } else {
+    console.log(`⚠️ L'utilisateur ${userIdStr} a déjà liké ce service`);
   }
+  
   return this.likes;
 };
 
 // Méthode pour retirer un like
 serviceSchema.methods.removeLike = async function(userId) {
-  if (this.likedBy.includes(userId)) {
+  const userIdStr = userId.toString();
+  
+  // Vérifier si l'utilisateur a liké
+  const hasLiked = this.likedBy.some(id => id.toString() === userIdStr);
+  
+  if (hasLiked) {
     this.likes = Math.max(0, this.likes - 1);
-    this.likedBy = this.likedBy.filter(id => id.toString() !== userId.toString());
+    this.likedBy = this.likedBy.filter(id => id.toString() !== userIdStr);
     await this.save();
+    console.log(`✅ Like retiré pour l'utilisateur ${userIdStr} - Total: ${this.likes}`);
+  } else {
+    console.log(`⚠️ L'utilisateur ${userIdStr} n'avait pas liké ce service`);
   }
+  
   return this.likes;
 };
 
 // Méthode pour vérifier si un utilisateur a liké
 serviceSchema.methods.isLikedBy = function(userId) {
-  return this.likedBy.includes(userId);
+  return this.likedBy.some(id => id.toString() === userId.toString());
+};
+
+// Méthode pour synchroniser les likes avec likedBy
+serviceSchema.methods.syncLikes = async function() {
+  this.likes = this.likedBy ? this.likedBy.length : 0;
+  await this.save();
+  return this.likes;
 };
 
 // Middleware pour mettre à jour le champ updatedAt

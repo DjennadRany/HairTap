@@ -71,8 +71,10 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({
   };
 
   const handleAddService = () => {
+    console.log('🔍 handleAddService appelé');
     setEditingService(null);
     setShowModal(true);
+    console.log('✅ Modal ouvert:', true);
   };
 
   const handleEditService = (serviceId: string) => {
@@ -139,20 +141,6 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* En-tête avec bouton d'ajout pour les propriétaires */}
-      {isOwner && (
-        <div className="flex justify-between items-center">
-          <h2 className="text-2xl font-bold text-gray-800">Mes Services</h2>
-          <button
-            onClick={handleAddService}
-            className="bg-accent text-white px-4 py-2 rounded-lg hover:bg-accent/90 transition-colors flex items-center gap-2"
-          >
-            <FaPlus />
-            Ajouter un service
-          </button>
-        </div>
-      )}
-
       {/* Messages de succès */}
       {successMessage && (
         <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
@@ -169,7 +157,7 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({
           {isOwner && (
             <button
               onClick={handleAddService}
-              className="mt-4 bg-accent text-white px-6 py-2 rounded-lg hover:bg-accent/90 transition-colors"
+              className="mt-4 bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-black transition-colors"
             >
               Créer votre premier service
             </button>
@@ -197,6 +185,7 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({
         <ServiceModal
           isOpen={showModal}
           onClose={() => {
+            console.log('🔍 Modal fermé');
             setShowModal(false);
             setEditingService(null);
           }}

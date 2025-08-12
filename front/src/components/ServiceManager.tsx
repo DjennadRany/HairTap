@@ -181,7 +181,7 @@ const ServiceManager: React.FC<ServiceManagerProps> = ({
           {isOwner && (
             <button
               onClick={handleAddService}
-              className="bg-accent text-white px-6 py-3 rounded-lg hover:bg-accent/90 transition-all duration-200 flex items-center gap-2 shadow-lg hover:shadow-xl"
+              className="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-black transition-all duration-200 flex items-center gap-2 shadow-lg hover:shadow-xl"
             >
               <FaPlus /> Ajouter un service
             </button>
@@ -246,7 +246,7 @@ const ServiceManager: React.FC<ServiceManagerProps> = ({
           {isOwner && (
             <button
               onClick={handleAddService}
-              className="bg-accent text-white px-8 py-3 rounded-lg hover:bg-accent/90 transition-colors"
+              className="bg-gray-600 text-white px-8 py-3 rounded-lg hover:bg-black transition-colors"
             >
               Ajouter mon premier service
             </button>

@@ -3,6 +3,7 @@
 export const DEFAULT_COIFFEUR_IMAGE = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxjaXJjbGUgY3g9IjEwMCIgY3k9IjgwIiByPSIzMCIgZmlsbD0iI0QxRDVEMyIvPgo8cGF0aCBkPSJNNDAgMTQwQzQwIDEyMCA2MCAxMDAgMTAwIDEwMEMxNDAgMTAwIDE2MCAxMjAgMTYwIDE0MFYxNjBINDBWMTQwWiIgZmlsbD0iI0QxRDVEMyIvPgo8dGV4dCB4PSIxMDAiIHk9IjE4MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzk0QTNBRiIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjEyIj5Db2lmZmV1cjwvdGV4dD4KPC9zdmc+';
 export const DEFAULT_SERVICE_IMAGE = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxjaXJjbGUgY3g9IjEwMCIgY3k9IjgwIiByPSIzMCIgZmlsbD0iI0QxRDVEMyIvPgo8cGF0aCBkPSJNNDAgMTQwQzQwIDEyMCA2MCAxMDAgMTAwIDEwMEMxNDAgMTAwIDE2MCAxMjAgMTYwIDE0MFYxNjBINDBWMTQwWiIgZmlsbD0iI0QxRDVEMyIvPgo8dGV4dCB4PSIxMDAiIHk9IjE4MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzk0QTNBRiIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjEyIj5TZXJ2aWNlPC90ZXh0Pgo8L3N2Zz4=';
 export const DEFAULT_USER_IMAGE = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxjaXJjbGUgY3g9IjEwMCIgY3k9IjgwIiByPSIzMCIgZmlsbD0iI0QxRDVEMyIvPgo8cGF0aCBkPSJNNDAgMTQwQzQwIDEyMCA2MCAxMDAgMTAwIDEwMEMxNDAgMTAwIDE2MCAxMjAgMTYwIDE0MFYxNjBINDBWMTQwWiIgZmlsbD0iI0QxRDVEMyIvPgo8dGV4dCB4PSIxMDAiIHk9IjE4MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzk0QTNBRiIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjEyIj5Vc2VyPC90ZXh0Pgo8L3N2Zz4=';
+export const DEFAULT_PRODUCT_IMAGE = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxjaXJjbGUgY3g9IjEwMCIgY3k9IjgwIiByPSIzMCIgZmlsbD0iI0QxRDVEMyIvPgo8cGF0aCBkPSJNNDAgMTQwQzQwIDEyMCA2MCAxMDAgMTAwIDEwMEMxNDAgMTAwIDE2MCAxMjAgMTYwIDE0MFYxNjBINDBWMTQwWiIgZmlsbD0iI0QxRDVEMyIvPgo8dGV4dCB4PSIxMDAiIHk9IjE4MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzk0QTNBRiIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjEyIj5Qcm9kdWl0PC90ZXh0Pgo8L3N2Zz4=';
 
 export const getDefaultImage = (type: 'coiffeur' | 'service' | 'user' = 'user') => {
   switch (type) {
@@ -18,19 +19,42 @@ export const getDefaultImage = (type: 'coiffeur' | 'service' | 'user' = 'user') 
 
 // Utilitaire pour gérer les URLs d'images
 export const getImageUrl = (imageUrl: string | null | undefined, defaultUrl?: string): string => {
-  const defaultAvatar = defaultUrl || 'http://localhost:5000/default-avatar.png';
+  const defaultAvatar = defaultUrl || DEFAULT_USER_IMAGE;
   if (!imageUrl || imageUrl === defaultAvatar) return defaultAvatar;
-  if (imageUrl.startsWith('/uploads/') || imageUrl.startsWith('/')) {
+  
+  // Si c'est une image SVG (data:image/), la retourner directement
+  if (imageUrl.startsWith('data:image/')) {
+    return imageUrl;
+  }
+  
+  // Si c'est une URL externe (http/https), la retourner directement
+  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+    return imageUrl;
+  }
+  
+  // Si c'est une URL relative qui commence par /uploads/, la rendre absolue
+  if (imageUrl.startsWith('/uploads/')) {
     return `http://localhost:5000${imageUrl}`;
   }
-  if (imageUrl.startsWith('http')) return imageUrl;
+  
+  // Si c'est une URL relative qui commence par /, la rendre absolue
+  if (imageUrl.startsWith('/')) {
+    return `http://localhost:5000${imageUrl}`;
+  }
+  
+  // Si c'est un nom de fichier simple (comme pexels-pixabay-247322.jpg)
+  // On suppose qu'il est dans le dossier uploads/services/
+  if (imageUrl.includes('.jpg') || imageUrl.includes('.png') || imageUrl.includes('.jpeg') || imageUrl.includes('.webp') || imageUrl.includes('.svg')) {
+    return `http://localhost:5000/uploads/services/${imageUrl}`;
+  }
+  
   return defaultAvatar;
 };
 
 // Fonction pour gérer les erreurs d'images
 export const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>, fallbackUrl?: string) => {
   const target = e.target as HTMLImageElement;
-  const fallback = fallbackUrl || 'http://localhost:5000/default-avatar.png';
+  const fallback = fallbackUrl || DEFAULT_USER_IMAGE;
   
   // Éviter les boucles infinies
   if (target.src !== fallback) {

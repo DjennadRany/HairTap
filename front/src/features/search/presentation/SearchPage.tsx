@@ -8,6 +8,7 @@ import CoiffeurCard from '../../../components/CoiffeurCard';
 import { point, distance as turfDistance } from '@turf/turf';
 import { ProtectedRoute } from '../../../components/ProtectedRoute';
 import { coiffeurService } from '@/services/api/coiffeurs';
+import { favoriteService } from '@/services/api/favorites';
 import type { User } from '../../../types/models';
 import { Map } from '../../../components/Map';
 import { useGeolocation } from '../../../hooks/useGeolocation';
@@ -19,6 +20,7 @@ export const SearchPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [selectedResults, setSelectedResults] = useState<User[]>([]);
   const [results, setResults] = useState<User[]>([]);
+  const [favorites, setFavorites] = useState<string[]>([]);
 
   const [filters, setFilters] = useState<SearchFiltersType>({
     service: '',
@@ -84,6 +86,38 @@ export const SearchPage: React.FC = () => {
     navigate(`/coiffeur/${coiffeur._id}`);
   };
 
+  // Charger les favoris de l'utilisateur
+  useEffect(() => {
+    const loadFavorites = async () => {
+      try {
+        const userFavorites = await favoriteService.getFavorites();
+        setFavorites(userFavorites.map(fav => fav._id));
+      } catch (error) {
+        console.error('Erreur lors du chargement des favoris:', error);
+        setFavorites([]);
+      }
+    };
+
+    loadFavorites();
+  }, []);
+
+  // Fonction pour gérer les changements de favoris
+  const handleFavoriteToggle = async (coiffeurId: string) => {
+    try {
+      if (favorites.includes(coiffeurId)) {
+        // Retirer des favoris
+        await favoriteService.removeFavorite(coiffeurId);
+        setFavorites(prev => prev.filter(id => id !== coiffeurId));
+      } else {
+        // Ajouter aux favoris
+        await favoriteService.addFavorite(coiffeurId);
+        setFavorites(prev => [...prev, coiffeurId]);
+      }
+    } catch (error) {
+      console.error('Erreur lors de la gestion des favoris:', error);
+    }
+  };
+
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       handleSearch();
@@ -106,7 +140,7 @@ export const SearchPage: React.FC = () => {
           <button
             onClick={handleSearch}
             disabled={loading}
-            className="w-full mt-4 bg-accent text-white py-2 px-4 rounded-md hover:bg-accent-dark disabled:opacity-50"
+            className="w-full mt-4 bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-black disabled:opacity-50"
           >
             {loading ? 'Recherche...' : 'Rechercher'}
           </button>
@@ -132,7 +166,7 @@ export const SearchPage: React.FC = () => {
           {showMap ? (
             <Map
               coiffeurs={selectedResults}
-              userLocation={location}
+              userLocation={location || undefined}
               onCoiffeurClick={handleCoiffeurClick}
             />
           ) : (
@@ -143,6 +177,8 @@ export const SearchPage: React.FC = () => {
                   coiffeur={coiffeur}
                   onClick={() => handleCoiffeurClick(coiffeur)}
                   userLocation={location || undefined}
+                  onFavoriteToggle={handleFavoriteToggle}
+                  isFavorite={favorites.includes(coiffeur._id)}
                 />
               ))}
             </div>

@@ -2,6 +2,7 @@ import express from 'express';
 import multer from 'multer';
 import { auth } from '../middleware/auth.js';
 import User from '../models/User.js';
+import Service from '../models/Service.js';
 import geolocationService from '../services/geolocationService.js';
 
 const router = express.Router();
@@ -291,6 +292,77 @@ router.delete('/:id/booking-addresses/:addressId', auth, async (req, res) => {
   } catch (error) {
     console.error('❌ [DELETE /users/:id/booking-addresses/:addressId] Erreur:', error);
     res.status(500).json({ message: 'Erreur lors de la suppression de l\'adresse de réservation' });
+  }
+});
+
+// Route pour mettre à jour l'adresse de salon (coiffeurs uniquement)
+router.put('/salon-address', auth, async (req, res) => {
+  try {
+    const { salonAddress } = req.body;
+    
+    // Vérifier que l'utilisateur est un coiffeur
+    if (req.user.role !== 'coiffeur') {
+      return res.status(403).json({ message: 'Accès réservé aux coiffeurs' });
+    }
+    
+    // Validation des données
+    if (!salonAddress || !salonAddress.street || !salonAddress.city || !salonAddress.postalCode) {
+      return res.status(400).json({ message: 'Adresse de salon incomplète' });
+    }
+    
+    // Mettre à jour l'adresse de salon
+    const updatedUser = await User.findByIdAndUpdate(
+      req.user.id,
+      { salonAddress },
+      { new: true, runValidators: true }
+    );
+    
+    res.json({
+      message: 'Adresse de salon mise à jour avec succès',
+      salonAddress: updatedUser.salonAddress
+    });
+    
+  } catch (error) {
+    console.error('Erreur mise à jour adresse salon:', error);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
+// Route pour récupérer l'adresse de salon
+router.get('/salon-address/:coiffeurId', async (req, res) => {
+  try {
+    const { coiffeurId } = req.params;
+    
+    const coiffeur = await User.findById(coiffeurId).select('salonAddress name');
+    
+    if (!coiffeur) {
+      return res.status(404).json({ message: 'Coiffeur non trouvé' });
+    }
+    
+    if (coiffeur.role !== 'coiffeur') {
+      return res.status(400).json({ message: 'Utilisateur non coiffeur' });
+    }
+    
+    res.json({
+      salonAddress: coiffeur.salonAddress,
+      coiffeurName: coiffeur.name
+    });
+    
+  } catch (error) {
+    console.error('Erreur récupération adresse salon:', error);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
+// Récupérer les services d'un utilisateur (pour la galerie)
+router.get('/services', async (req, res) => {
+  try {
+    // Cette route peut être utilisée pour récupérer des services liés à un utilisateur
+    // Pour l'instant, on retourne un tableau vide pour éviter l'erreur 500
+    res.json([]);
+  } catch (error) {
+    console.error('Get user services error:', error);
+    res.status(500).json({ message: 'Erreur lors de la récupération des services' });
   }
 });
 

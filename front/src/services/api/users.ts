@@ -1,10 +1,61 @@
 import api from './axios';
-import { User } from '../../types/models';
+import type { User } from '../../types/models';
+
+const API_URL = '/users';
 
 export const userService = {
-  // Récupérer un utilisateur par ID
   async getUser(id: string): Promise<User> {
-    const response = await api.get<User>(`/users/${id}`);
+    console.log('🔍 getUser appelé avec ID:', id);
+    const response = await api.get<User>(`${API_URL}/${id}`);
+    
+    // Récupérer automatiquement le statut de connexion si c'est un coiffeur
+    if (response.data.role === 'coiffeur') {
+      try {
+        const connectionResponse = await api.get(`/connections/status/${id}`);
+        const connectionData = connectionResponse.data;
+        
+        // Vérifier si le coiffeur est vraiment en ligne
+        const now = new Date();
+        const lastSeen = new Date(connectionData.lastSeen);
+        const timeDiff = now.getTime() - lastSeen.getTime();
+        const timeoutMinutes = 2; // 2 minutes de timeout
+        
+        // Si lastSeen est trop ancien, considérer comme hors ligne
+        const isReallyOnline = connectionData.isOnline && timeDiff < (timeoutMinutes * 60 * 1000);
+        
+        response.data.connectionStatus = {
+          isOnline: isReallyOnline,
+          lastSeen: connectionData.lastSeen,
+          status: isReallyOnline ? connectionData.status : 'offline',
+          availability: {
+            isAvailable: isReallyOnline && connectionData.availability.isAvailable,
+            nextAvailable: connectionData.availability.nextAvailable,
+            workingHours: connectionData.availability.workingHours
+          }
+        };
+      } catch (error) {
+        console.log('⚠️ Impossible de récupérer le statut de connexion:', error);
+        // Statut par défaut si erreur
+        response.data.connectionStatus = {
+          isOnline: false,
+          lastSeen: new Date(),
+          status: 'offline',
+          availability: { 
+            isAvailable: false,
+            workingHours: {
+              monday: { start: '09:00', end: '18:00', isAvailable: false },
+              tuesday: { start: '09:00', end: '18:00', isAvailable: false },
+              wednesday: { start: '09:00', end: '18:00', isAvailable: false },
+              thursday: { start: '09:00', end: '18:00', isAvailable: false },
+              friday: { start: '09:00', end: '18:00', isAvailable: false },
+              saturday: { start: '09:00', end: '18:00', isAvailable: false },
+              sunday: { start: '09:00', end: '18:00', isAvailable: false }
+            }
+          }
+        };
+      }
+    }
+    
     return response.data;
   },
 
@@ -54,6 +105,18 @@ export const userService = {
   // Supprimer une adresse de réservation
   async removeBookingAddress(id: string, addressId: string): Promise<{ message: string }> {
     const response = await api.delete(`/users/${id}/booking-addresses/${addressId}`);
+    return response.data;
+  },
+
+  // Récupérer l'adresse de salon
+  async getSalonAddress(coiffeurId: string): Promise<{ salonAddress: any; coiffeurName: string }> {
+    const response = await api.get(`/users/salon-address/${coiffeurId}`);
+    return response.data;
+  },
+
+  // Mettre à jour l'adresse de salon
+  async updateSalonAddress(salonAddress: any): Promise<{ message: string; salonAddress: any }> {
+    const response = await api.put('/users/salon-address', { salonAddress });
     return response.data;
   }
 }; 

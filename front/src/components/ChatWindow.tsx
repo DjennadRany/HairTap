@@ -3,7 +3,9 @@ import { useChat } from '../hooks/useChat';
 import { useSelector } from 'react-redux';
 import { selectCurrentUser } from '../store/slices/authSlice';
 import { coiffeurService } from '../services/api/coiffeurs';
-import { Coiffeur } from '../services/api/coiffeurs';
+import { User } from '../types/models';
+import { usePushNotification } from './PushNotification';
+import { ConnectionIndicator } from './ConnectionIndicator';
 
 interface ChatWindowProps {
   currentUserId: string;
@@ -13,9 +15,11 @@ interface ChatWindowProps {
 export const ChatWindow: React.FC<ChatWindowProps> = ({ currentUserId, otherUserId }) => {
   const { messages, loading, error, sendMessage } = useChat(currentUserId, otherUserId);
   const [input, setInput] = useState('');
-  const [otherUser, setOtherUser] = useState<Coiffeur | null>(null);
+  const [otherUser, setOtherUser] = useState<User | null>(null);
+  const [isTyping, setIsTyping] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const currentUser = useSelector(selectCurrentUser);
+  const { showNotification: showPushNotification } = usePushNotification();
 
   useEffect(() => {
     const fetchOtherUser = async () => {
@@ -34,12 +38,35 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ currentUserId, otherUser
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Notifications push pour les nouveaux messages
+  useEffect(() => {
+    if (messages.length > 0) {
+      const lastMessage = messages[messages.length - 1];
+      if (lastMessage.to === currentUserId && !lastMessage.read) {
+        // Notification push pour les nouveaux messages
+        showPushNotification(
+          `Nouveau message de ${otherUser?.name || 'Quelqu\'un'}`,
+          {
+            body: lastMessage.content,
+            tag: `message-${lastMessage.id}`,
+            requireInteraction: false
+          }
+        );
+      }
+    }
+  }, [messages, currentUserId, otherUser, showPushNotification]);
+
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
     if (input.trim()) {
       sendMessage(input.trim());
       setInput('');
     }
+  };
+
+  const handleTyping = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInput(e.target.value);
+    // Ici on pourrait envoyer un signal "typing" au serveur
   };
 
   if (loading) {
@@ -61,16 +88,31 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ currentUserId, otherUser
   return (
     <div className="flex flex-col h-full border rounded-lg bg-fashion-light-gray shadow-md max-w-lg mx-auto">
       <div className="flex items-center gap-3 p-4 border-b bg-gray-50">
-        <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-200">
-          {otherUser?.photos && otherUser.photos.length > 0 ? (
-            <img src={otherUser.photos[0]} alt={otherUser.name} className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center bg-accent text-white text-xl font-bold">
-              {otherUser?.name?.[0]}
-            </div>
-          )}
+        <div className="relative">
+          <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-200">
+            {otherUser?.photo ? (
+              <img src={otherUser.photo} alt={otherUser.name} className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-accent text-white text-xl font-bold">
+                {otherUser?.name?.[0]}
+              </div>
+            )}
+          </div>
+          {/* Indicateur de statut de connexion */}
+          <div className="absolute -bottom-1 -right-1">
+            <ConnectionIndicator 
+              status={otherUser?.connectionStatus} 
+              size="sm" 
+            />
+          </div>
         </div>
-        <span className="font-semibold">{otherUser?.name}</span>
+        <div className="flex-1">
+          <span className="font-semibold">{otherUser?.name}</span>
+          <div className="text-xs text-gray-500">
+            {otherUser?.connectionStatus?.isOnline ? '🟢 En ligne' : '⚪ Hors ligne'}
+            {isTyping && <span className="ml-2 text-blue-500">écrit...</span>}
+          </div>
+        </div>
       </div>
       <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-gray-50">
         {messages.map((msg, idx) => {
@@ -83,8 +125,8 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ currentUserId, otherUser
             >
               {!isMine && (
                 <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-200 mr-2 self-end">
-                  {otherUser?.photos && otherUser.photos.length > 0 ? (
-                    <img src={otherUser.photos[0]} alt={otherUser.name} className="w-full h-full object-cover" />
+                  {otherUser?.photo ? (
+                    <img src={otherUser.photo} alt={otherUser.name} className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center bg-accent text-white text-sm font-bold">
                       {otherUser?.name?.[0]}
@@ -128,27 +170,23 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ currentUserId, otherUser
         })}
         <div ref={bottomRef} />
       </div>
-      <form onSubmit={handleSend} className="flex gap-2 p-4 border-t bg-fashion-light-gray">
-        <input
-          type="text"
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          className="flex-1 border rounded-lg px-3 py-2 focus:outline-none"
-          placeholder="Écrire un message..."
-        />
-        <button
-          type="submit"
-          className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90"
-        >
-          Envoyer
-        </button>
-        <button
-          type="button"
-          className="ml-2 bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700"
-          onClick={() => setInput('Je souhaite proposer un rendez-vous à cette date : ')}
-        >
-          Proposer un RDV
-        </button>
+      <form onSubmit={handleSend} className="p-4 border-t bg-white">
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={input}
+            onChange={handleTyping}
+            placeholder="Tapez votre message..."
+            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent"
+          />
+          <button
+            type="submit"
+            disabled={!input.trim()}
+            className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent-dark disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            Envoyer
+          </button>
+        </div>
       </form>
     </div>
   );

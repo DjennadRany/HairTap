@@ -1,5 +1,5 @@
 import React from 'react';
-import { FaChartLine, FaUsers, FaStar, FaHeart } from 'react-icons/fa';
+import { FaChartLine, FaUsers, FaStar, FaHeart, FaShoppingCart, FaBox } from 'react-icons/fa';
 
 interface DashboardStatsProps {
   stats: {
@@ -8,6 +8,8 @@ interface DashboardStatsProps {
     rating: number;
     likes: number;
     profileViews?: number;
+    productRevenue?: number;
+    totalOrders?: number;
   };
 }
 
@@ -37,6 +39,22 @@ const DashboardStats: React.FC<DashboardStatsProps> = ({ stats }) => {
         <span className="text-3xl font-bold">{stats.likes}</span>
         <span className="text-gray-600 mt-2">Likes</span>
       </div>
+      
+      {stats.productRevenue !== undefined && (
+        <div className="bg-fashion-light-gray rounded-lg shadow p-6 flex flex-col items-center">
+          <FaShoppingCart className="text-green-500 text-2xl mb-2" />
+          <span className="text-3xl font-bold">{stats.productRevenue}€</span>
+          <span className="text-gray-600 mt-2">Ventes produits</span>
+        </div>
+      )}
+      
+      {stats.totalOrders !== undefined && (
+        <div className="bg-fashion-light-gray rounded-lg shadow p-6 flex flex-col items-center">
+          <FaBox className="text-purple-500 text-2xl mb-2" />
+          <span className="text-3xl font-bold">{stats.totalOrders}</span>
+          <span className="text-gray-600 mt-2">Commandes</span>
+        </div>
+      )}
     </div>
   );
 };

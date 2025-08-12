@@ -1,6 +1,6 @@
 import React from 'react';
 import { FaHeart, FaCalendarAlt } from 'react-icons/fa';
-import { getImageUrl, handleImageError } from '../utils/imageUtils';
+import { getImageUrl, handleImageError, DEFAULT_SERVICE_IMAGE } from '../utils/imageUtils';
 
 interface ServiceCardProps {
   service: {
@@ -98,10 +98,10 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
             {service.examplePhotos.slice(0, 2).map((photo, index) => (
               <img
                 key={index}
-                src={getImageUrl(photo, 'http://localhost:5000/default-service-image.png')}
+                src={getImageUrl(photo, DEFAULT_SERVICE_IMAGE)}
                 alt={`Exemple ${index + 1}`}
                 className="w-16 h-16 object-cover rounded-lg"
-                onError={(e) => handleImageError(e, 'http://localhost:5000/default-service-image.png')}
+                onError={(e) => handleImageError(e, DEFAULT_SERVICE_IMAGE)}
               />
             ))}
           </div>
@@ -114,7 +114,7 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
             {onEdit && (
               <button
                 onClick={() => onEdit(service._id)}
-                className="flex-1 bg-blue-500 text-white px-3 py-2 rounded text-sm hover:bg-blue-600 transition-colors"
+                className="flex-1 bg-gray-600 text-white px-3 py-2 rounded text-sm hover:bg-black transition-colors"
               >
                 Modifier
               </button>
@@ -126,15 +126,15 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
               >
                 Supprimer
               </button>
-            )}
+              )}
           </>
         ) : (
           <>
             {/* Bouton Réserver pour les clients */}
-            {onBook && (
+            {onBook && showBookButton && (
               <button
                 onClick={() => onBook(service._id)}
-                className="w-full bg-accent text-white px-4 py-2 rounded hover:bg-accent/90 transition-colors flex items-center justify-center gap-2"
+                className="w-full bg-gray-600 text-white px-4 py-2 rounded hover:bg-black transition-colors flex items-center justify-center gap-2"
               >
                 <FaCalendarAlt />
                 Réserver

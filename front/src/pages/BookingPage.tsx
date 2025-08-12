@@ -1,11 +1,11 @@
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { selectCurrentUser } from '../store/slices/authSlice';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/Button';
 import { userService } from '../services/api/users';
-import { bookingService } from '../services/api/bookings';
+import { coiffeurService } from '../services/api/coiffeurs';
 import BookingForm from '../components/BookingForm';
 import ServiceCard from '../components/ServiceCard';
 import type { User } from '../types/models';
@@ -27,11 +27,11 @@ const BookingPage = () => {
         setLoading(true);
         
         // Récupérer le coiffeur
-        const coiffeurData = await userService.getUser(id);
+        const coiffeurData = await coiffeurService.getCoiffeur(id);
         setCoiffeur(coiffeurData);
         
         // Récupérer tous les services du coiffeur
-        const coiffeurServices = await userService.getCoiffeurServices(id);
+        const coiffeurServices = await coiffeurService.getCoiffeurServices(id);
         setServices(coiffeurServices);
       } catch (error) {
         console.error('Error fetching data:', error);
