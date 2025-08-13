@@ -4,6 +4,7 @@ import { useSelector } from 'react-redux';
 import { userService } from '../services/api/users';
 import { reviewService } from '../services/api/reviews';
 import { favoriteService } from '../services/api/favorites';
+import { chatService } from '../services/api/chat';
 import type { User } from '../types/models';
 import { FaStar, FaMapMarkerAlt, FaHeart, FaEdit, FaPlus, FaClock, FaPhone, FaEnvelope, FaEuroSign, FaImages, FaSpinner } from 'react-icons/fa';
 import { MdVerified } from 'react-icons/md';
@@ -50,6 +51,25 @@ const CoiffeurProfilePage = () => {
   const [reviews, setReviews] = useState<any[]>([]);
   const [hasProducts, setHasProducts] = useState(false);
   const [showAddServiceModal, setShowAddServiceModal] = useState(false);
+  const [isCreatingConversation, setIsCreatingConversation] = useState(false);
+
+  // Fonction pour gérer l'envoi de message
+  const handleSendMessage = async () => {
+    if (!user || !coiffeur) return;
+    
+    setIsCreatingConversation(true);
+    try {
+      // Rediriger vers la page de chat avec les suggestions (sans envoyer de message)
+      navigate(`/client/chat?coiffeur=${coiffeur._id}`);
+      
+    } catch (error) {
+      console.error('Erreur lors de la redirection:', error);
+      // En cas d'erreur, rediriger quand même vers la page de chat
+      navigate(`/client/chat?coiffeur=${coiffeur._id}`);
+    } finally {
+      setIsCreatingConversation(false);
+    }
+  };
 
   useEffect(() => {
     console.log('🔍 useEffect triggered with:', { id, paramId, user: user?._id });
@@ -187,203 +207,211 @@ const CoiffeurProfilePage = () => {
     <div className="container mx-auto px-4 py-8">
       {/* Section principale du profil - Layout comme capture d'écran */}
       <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
-        <div className="flex flex-col xl:flex-row gap-6">
-          {/* Colonne gauche - Photo ET Informations (flex-1) */}
-          <div className="flex-1">
-            <div className="flex flex-col xl:flex-row gap-6">
-              {/* Photo du coiffeur */}
-              <div className="flex justify-center xl:justify-start">
-                <div className="relative">
-                  <img
-                    src={getImageUrl(coiffeur.photo, DEFAULT_COIFFEUR_IMAGE)}
-                    alt={coiffeur.name}
-                    className="w-40 h-40 rounded-full object-cover border-2 border-accent"
-                    onError={(e) => handleImageError(e, DEFAULT_COIFFEUR_IMAGE)}
-                  />
-                  {coiffeur.sirenStatus === 'verified' && (
-                    <MdVerified className="absolute -bottom-1 -right-1 text-blue-500 text-lg" />
-                  )}
-                </div>
-              </div>
-
-              {/* Informations du coiffeur */}
-              <div className="flex-1 space-y-2">
-                {/* Nom et rating - CENTRÉS */}
-                <div className="text-center xl:text-left">
-                  <h1 className="text-2xl font-bold text-gray-800 mb-1">
-                    {coiffeur.name}
-                  </h1>
-                  <div className="flex items-center justify-center xl:justify-start gap-2">
-                    <FaStar className="text-yellow-400" />
-                    <span className="font-semibold text-gray-700">
-                      {coiffeur.rating || 0} (avis)
-                    </span>
-                  </div>
-                  
-                  {/* Indicateur de statut de connexion */}
-                  <div className="flex items-center justify-center xl:justify-start gap-2 mt-2">
-                    <ConnectionIndicator 
-                      status={coiffeur.connectionStatus} 
-                      size="md" 
-                      showLabel={true}
-                    />
-                  </div>
-                </div>
-
-                {/* Email - CENTRÉ */}
-                <p className="text-center xl:text-left text-gray-600 text-sm">
-                  {coiffeur.email}
-                </p>
-
-                {/* Boutons d'action - CENTRÉS */}
-                <div className="flex items-center justify-center xl:justify-start gap-2">
-                  {user && user.role === 'user' && (
-                    <button
-                      onClick={handleToggleFavorite}
-                      className={`p-2 rounded-full transition-all duration-300 ${
-                        isFavorite 
-                          ? 'bg-red-500 text-white hover:bg-red-600 hover:scale-110'
-                          : 'bg-gray-600 text-white hover:bg-black hover:scale-110'
-                      }`}
-                      title={isFavorite ? "Retirer des favoris" : "Ajouter aux favoris"}
-                    >
-                      <FaHeart className="text-sm" />
-                    </button>
-                  )}
-                  
-                  {isOwner && (
-                    <button
-                      onClick={() => navigate(`/coiffeur/${id}/edit`)}
-                      className="p-2 bg-gray-600 text-white rounded-full hover:bg-black hover:scale-110 transition-all duration-300"
-                      title="Modifier le profil"
-                    >
-                      <FaEdit className="text-sm" />
-                    </button>
-                  )}
-                </div>
-
-                {/* Bouton Envoyer un message - CENTRÉ */}
-                {user && user.role === 'user' && (
-                  <div className="text-center xl:text-left">
-                    <button
-                      onClick={() => navigate(`/chat/${coiffeur._id}`)}
-                      className="bg-gray-600 text-white py-2 px-4 rounded-lg hover:bg-black transition-all duration-300 font-medium"
-                    >
-                      📱 Envoyer un message
-                    </button>
-                  </div>
-                )}
-
-                {/* Bio - À GAUCHE */}
-                {coiffeur.bio && (
-                  <p className="text-left text-gray-600 text-sm leading-relaxed">
-                    {coiffeur.bio}
-                  </p>
-                )}
-
-                {/* Spécialités - À GAUCHE */}
-                {coiffeur.specialities && coiffeur.specialities.length > 0 && (
-                  <div className="text-left">
-                    <h3 className="font-semibold text-gray-700 text-sm mb-1">Spécialités</h3>
-                    <div className="flex flex-wrap gap-2">
-                      {coiffeur.specialities.map((speciality: string, index: number) => (
-                        <span
-                          key={index}
-                          className="bg-accent/10 text-accent px-3 py-1 rounded-full text-xs font-medium"
-                        >
-                          {speciality}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Mode de travail - À GAUCHE */}
-                {coiffeur.workingMode && coiffeur.workingMode.length > 0 && (
-                  <div className="flex items-center gap-2 text-gray-700 text-left">
-                    <FaMapMarkerAlt className="text-accent text-sm" />
-                    <span className="text-sm">
-                      {coiffeur.workingMode.includes('salon') && coiffeur.workingMode.includes('domicile')
-                        ? 'Salon & Domicile'
-                        : coiffeur.workingMode.includes('salon')
-                        ? 'Salon uniquement'
-                        : 'Domicile uniquement'}
-                    </span>
-                  </div>
-                )}
-
-                {/* Expérience - À GAUCHE */}
-                {coiffeur.experience && coiffeur.experience > 0 && (
-                  <div className="text-sm text-gray-600 text-left">
-                    <span className="font-semibold">Expérience:</span> {coiffeur.experience} ans
-                  </div>
-                )}
-
-                {/* Formation - À GAUCHE */}
-                {coiffeur.formation && (
-                  <div className="text-sm text-gray-600 text-left">
-                    <span className="font-semibold">Formation:</span> {coiffeur.formation}
-                  </div>
-                )}
-
-                {/* Adresse du salon - À GAUCHE */}
-                <div className="text-left">
-                  <h3 className="font-semibold text-gray-700 text-sm mb-1 flex items-center gap-2">
-                    <FaMapMarkerAlt className="text-accent" />
-                    Adresse du salon
-                  </h3>
-                  {coiffeur.address ? (
-                    <p className="text-gray-600 text-sm">
-                      {coiffeur.address.streetNumber || ''} {coiffeur.address.street || ''}, {coiffeur.address.postalCode || ''} {coiffeur.address.city || ''}
-                    </p>
-                  ) : (
-                    <p className="text-gray-500 text-sm">Adresse non renseignée</p>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Carte - EN DESSOUS des informations, SANS contrôles de zoom */}
-        {coiffeur.address?.coordinates && (
-          <div className="mt-6">
-            <div className="relative w-full h-64 rounded-lg border border-gray-200 overflow-hidden">
-              <iframe
-                src={`https://www.openstreetmap.org/export/embed.html?bbox=${coiffeur.address.coordinates.lng - 0.001},${coiffeur.address.coordinates.lat - 0.001},${coiffeur.address.coordinates.lng + 0.001},${coiffeur.address.coordinates.lat + 0.001}&layer=mapnik&marker=${coiffeur.address.coordinates.lat},${coiffeur.address.coordinates.lng}&zoom=16&scrollWheelZoom=false&doubleClickZoom=false&dragPan=false&keyboard=false&touchZoom=false&zoomControl=false&attributionControl=false&minZoom=16&maxZoom=16`}
-                width="100%"
-                height="100%"
-                frameBorder="0"
-                scrolling="no"
-                marginHeight={0}
-                marginWidth={0}
-                title="Localisation du salon"
-                className="pointer-events-none"
+        <div className="flex flex-col xl:flex-row gap-4">
+          {/* Photo du coiffeur - PLUS GRANDE */}
+          <div className="flex justify-center xl:justify-start">
+            <div className="relative">
+              <img
+                src={getImageUrl(coiffeur.photo, DEFAULT_COIFFEUR_IMAGE)}
+                alt={coiffeur.name}
+                className="w-48 h-48 rounded-full object-cover border-2 border-accent"
+                onError={(e) => handleImageError(e, DEFAULT_COIFFEUR_IMAGE)}
               />
-              {/* Overlay pour désactiver complètement les interactions */}
-              <div className="absolute inset-0 pointer-events-none"></div>
+              {coiffeur.sirenStatus === 'verified' && (
+                <MdVerified className="absolute -bottom-1 -right-1 text-blue-500 text-lg" />
+              )}
+            </div>
+          </div>
+
+          {/* Informations du coiffeur */}
+          <div className="flex-1 space-y-2">
+            {/* Nom et rating - CENTRÉS */}
+            <div className="text-center xl:text-left">
+              <h1 className="text-2xl font-bold text-gray-800 mb-1">
+                {coiffeur.name}
+              </h1>
+              <div className="flex items-center justify-center xl:justify-start gap-2">
+                <FaStar className="text-yellow-400" />
+                <span className="font-semibold text-gray-700">
+                  {coiffeur.rating || 0} (avis)
+                </span>
+              </div>
               
-              {/* Badge "Carte fixe" */}
-              <div className="absolute top-2 right-2 bg-gray-800 text-white text-xs px-2 py-1 rounded">
-                Carte fixe
+              {/* Indicateur de statut de connexion */}
+              <div className="flex items-center justify-center xl:justify-start gap-2 mt-2">
+                <ConnectionIndicator 
+                  status={coiffeur.connectionStatus} 
+                  size="md" 
+                  showLabel={true}
+                />
               </div>
             </div>
 
-            {/* Bouton itinéraire - SOUS LA CARTE */}
-            <button
-              onClick={() => {
-                if (coiffeur.address?.coordinates) {
-                  const url = `https://waze.com/ul?ll=${coiffeur.address.coordinates.lat},${coiffeur.address.coordinates.lng}&navigate=yes`;
-                  window.open(url, '_blank');
-                }
-              }}
-              className="w-full bg-gray-600 text-white py-2 px-4 rounded-lg hover:bg-black transition-colors text-sm flex items-center justify-center gap-2 mt-3"
-            >
-              <FaMapMarkerAlt className="text-sm" />
-              Itinéraire
-            </button>
+            {/* Email - CENTRÉ */}
+            <p className="text-center xl:text-left text-gray-600 text-sm">
+              {coiffeur.email}
+            </p>
+
+            {/* Boutons d'action - CENTRÉS */}
+            <div className="flex items-center justify-center xl:justify-start gap-2">
+              {user && user.role === 'user' && (
+                <button
+                  onClick={handleToggleFavorite}
+                  className={`p-2 rounded-full transition-all duration-300 ${
+                    isFavorite 
+                      ? 'bg-red-500 text-white hover:bg-red-600 hover:scale-110'
+                      : 'bg-gray-600 text-white hover:bg-black hover:scale-110'
+                  }`}
+                  title={isFavorite ? "Retirer des favoris" : "Ajouter aux favoris"}
+                >
+                  <FaHeart className="text-sm" />
+                </button>
+              )}
+              
+              {isOwner && (
+                <button
+                  onClick={() => navigate(`/coiffeur/${id}/edit`)}
+                  className="p-2 bg-gray-600 text-white rounded-full hover:bg-black hover:scale-110 transition-all duration-300"
+                  title="Modifier le profil"
+                >
+                  <FaEdit className="text-sm" />
+                </button>
+              )}
+            </div>
+
+            {/* Bio - À GAUCHE */}
+            {coiffeur.bio && (
+              <p className="text-left text-gray-600 text-sm leading-relaxed">
+                {coiffeur.bio}
+              </p>
+            )}
+
+            {/* Spécialités - À GAUCHE */}
+            {coiffeur.specialities && coiffeur.specialities.length > 0 && (
+              <div className="text-left">
+                <h3 className="font-semibold text-gray-700 text-sm mb-1">Spécialités</h3>
+                <div className="flex flex-wrap gap-2">
+                  {coiffeur.specialities.map((speciality: string, index: number) => (
+                    <span
+                      key={index}
+                      className="bg-accent/10 text-accent px-3 py-1 rounded-full text-xs font-medium"
+                    >
+                      {speciality}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Mode de travail - À GAUCHE */}
+            {coiffeur.workingMode && coiffeur.workingMode.length > 0 && (
+              <div className="flex items-center gap-2 text-gray-700 text-left">
+                <FaMapMarkerAlt className="text-accent text-sm" />
+                <span className="text-sm">
+                  {coiffeur.workingMode.includes('salon') && coiffeur.workingMode.includes('domicile')
+                    ? 'Salon & Domicile'
+                    : coiffeur.workingMode.includes('salon')
+                    ? 'Salon uniquement'
+                    : 'Domicile uniquement'}
+                </span>
+              </div>
+            )}
+
+            {/* Expérience - À GAUCHE */}
+            {coiffeur.experience && coiffeur.experience > 0 && (
+              <div className="text-sm text-gray-600 text-left">
+                <span className="font-semibold">Expérience:</span> {coiffeur.experience} ans
+              </div>
+            )}
+
+            {/* Formation - À GAUCHE */}
+            {coiffeur.formation && (
+              <div className="text-sm text-gray-600 text-left">
+                <span className="font-semibold">Formation:</span> {coiffeur.formation}
+              </div>
+            )}
+
+            {/* Adresse du salon - À GAUCHE */}
+            <div className="text-left">
+              <h3 className="font-semibold text-gray-700 text-sm mb-1 flex items-center gap-2">
+                <FaMapMarkerAlt className="text-accent" />
+                Adresse du salon
+              </h3>
+              {coiffeur.address ? (
+                <p className="text-gray-600 text-sm">
+                  {coiffeur.address.streetNumber || ''} {coiffeur.address.street || ''}, {coiffeur.address.postalCode || ''} {coiffeur.address.city || ''}
+                </p>
+              ) : (
+                <p className="text-gray-500 text-sm">Adresse non renseignée</p>
+              )}
+            </div>
+
+            {/* Bouton Envoyer un message - APRÈS l'adresse */}
+            <div className="text-left mt-4">
+              <button
+                onClick={handleSendMessage}
+                disabled={isCreatingConversation}
+                className="bg-black text-white py-3 px-6 rounded-xl hover:bg-gray-800 transition-all duration-300 font-medium shadow-lg hover:shadow-xl transform hover:scale-105 flex items-center gap-3 group disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isCreatingConversation ? (
+                  <>
+                    <FaSpinner className="animate-spin text-lg" />
+                    <span>Création...</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-lg">💬</span>
+                    <span>Envoyer un message</span>
+                    <span className="text-sm opacity-90 group-hover:translate-x-1 transition-transform">→</span>
+                  </>
+                )}
+              </button>
+              <p className="text-xs text-gray-500 mt-2 ml-1">
+                💡 Cliquez pour démarrer une conversation avec {coiffeur.name}
+              </p>
+            </div>
           </div>
-        )}
+
+          {/* Colonne droite - Carte à côté des informations */}
+          {coiffeur.address?.coordinates && (
+            <div className="w-full xl:w-[43rem] flex-shrink-0">
+              <div className="relative h-64 rounded-lg border border-gray-200 overflow-hidden">
+                <iframe
+                  src={`https://www.openstreetmap.org/export/embed.html?bbox=${coiffeur.address.coordinates.lng - 0.001},${coiffeur.address.coordinates.lat - 0.001},${coiffeur.address.coordinates.lng + 0.001},${coiffeur.address.coordinates.lat + 0.001}&layer=mapnik&marker=${coiffeur.address.coordinates.lat},${coiffeur.address.coordinates.lng}&zoom=16&scrollWheelZoom=false&doubleClickZoom=false&dragPan=false&keyboard=false&touchZoom=false&zoomControl=false&attributionControl=false&minZoom=16&maxZoom=16`}
+                  width="100%"
+                  height="100%"
+                  frameBorder="0"
+                  scrolling="no"
+                  marginHeight={0}
+                  marginWidth={0}
+                  title="Localisation du salon"
+                  className="pointer-events-none"
+                />
+                {/* Overlay pour désactiver complètement les interactions */}
+                <div className="absolute inset-0 pointer-events-none"></div>
+                
+                {/* Badge "Carte fixe" */}
+                <div className="absolute top-2 right-2 bg-gray-800 text-white text-xs px-2 py-1 rounded">
+                  Carte fixe
+                </div>
+              </div>
+
+              {/* Bouton itinéraire - SOUS LA CARTE */}
+              <button
+                onClick={() => {
+                  if (coiffeur.address?.coordinates) {
+                    const url = `https://waze.com/ul?ll=${coiffeur.address.coordinates.lat},${coiffeur.address.coordinates.lng}&navigate=yes`;
+                    window.open(url, '_blank');
+                  }
+                }}
+                className="w-full bg-gray-600 text-white py-3 px-4 rounded-lg hover:bg-black transition-all duration-300 text-sm font-medium flex items-center justify-center gap-2 mt-3 shadow-md hover:shadow-lg"
+              >
+                <FaMapMarkerAlt className="text-sm" />
+                Itinéraire
+              </button>
+            </div>
+          )}
+        </div>
 
       </div>
 

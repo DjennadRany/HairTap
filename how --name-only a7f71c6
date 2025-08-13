@@ -1,0 +1,5 @@
+[33ma7f71c6[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;32mfeature/0.7.14-next-improvements[m[33m)[m feat: Finalisation Version 0.7.15 - Derniers ajustements avant merge sur main
+[33mcb47b70[m feat: Version 0.7.15 - Correction des doublons de conversations et amélioration des statuts de connexion
+[33m7f9c961[m[33m ([m[1;33mtag: [m[1;33mv0.7.14[m[33m)[m v0.7.14: Ajout bouton 'Envoyer un message' et corrections d'interface - Problèmes connus: indicateurs de connexion non fonctionnels, mise en page page coiffeur incorrecte
+[33m96bfa14[m[33m ([m[1;33mtag: [m[1;33mv0.7.13[m[33m, [m[1;31morigin/feature/0.7.14-next-improvements[m[33m, [m[1;31morigin/7.8.12[m[33m, [m[1;32m7.8.12[m[33m)[m feat: Version 0.7.13 - Optimisation layout profil coiffeur et correction carte
+[33m0deab43[m[33m ([m[1;33mtag: [m[1;33mv7.8.13[m[33m, [m[1;32mv7.8.11[m[33m)[m Version 7.8.12: Correction des erreurs 404 et nettoyage de la console

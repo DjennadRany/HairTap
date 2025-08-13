@@ -18,8 +18,25 @@ export const coiffeurService = {
   },
 
   async getCoiffeur(id: string): Promise<User> {
-    const response = await api.get<User>(`/coiffeurs/${id}`);
-    return response.data;
+    try {
+      const response = await api.get<User>(`/coiffeurs/${id}`);
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Erreur lors de la récupération du coiffeur:', error);
+      
+      // Si c'est une erreur 404, l'utilisateur n'existe pas
+      if (error.response?.status === 404) {
+        throw new Error(`Coiffeur avec l'ID ${id} non trouvé`);
+      }
+      
+      // Si c'est une erreur 500, problème serveur
+      if (error.response?.status === 500) {
+        throw new Error(`Erreur serveur lors de la récupération du coiffeur ${id}`);
+      }
+      
+      // Autres erreurs
+      throw new Error(`Erreur lors de la récupération du coiffeur: ${error.message}`);
+    }
   },
 
   async searchCoiffeurs(query: SearchQuery): Promise<User[]> {

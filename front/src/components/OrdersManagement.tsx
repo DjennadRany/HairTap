@@ -115,31 +115,31 @@ const OrdersManagement: React.FC<OrdersManagementProps> = ({ coiffeurId }) => {
       <div className="flex gap-2">
         <button
           onClick={() => setSelectedStatus('all')}
-          className={`px-4 py-2 rounded-lg ${selectedStatus === 'all' ? 'bg-accent text-white' : 'bg-gray-200 text-gray-700'}`}
+                      className={`px-4 py-2 rounded-lg ${selectedStatus === 'all' ? 'bg-black text-white' : 'bg-gray-200 text-gray-700'}`}
         >
           Toutes
         </button>
         <button
           onClick={() => setSelectedStatus('pending')}
-          className={`px-4 py-2 rounded-lg ${selectedStatus === 'pending' ? 'bg-accent text-white' : 'bg-gray-200 text-gray-700'}`}
+                      className={`px-4 py-2 rounded-lg ${selectedStatus === 'pending' ? 'bg-black text-white' : 'bg-gray-200 text-gray-700'}`}
         >
           En attente
         </button>
         <button
           onClick={() => setSelectedStatus('paid')}
-          className={`px-4 py-2 rounded-lg ${selectedStatus === 'paid' ? 'bg-accent text-white' : 'bg-gray-200 text-gray-700'}`}
+                      className={`px-4 py-2 rounded-lg ${selectedStatus === 'paid' ? 'bg-black text-white' : 'bg-gray-200 text-gray-700'}`}
         >
           Payées
         </button>
         <button
           onClick={() => setSelectedStatus('shipped')}
-          className={`px-4 py-2 rounded-lg ${selectedStatus === 'shipped' ? 'bg-accent text-white' : 'bg-gray-200 text-gray-700'}`}
+                      className={`px-4 py-2 rounded-lg ${selectedStatus === 'shipped' ? 'bg-black text-white' : 'bg-gray-200 text-gray-700'}`}
         >
           Expédiées
         </button>
         <button
           onClick={() => setSelectedStatus('delivered')}
-          className={`px-4 py-2 rounded-lg ${selectedStatus === 'delivered' ? 'bg-accent text-white' : 'bg-gray-200 text-gray-700'}`}
+                      className={`px-4 py-2 rounded-lg ${selectedStatus === 'delivered' ? 'bg-black text-white' : 'bg-gray-200 text-gray-700'}`}
         >
           Livrées
         </button>

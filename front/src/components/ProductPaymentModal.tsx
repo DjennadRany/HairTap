@@ -255,7 +255,7 @@ const ProductPaymentModal: React.FC<ProductPaymentModalProps> = ({
           <button
             type="submit"
             disabled={isProcessing}
-            className="flex-1 bg-accent text-white px-4 py-2 rounded-lg hover:bg-accent/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                            className="flex-1 bg-black text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {isProcessing ? (
               <>

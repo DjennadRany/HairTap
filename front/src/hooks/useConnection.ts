@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { connectionService } from '../services/api/connections';
+import { connectionService } from '../services/api/connection';
 
 export interface ConnectionStatus {
   isOnline: boolean;
