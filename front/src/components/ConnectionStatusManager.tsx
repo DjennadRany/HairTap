@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
-import { useConnection } from '../hooks/useConnection';
+import { useConnectionStatus } from '../hooks/useConnectionStatus';
 import { selectCurrentUser } from '../store/slices/authSlice';
 import { ConnectionIndicator } from './ConnectionIndicator';
 import { FaCircle, FaTimes, FaCheck, FaClock, FaUserSlash } from 'react-icons/fa';
@@ -12,20 +12,20 @@ export const ConnectionStatusManager: React.FC = () => {
   const {
     status,
     loading,
-    connect,
-    disconnect,
-    setBusy,
+    error,
     setAvailable,
+    setBusy,
     setAway,
-    loadStatus
-  } = useConnection(user?._id || '');
+    setOffline,
+    refreshStatus
+  } = useConnectionStatus(user?._id || null);
 
   // Forcer la mise à jour du statut quand l'utilisateur change
   useEffect(() => {
     if (user?._id) {
-      loadStatus();
+      refreshStatus();
     }
-  }, [user?._id, loadStatus]);
+  }, [user?._id, refreshStatus]);
 
   if (!user || user.role !== 'coiffeur') {
     return null; // Seuls les coiffeurs peuvent gérer leur statut
@@ -44,7 +44,7 @@ export const ConnectionStatusManager: React.FC = () => {
           await setAway();
           break;
         case 'offline':
-          await disconnect();
+          await setOffline();
           break;
       }
       setShowStatusMenu(false);
