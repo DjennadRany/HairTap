@@ -182,8 +182,7 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const coiffeur = await User.findById(req.params.id)
-      .select('-password')
-      .populate('services');
+      .select('-password');
 
     if (!coiffeur || coiffeur.role !== 'coiffeur') {
       return res.status(404).json({ message: 'Coiffeur non trouvé' });

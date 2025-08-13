@@ -1,6 +1,7 @@
 import express from 'express';
 import { auth } from '../middleware/auth.js';
 import Message from '../models/Message.js';
+import Conversation from '../models/Conversation.js';
 
 const router = express.Router();
 
@@ -28,23 +29,48 @@ router.get('/conversations', auth, async (req, res) => {
       ]
     }).sort({ date: -1 });
 
-    // Grouper les messages par conversation
+    // Grouper les messages par conversation (UNIQUE par userId)
     const conversations = messages.reduce((acc, msg) => {
       const otherUserId = msg.from === req.user._id ? msg.to : msg.from;
+      
       if (!acc[otherUserId]) {
+        // Première conversation pour cet utilisateur
         acc[otherUserId] = {
           userId: otherUserId,
           lastMessage: msg,
           unread: 0
         };
+      } else {
+        // Conversation existe déjà, vérifier si ce message est plus récent
+        const existingDate = new Date(acc[otherUserId].lastMessage.date);
+        const newDate = new Date(msg.date);
+        
+        if (newDate > existingDate) {
+          // Ce message est plus récent, le mettre à jour
+          acc[otherUserId].lastMessage = msg;
+        }
       }
+      
+      // Compter les messages non lus
       if (msg.to === req.user._id && !msg.read) {
         acc[otherUserId].unread++;
       }
+      
       return acc;
     }, {});
 
-    res.json(Object.values(conversations));
+    // GARANTIR L'UNICITÉ : Convertir en array et dédupliquer
+    const uniqueConversations = Object.values(conversations);
+    const seen = new Set();
+    const finalConversations = uniqueConversations.filter(conv => {
+      if (seen.has(conv.userId)) {
+        return false;
+      }
+      seen.add(conv.userId);
+      return true;
+    });
+
+    res.json(finalConversations);
   } catch (error) {
     console.error('Error getting conversations:', error);
     res.status(500).json({ message: 'Erreur serveur' });
