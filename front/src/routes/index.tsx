@@ -12,6 +12,8 @@ import CoiffeurProfilePage from '../pages/CoiffeurProfilePage';
 import LoginPage from '../pages/LoginPage';
 import OnboardingClientPage from '../pages/OnboardingClientPage';
 import OnboardingProPage from '../pages/OnboardingProPage';
+import SignInClientPage from '../pages/SignInClientPage';
+import SignInCoiffeurPage from '../pages/SignInCoiffeurPage';
 import ClientDashboardPage from '../pages/ClientDashboardPage';
 import BookingPage from '../pages/BookingPage';
 import ClientBookingsPage from '../pages/ClientBookingsPage';
@@ -68,6 +70,8 @@ const AppRoutes = () => {
       {/* Auth Routes */}
       <Route element={<AuthLayout />}>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/signin/client" element={<SignInClientPage />} />
+        <Route path="/signin/coiffeur" element={<SignInCoiffeurPage />} />
         <Route path="/onboarding/client" element={<OnboardingClientPage />} />
         <Route path="/onboarding/pro" element={<OnboardingProPage />} />
       </Route>

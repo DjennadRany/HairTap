@@ -1,0 +1,219 @@
+{
+  "meta": {
+    "title": "TapHair — PROMPT 1 (Must) : Sign-In Utilisateur SANS régression, basé sur l'existant",
+    "language": "fr-FR",
+    "rules_critiques": [
+      "AUCUNE supposition: utiliser uniquement ce qui est détecté dans le repo (code, types, schémas, DTO, migrations).",
+      "Zéro régression: build/type/tests doivent rester verts; en cas d'échec → STOP et rapport.",
+      "Tout nouveau code derrière un feature flag existant; sinon créer un flag minimal sans dépendance.",
+      "Rollback instantané: désactivation du flag + revert des insertions balisées."
+    ]
+  },
+  "agile_qa": {
+    "moscow": {
+      "must": [
+        "Audit rapide ciblé de l'auth existante et des modèles User/Profile.",
+        "Implémentation Sign-In Utilisateur en réutilisant l'existant (composants/services/hooks).",
+        "Insertions minimales balisées (CURSOR-SAFE-START/END).",
+        "Tests de non-régression + plan de rollback."
+      ],
+      "should": [
+        "Onboarding léger si déjà prévu dans le code (sinon, ne pas créer).",
+        "Script de seed utilisateur test uniquement si schéma User détecté."
+      ],
+      "could": [
+        "Micro-améliorations d'UX (libellés/erreurs) si composants existent déjà."
+      ],
+      "wont": [
+        "Ajouter des champs ou dépendances non présentes.",
+        "Refactor massif de navigation/routing."
+      ]
+    },
+    "kanban_cards": [
+      {"id":"INV-AUTH-001","title":"Audit auth & modèles User/Profile (existant)","moscow":"Must","type":"chore","dor":["repo accessible"],"dod":["notes d'audit dans docs/audit_technique_taphair.md (section auth)"]},
+      {"id":"PLAN-U-002","title":"Plan d'insertion minimale (fichiers/lignes) + feature flag","moscow":"Must","type":"doc","dor":["audit validé"],"dod":["docs/plan_signin_user_no_regression.md produit"]},
+      {"id":"IMPL-U-003","title":"Implémentation Sign-In Utilisateur (réutilisation existant)","moscow":"Must","type":"feature","dor":["plan approuvé"],"dod":["build/type/tests OK","flag ON → login OK","pages existantes intactes"]},
+      {"id":"QA-U-004","title":"Tests non-régression + rollback","moscow":"Must","type":"qa","dor":["implémentation faite"],"dod":["tests passent","procédure rollback documentée"]},
+      {"id":"SEED-U-005","title":"Seed utilisateur test (si schéma détecté)","moscow":"Should","type":"chore","dor":["schéma user détecté"],"dod":["scripts/seed_user_test.* créé et documenté"]}
+    ],
+    "definitions": {
+      "DoR": [
+        "Tout s'appuie sur fichiers existants (pas d'hypothèse).",
+        "Points d'insertion identifiés.",
+        "Critères d'acceptation/BDD écrits."
+      ],
+      "DoD": [
+        "Build/type/tests OK.",
+        "Hub / Tableau / Réservations / Favoris / Messagerie inchangés (aucune régression).",
+        "Docs mises à jour (audit + plan + notes d'implémentation)."
+      ],
+      "bdd_examples": [
+        {
+          "feature":"Connexion utilisateur existante",
+          "scenario":"Activation feature flag",
+          "given":"Application en état vert",
+          "when":"enableUserAuth = true",
+          "then":"L'utilisateur peut se connecter et aucune page existante ne casse"
+        }
+      ]
+    }
+  },
+  "garde_fous_techniques": {
+    "backup_avant_modification": "git stash push -m 'backup-pre-signin'",
+    "tests_incrementaux": "Après chaque insertion, lancer les tests",
+    "validation_visuelle": "Vérifier que l'UI reste cohérente",
+    "rollback_automatique": "Script de rollback en 1 commande",
+    "validation_types": "npx tsc --noEmit après chaque modification",
+    "build_validation": "npm run build après chaque étape majeure"
+  },
+  "audit_renforce": {
+    "analyse_dependances": "npm ls --depth=0",
+    "verification_types": "npx tsc --noEmit",
+    "tests_existants": "npm test || npm run test",
+    "build_validation": "npm run build",
+    "analyse_securite": "npm audit",
+    "verification_performance": "npm run build -- --analyze || true"
+  },
+  "metriques_validation": {
+    "bundle_size": "Vérifier que le bundle n'explose pas",
+    "performance": "Lighthouse score stable",
+    "accessibilite": "Tests d'accessibilité inchangés",
+    "securite": "Aucune vulnérabilité introduite",
+    "temps_build": "Build time inchangé (±10%)",
+    "coverage_tests": "Couverture de tests stable"
+  },
+  "etapes": [
+    {
+      "id": "E1_AUDIT_CIBLE",
+      "but": "Identifier ce qui existe DÉJÀ pour l'auth et les données User/Profile.",
+      "commands_suggerees": [
+        "ls -la",
+        "cat package.json || true",
+        "find . -iname \"*auth*\" -type f",
+        "find . -iname \"*login*\" -o -iname \"*signin*\" -type f",
+        "find . -iname \"*.ts\" -o -iname \"*.js\" | xargs grep -n \"User\\|Profile\" || true",
+        "find . -iname \"*.prisma\" -o -iname \"*.sql\" -o -iname \"*schema*\" | xargs grep -n \"User\\|Profile\" || true",
+        "grep -R \"ProtectedRoute\\|PrivateRoute\\|guard\" -n || true",
+        "npm ls --depth=0",
+        "npx tsc --noEmit",
+        "npm test || npm run test || true"
+      ],
+      "sorties_attendues": [
+        "Localisation des composants/pages d'auth existants (login/register, hooks, services).",
+        "Schéma(s) User/Profile réels (champs, validations) si présents.",
+        "Mécanisme de session/token (cookies/local storage/provider).",
+        "Routes protégées / middlewares.",
+        "État des tests existants et configuration de build.",
+        "Notes ajoutées dans docs/audit_technique_taphair.md (section 1)."
+      ],
+      "modifs_code": "Aucune"
+    },
+    {
+      "id": "E2_PLAN_MINI",
+      "but": "Écrire le plan d'insertion minimale sans supposer",
+      "actions": [
+        "Lister EXACTEMENT les fichiers et blocs à modifier/étendre.",
+        "Définir/identifier le feature flag utilisé pour l'activation Sign-In Utilisateur (utiliser celui déjà présent; sinon créer un flag minimal DANS LE STYLE DU REPO).",
+        "Définir la route/point d'entrée Sign-In en réutilisant les composants existants.",
+        "Identifier les composants critiques à ne PAS modifier.",
+        "Planifier les tests de validation à chaque étape."
+      ],
+      "output": "docs/plan_signin_user_no_regression.md",
+      "modifs_code": "Aucune"
+    },
+    {
+      "id": "E3_IMPL",
+      "but": "Implémenter Sign-In Utilisateur en réutilisant l'existant",
+      "regles": [
+        "Réutiliser au maximum pages/composants/hooks/services d'auth déjà présents.",
+        "Insertions balisées: /* CURSOR-SAFE-START: signin-user */ ... /* CURSOR-SAFE-END */",
+        "AUCUNE création de nouveau champ côté données; uniquement branchements/affichages/flux.",
+        "Toute nouvelle fonction dans des fichiers dédiés alignés sur la structure du repo.",
+        "Validation TypeScript après chaque insertion: npx tsc --noEmit",
+        "Tests de build après chaque étape: npm run build"
+      ],
+      "insertions_typiques_minimales": [
+        "Bouton/entrée 'Se connecter' dans la nav existante (si absent), conditionné par le flag.",
+        "Redirection post-login vers le parcours utilisateur existant (profil/dashboard).",
+        "Hydratation du contexte utilisateur (store/hook) depuis le mécanisme de session existant."
+      ],
+      "acceptation": [
+        "Build/type/tests OK.",
+        "Flag OFF → application identique à l'existant.",
+        "Flag ON → login OK, aucune régression sur Hub/Tableau/Réservations/Favoris/Messagerie."
+      ]
+    },
+    {
+      "id": "E4_QA_ROLLBACK",
+      "but": "Sécuriser la livraison",
+      "tests": [
+        "Exécuter la suite de tests existante (unitaires/intégration/e2e si présents).",
+        "Chemin heureux: ouvrir app, se connecter, accéder aux pages existantes sans erreur.",
+        "Chemin échec: flag OFF, vérifier que l'app se comporte exactement comme avant.",
+        "Validation des métriques: bundle size, build time, performance.",
+        "Tests de sécurité: npm audit, vérification des vulnérabilités."
+      ],
+      "rollback": [
+        "Désactiver le feature flag (valeur par défaut).",
+        "Revert des zones balisées si nécessaire (recherche des marqueurs CURSOR-SAFE).",
+        "Restaurer le backup: git stash pop",
+        "Vérifier que l'état est identique à l'original."
+      ],
+      "documentation": [
+        "Ajouter un CHANGELOG court dans docs/audit_technique_taphair.md (section 3 - déploiement).",
+        "Documenter les métriques de validation et les résultats des tests."
+      ]
+    },
+    {
+      "id": "E5_SEED_USER_TEST",
+      "condition": "Exécuter uniquement si un schéma/typage User (et éventuellement Profile) est détecté.",
+      "but": "Créer un utilisateur test STRICTEMENT conforme au schéma existant",
+      "actions": [
+        "Identifier les champs obligatoires à partir des types/migrations réellement présents.",
+        "Générer scripts/seed_user_test.* qui ne remplit QUE les champs requis.",
+        "Documenter l'usage (commande, variables env, résultat attendu) dans docs/audit_technique_taphair.md.",
+        "Tester le seed en environnement isolé avant intégration."
+      ],
+      "acceptation": [
+        "Le seed s'exécute en environnement local/mock.",
+        "Le compte test peut se connecter via le flux mis en place.",
+        "Aucun impact sur les données existantes."
+      ]
+    }
+  ],
+  "scenarios_risque_mitigations": {
+    "composant_auth_casse": {
+      "risque": "Composant d'auth existant avec bugs cachés",
+      "mitigation": "Tests unitaires sur chaque composant réutilisé, feature flag OFF par défaut, rollback immédiat si problème détecté"
+    },
+    "gestion_etat_fragile": {
+      "risque": "Gestion d'état globale fragile ou mal testée",
+      "mitigation": "Audit approfondi du store/context existant, insertions dans des composants isolés, tests d'intégration sur les flux critiques"
+    },
+    "types_incompatibles": {
+      "risque": "Types TypeScript incompatibles ou mal définis",
+      "mitigation": "Validation des types à chaque étape, utilisation des types existants uniquement, aucune création de nouveaux types"
+    },
+    "dependances_cachees": {
+      "risque": "Dépendances cachées entre composants non détectées",
+      "mitigation": "Analyse approfondie des imports/exports, tests d'intégration, validation des builds incrémentaux"
+    }
+  },
+  "checkpoints_validation": [
+    "CP1 — Audit consigné (auth, modèles User/Profile, routes protégées) dans docs/audit_technique_taphair.md.",
+    "CP2 — Plan d'insertion minimale validé (docs/plan_signin_user_no_regression.md).",
+    "CP3 — Build/type/tests verts avec flag OFF (aucune différence).",
+    "CP4 — Build/type/tests verts avec flag ON (sign-in OK, aucune régression).",
+    "CP5 — Rollback testé (flag OFF).",
+    "CP6 — Métriques de validation stables (bundle size, performance, sécurité).",
+    "CP7 — Tests de non-régression complets sur tous les parcours critiques."
+  ],
+  "sorties_finales": [
+    "docs/audit_technique_taphair.md mis à jour (résumé audit + changements).",
+    "docs/plan_signin_user_no_regression.md.",
+    "Insertions minimales basées sur l'existant (balisées).",
+    "scripts/seed_user_test.* (si schéma détecté).",
+    "Rapport de validation avec métriques et tests.",
+    "Procédure de rollback documentée et testée."
+  ]
+}

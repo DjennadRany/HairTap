@@ -1,18 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { useSelector } from 'react-redux';
-import { selectCurrentUser } from '../store/slices/authSlice';
+import { useSelector, useDispatch } from 'react-redux';
+import { selectCurrentUser, setUser } from '../store/slices/authSlice';
 import { Navigate } from 'react-router-dom';
 import { userService } from '../services/api/users';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/Button';
 import RichTextEditor from '../components/RichTextEditor';
 import SimplePhotoUpload from '../components/SimplePhotoUpload';
+import CoiffeurInfoDisplay from '../components/CoiffeurInfoDisplay';
 import { FaCamera, FaSpinner, FaBriefcase, FaGraduationCap, FaMapMarkerAlt } from 'react-icons/fa';
 import { MdVerified } from 'react-icons/md';
 import type { User } from '../types/models';
 
 const CoiffeurProfileEditPage = () => {
   const user = useSelector(selectCurrentUser) as User | null;
+  const dispatch = useDispatch();
   const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -20,69 +22,134 @@ const CoiffeurProfileEditPage = () => {
   const [photoError, setPhotoError] = useState<string>('');
   const [photoSuccess, setPhotoSuccess] = useState<string>('');
   const [currentPhoto, setCurrentPhoto] = useState<string>(user?.photo || '');
+  
+  // NOUVEAU : État pour les données complètes du profil
+  const [profileData, setProfileData] = useState<User | null>(null);
 
   // États du formulaire
-  const [bio, setBio] = useState(user?.bio || '');
-  const [specialities, setSpecialities] = useState<string[]>(user?.specialities || []);
-  const [workingMode, setWorkingMode] = useState<('salon' | 'domicile' | 'both')[]>(
-    Array.isArray(user?.workingMode) ? user.workingMode as ('salon' | 'domicile' | 'both')[] : []
-  );
-  const [travelRadius, setTravelRadius] = useState(user?.travelRadius || 10);
-  const [phone, setPhone] = useState(user?.phone || '');
-  const [siren, setSiren] = useState(user?.siren || '');
-  const [experience, setExperience] = useState(user?.experience || 0);
-  const [formation, setFormation] = useState(user?.formation || '');
+  const [bio, setBio] = useState('');
+  const [specialities, setSpecialities] = useState<string[]>([]);
+  const [workingMode, setWorkingMode] = useState<('salon' | 'domicile' | 'both')[]>([]);
+  const [travelRadius, setTravelRadius] = useState(10);
+  const [phone, setPhone] = useState('');
+  const [siren, setSiren] = useState('');
+  const [experience, setExperience] = useState(0);
+  const [formation, setFormation] = useState('');
+  const [rib, setRib] = useState('');
   const [salonAddress, setSalonAddress] = useState({
-    street: user?.salonAddress?.street || '',
-    streetNumber: user?.salonAddress?.streetNumber || '',
-    city: user?.salonAddress?.city || '',
-    postalCode: user?.salonAddress?.postalCode || '',
-    phone: user?.salonAddress?.phone || '',
-    coordinates: user?.salonAddress?.coordinates || null
+    street: '',
+    streetNumber: '',
+    city: '',
+    postalCode: '',
+    phone: '',
+    coordinates: null as { lat: number; lng: number } | null
   });
   const [isSalonAddressSaved, setIsSalonAddressSaved] = useState(false);
   const [savedSalonAddress, setSavedSalonAddress] = useState<any>({});
   const [activeTab, setActiveTab] = useState<'profile'>('profile');
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
 
-  // Charger les données utilisateur depuis la base
+  // NOUVEAU : Charger les données complètes depuis la base de données
   useEffect(() => {
-    if (user) {
-      setBio(user.bio || '');
-      setSpecialities(user.specialities || []);
-      setWorkingMode(Array.isArray(user.workingMode) ? user.workingMode as ('salon' | 'domicile' | 'both')[] : []);
-      setTravelRadius(user.travelRadius || 10);
-      setPhone(user.phone || '');
-      setSiren(user.siren || '');
-      setExperience(user.experience || 0);
-      setFormation(user.formation || '');
-      setSalonAddress({
-        street: user.salonAddress?.street || '',
-        streetNumber: user.salonAddress?.streetNumber || '',
-        city: user.salonAddress?.city || '',
-        postalCode: user.salonAddress?.postalCode || '',
-        phone: user.salonAddress?.phone || '',
-        coordinates: user.salonAddress?.coordinates || null
-      });
-      
-      // Initialiser l'état de sauvegarde de l'adresse
-      if (user.salonAddress?.street) {
-        setSavedSalonAddress(user.salonAddress);
-        setIsSalonAddressSaved(true);
+    const loadProfileData = async () => {
+      if (user?._id) {
+        try {
+          console.log('🔄 Chargement des données complètes du profil...');
+          const fullProfileData = await userService.getUser(user._id);
+          console.log('✅ Données complètes reçues:', fullProfileData);
+          
+          setProfileData(fullProfileData);
+          
+          // Initialiser tous les états avec les données complètes
+          setBio(fullProfileData.bio || '');
+          setSpecialities(fullProfileData.specialities || []);
+          setWorkingMode(Array.isArray(fullProfileData.workingMode) ? fullProfileData.workingMode : []);
+          setTravelRadius(fullProfileData.travelRadius || 10);
+          setPhone(fullProfileData.phone || '');
+          setSiren(fullProfileData.siren || '');
+          setExperience(fullProfileData.experience || 0);
+          setFormation(fullProfileData.formation || '');
+          setRib(fullProfileData.rib || '');
+          setSalonAddress({
+            street: fullProfileData.salonAddress?.street || '',
+            streetNumber: fullProfileData.salonAddress?.streetNumber || '',
+            city: fullProfileData.salonAddress?.city || '',
+            postalCode: fullProfileData.salonAddress?.postalCode || '',
+            phone: fullProfileData.salonAddress?.phone || '',
+            coordinates: fullProfileData.salonAddress?.coordinates || null
+          });
+          
+          // Initialiser l'état de sauvegarde de l'adresse
+          if (fullProfileData.salonAddress?.street) {
+            setSavedSalonAddress(fullProfileData.salonAddress);
+            setIsSalonAddressSaved(true);
+          }
+          
+          setCurrentPhoto(fullProfileData.photo || '');
+          
+        } catch (error) {
+          console.error('❌ Erreur lors du chargement du profil:', error);
+          setErrorMessage('Erreur lors du chargement du profil');
+        }
       }
-      
-      setCurrentPhoto(user.photo || '');
-    }
-  }, [user]);
+    };
+
+    loadProfileData();
+  }, [user?._id]);
+
+  // NOUVEAU : Fonction pour construire l'URL complète de la photo
+  const getFullPhotoUrl = (photoUrl: string) => {
+    if (!photoUrl) return '';
+    return photoUrl.startsWith('http') 
+      ? photoUrl 
+      : `http://localhost:5000${photoUrl}`;
+  };
 
   if (!user || user.role !== 'coiffeur') {
     return <Navigate to="/login" replace />;
   }
 
+  // Afficher un indicateur de chargement pendant le chargement des données
+  if (!profileData) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-accent mx-auto mb-4"></div>
+          <p className="text-lg text-gray-600">Chargement du profil...</p>
+        </div>
+      </div>
+    );
+  }
+
   const handlePhotoUpdate = (newPhotoUrl: string) => {
+    console.log('🖼️ [CoiffeurProfileEditPage] handlePhotoUpdate appelé avec:', newPhotoUrl);
+    
     // Mettre à jour l'état local
     setCurrentPhoto(newPhotoUrl);
     setPhotoSuccess('Photo de profil mise à jour avec succès !');
     setTimeout(() => setPhotoSuccess(''), 3000);
+    
+    // NOUVEAU : Mettre à jour le state global comme dans ClientProfilePage
+    if (user) {
+      let mappedRole: 'client' | 'coiffeur' = 'client';
+      if (user.role === 'coiffeur') mappedRole = 'coiffeur';
+      
+      console.log('🔄 [CoiffeurProfileEditPage] Mise à jour du state global avec photo:', newPhotoUrl);
+      dispatch(setUser({
+        ...user,
+        role: mappedRole,
+        photo: newPhotoUrl
+      }));
+    }
+    
+    // NOUVEAU : Rafraîchir les données du profil comme dans ClientProfilePage
+    if (user?._id) {
+      console.log('🔄 [CoiffeurProfileEditPage] Rafraîchissement du profil pour ID:', user._id);
+      userService.getUser(user._id).then((fullProfileData) => {
+        setProfileData(fullProfileData);
+        setCurrentPhoto(fullProfileData.photo || '');
+      });
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -100,6 +167,7 @@ const CoiffeurProfileEditPage = () => {
         siren,
         experience,
         formation,
+        rib,
         salonAddress: {
           ...salonAddress,
           coordinates: salonAddress.coordinates || undefined
@@ -117,6 +185,7 @@ const CoiffeurProfileEditPage = () => {
       
       setSuccessMessage('Profil mis à jour avec succès !');
       setTimeout(() => setSuccessMessage(null), 3000);
+      setIsEditingProfile(false);
     } catch (error) {
       console.error('Error updating profile:', error);
       setErrorMessage('Erreur lors de la mise à jour du profil');
@@ -171,32 +240,51 @@ const CoiffeurProfileEditPage = () => {
           </Card>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Photo de profil */}
-            <Card className="p-6">
-              <h2 className="text-xl font-semibold mb-4">Photo de profil</h2>
-              <div className="flex items-center gap-6">
-                <SimplePhotoUpload
-                  userId={user._id}
-                  currentPhoto={currentPhoto}
-                  onPhotoUpdate={handlePhotoUpdate}
-                  className="flex-shrink-0"
-                />
-                <div className="flex-1">
-                  <h3 className="font-medium text-gray-900 mb-2">Photo de profil</h3>
-                  <p className="text-sm text-gray-600">
-                    Cette photo apparaîtra dans votre profil et dans les cartes de recherche.
-                    Utilisez une photo claire et professionnelle.
-                  </p>
-                  {photoError && (
-                    <p className="text-red-600 text-sm mt-2">{photoError}</p>
-                  )}
-                  {photoSuccess && (
-                    <p className="text-green-600 text-sm mt-2">{photoSuccess}</p>
-                  )}
-                </div>
-              </div>
-            </Card>
+        {/* Photo de profil */}
+        <Card className="p-6 mb-6">
+          <h2 className="text-xl font-semibold mb-4">Photo de profil</h2>
+          <div className="flex items-center gap-6">
+            <SimplePhotoUpload
+              userId={user._id}
+              currentPhoto={getFullPhotoUrl(currentPhoto)}
+              onPhotoUpdate={handlePhotoUpdate}
+            />
+            <div className="flex-1">
+              <h3 className="font-medium text-gray-900 mb-2">Photo de profil</h3>
+              <p className="text-sm text-gray-600">
+                Cette photo apparaîtra dans votre profil et dans les cartes de recherche.
+                Utilisez une photo claire et professionnelle.
+              </p>
+              {photoError && (
+                <p className="text-red-600 text-sm mt-2">{photoError}</p>
+              )}
+              {photoSuccess && (
+                <p className="text-green-600 text-sm mt-2">{photoSuccess}</p>
+              )}
+            </div>
+          </div>
+        </Card>
+
+        {/* Informations du profil - Mode lecture ou édition */}
+        {!isEditingProfile ? (
+          <CoiffeurInfoDisplay
+            name={profileData?.name || user?.name || ''}
+            email={profileData?.email || user?.email || ''}
+            phone={profileData?.phone}
+            bio={profileData?.bio}
+            siren={profileData?.siren}
+            sirenStatus={profileData?.sirenStatus}
+            experience={profileData?.experience}
+            formation={profileData?.formation}
+            rib={profileData?.rib}
+            workingMode={profileData?.workingMode}
+            travelRadius={profileData?.travelRadius}
+            specialities={profileData?.specialities}
+            salonAddress={profileData?.salonAddress}
+            onEdit={() => setIsEditingProfile(true)}
+          />
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-6">
 
             {/* Bio avec Rich Text Editor */}
             <Card className="p-6">
@@ -353,6 +441,22 @@ const CoiffeurProfileEditPage = () => {
                     placeholder="CAP Coiffure, Brevet Professionnel..."
                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    RIB (Relevé d'Identité Bancaire)
+                  </label>
+                  <input
+                    type="text"
+                    value={rib}
+                    onChange={(e) => setRib(e.target.value)}
+                    placeholder="FR76 XXXX XXXX XXXX XXXX XXXX XXX"
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
+                  />
+                  <p className="text-sm text-gray-500 mt-1">
+                    Format: FR76 + 23 caractères (lettres et chiffres)
+                  </p>
                 </div>
               </div>
             </Card>
@@ -547,13 +651,34 @@ const CoiffeurProfileEditPage = () => {
               </Button>
               <Button
                 type="button"
-                onClick={() => window.history.back()}
+                onClick={() => {
+                  setIsEditingProfile(false);
+                  // Réinitialiser les valeurs
+                  setBio(user.bio || '');
+                  setSpecialities(user.specialities || []);
+                  setWorkingMode(Array.isArray(user.workingMode) ? user.workingMode as ('salon' | 'domicile' | 'both')[] : []);
+                  setTravelRadius(user.travelRadius || 10);
+                  setPhone(user.phone || '');
+                  setSiren(user.siren || '');
+                  setExperience(user.experience || 0);
+                  setFormation(user.formation || '');
+                  setRib(user.rib || '');
+                  setSalonAddress({
+                    street: user.salonAddress?.street || '',
+                    streetNumber: user.salonAddress?.streetNumber || '',
+                    city: user.salonAddress?.city || '',
+                    postalCode: user.salonAddress?.postalCode || '',
+                    phone: user.salonAddress?.phone || '',
+                    coordinates: user.salonAddress?.coordinates || null
+                  });
+                }}
                 className="flex-1 bg-gray-300 hover:bg-gray-400"
               >
                 Annuler
               </Button>
             </div>
           </form>
+        )}
       </div>
     </div>
   );

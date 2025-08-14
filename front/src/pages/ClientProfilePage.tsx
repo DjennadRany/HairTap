@@ -6,6 +6,12 @@ import { useParams } from 'react-router-dom';
 import { userService } from '../services/api/users';
 import { FaUser, FaEnvelope, FaLock, FaSave, FaMapMarkerAlt, FaMapPin } from 'react-icons/fa';
 import SimplePhotoUpload from '../components/SimplePhotoUpload';
+import AddressDisplay from '../components/AddressDisplay';
+import AddressForm from '../components/AddressForm';
+import ProfileInfoDisplay from '../components/ProfileInfoDisplay';
+import PreferencesDisplay from '../components/PreferencesDisplay';
+
+
 import type { User as UserModel } from '../types/models';
 import { PHOTO_URLS } from '../config/api';
 
@@ -47,8 +53,9 @@ const ClientProfilePage = () => {
   const [errorMsg, setErrorMsg] = useState<string>('');
   const [profile, setProfile] = useState<UserModel | null>(null);
   const [activeAddress, setActiveAddress] = useState<'home' | 'office'>('home');
-  const [isAddressSaved, setIsAddressSaved] = useState(false);
-  const [savedAddresses, setSavedAddresses] = useState<any>({});
+  const [isEditingAddress, setIsEditingAddress] = useState(false);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [isEditingPreferences, setIsEditingPreferences] = useState(false);
 
 
   const defaultName = profile?.name || user?.name || '';
@@ -137,17 +144,20 @@ const ClientProfilePage = () => {
       }));
       setSuccess('Profil mis à jour avec succès !');
       
-      // Marquer les adresses comme sauvegardées
-      if (data.addresses) {
-        setSavedAddresses(data.addresses);
-        setIsAddressSaved(true);
-        console.log('✅ Adresses marquées comme sauvegardées');
-      }
+             // Adresses sauvegardées avec succès
+       if (data.addresses) {
+         console.log('✅ Adresses sauvegardées avec succès');
+       }
       
-      // Recharger les données du profil pour confirmer la sauvegarde
-      if (id) {
-        userService.getUser(id).then(setProfile);
-      }
+             // Recharger les données du profil pour confirmer la sauvegarde
+       if (id) {
+         userService.getUser(id).then(setProfile);
+       }
+       
+       // Retourner en mode lecture après sauvegarde
+       setIsEditingProfile(false);
+       setIsEditingAddress(false);
+       setIsEditingPreferences(false);
     } catch (error) {
       setErrorMsg('Erreur lors de la mise à jour du profil');
       console.error('❌ Erreur:', error);
@@ -183,6 +193,9 @@ const ClientProfilePage = () => {
       .then((data) => {
         setProfile(data);
         console.log('📥 Données utilisateur chargées:', data);
+        console.log('🏠 Adresses reçues:', data.addresses);
+        console.log('🏠 Adresse home:', data.addresses?.home);
+        console.log('🏢 Adresse office:', data.addresses?.office);
         reset({
           name: data.name,
           email: data.email,
@@ -224,47 +237,71 @@ const ClientProfilePage = () => {
             </p>
           </div>
 
-          {/* Formulaire */}
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                <FaUser className="text-gray-500" />
-                Nom complet
-              </label>
-              <input
-                type="text"
-                {...register('name', { required: 'Le nom est requis' })}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Votre nom complet"
-              />
-              {errors.name && (
-                <p className="text-red-600 text-sm mt-1">{errors.name.message}</p>
-              )}
-            </div>
+                     {/* Formulaire */}
+           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+             {/* Informations personnelles - Mode lecture ou édition */}
+             {!isEditingProfile ? (
+               <ProfileInfoDisplay
+                 name={profile?.name || user?.name || ''}
+                 email={profile?.email || user?.email || ''}
+                 phone={profile?.phone || user?.phone}
+                 bio={profile?.bio || user?.bio}
+                 onEdit={() => setIsEditingProfile(true)}
+               />
+             ) : (
+               <div className="space-y-4">
+                 <div className="flex justify-between items-center">
+                   <h3 className="text-lg font-semibold">📝 Modifier les informations</h3>
+                   <button
+                     type="button"
+                     onClick={() => setIsEditingProfile(false)}
+                     className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm"
+                   >
+                     Annuler
+                   </button>
+                 </div>
+                 
+                 <div>
+                   <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                     <FaUser className="text-gray-500" />
+                     Nom complet
+                   </label>
+                   <input
+                     type="text"
+                     {...register('name', { required: 'Le nom est requis' })}
+                     className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                     placeholder="Votre nom complet"
+                   />
+                   {errors.name && (
+                     <p className="text-red-600 text-sm mt-1">{errors.name.message}</p>
+                   )}
+                 </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                <FaEnvelope className="text-gray-500" />
-                Email
-              </label>
-              <input
-                type="email"
-                {...register('email', { 
-                  required: 'L\'email est requis',
-                  pattern: {
-                    value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                    message: 'Email invalide'
-                  }
-                })}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="votre@email.com"
-              />
-              {errors.email && (
-                <p className="text-red-600 text-sm mt-1">{errors.email.message}</p>
-              )}
-            </div>
+                 <div>
+                   <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                     <FaEnvelope className="text-gray-500" />
+                     Email
+                   </label>
+                   <input
+                     type="email"
+                     {...register('email', { 
+                       required: 'L\'email est requis',
+                       pattern: {
+                         value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                         message: 'Email invalide'
+                       }
+                     })}
+                     className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                     placeholder="votre@email.com"
+                   />
+                   {errors.email && (
+                     <p className="text-red-600 text-sm mt-1">{errors.email.message}</p>
+                   )}
+                 </div>
+               </div>
+             )}
 
-            <div>
+             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
                 <FaLock className="text-gray-500" />
                 Nouveau mot de passe (optionnel)
@@ -297,12 +334,14 @@ const ClientProfilePage = () => {
               </div>
             )}
 
-            {/* Section Adresses - UX-Pro Simple */}
-            <div className="border-t pt-6">
-              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                <FaMapMarkerAlt className="text-gray-500" />
-                Mes adresses
-              </h3>
+                         {/* Section Adresses - UX-Pro Simple */}
+             <div className="border-t pt-6">
+
+               
+               <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                 <FaMapMarkerAlt className="text-gray-500" />
+                 Mes adresses
+               </h3>
               <p className="text-sm text-gray-600 mb-4">
                 Configurez vos adresses principales pour les réservations
               </p>
@@ -335,131 +374,39 @@ const ClientProfilePage = () => {
               
 
               
-              {isAddressSaved && savedAddresses[activeAddress] ? (
-                // Affichage en dur des adresses sauvegardées
-                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                  <div className="flex justify-between items-center mb-4">
-                    <h4 className="font-medium text-gray-900">Adresse sauvegardée</h4>
-                    <button
-                      type="button"
-                      onClick={() => setIsAddressSaved(false)}
-                      className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                    >
-                      Modifier l'adresse
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="text-gray-600">Numéro de rue:</span>
-                      <p className="font-medium">{savedAddresses[activeAddress].streetNumber || '-'}</p>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Rue:</span>
-                      <p className="font-medium">{savedAddresses[activeAddress].street || '-'}</p>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Code postal:</span>
-                      <p className="font-medium">{savedAddresses[activeAddress].postalCode || '-'}</p>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Ville:</span>
-                      <p className="font-medium">{savedAddresses[activeAddress].city || '-'}</p>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Étage:</span>
-                      <p className="font-medium">{savedAddresses[activeAddress].floor || '-'}</p>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Appartement:</span>
-                      <p className="font-medium">{savedAddresses[activeAddress].apartment || '-'}</p>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Code d'entrée:</span>
-                      <p className="font-medium">{savedAddresses[activeAddress].buildingCode || '-'}</p>
-                    </div>
-                    <div className="md:col-span-2">
-                      <span className="text-gray-600">Informations complémentaires:</span>
-                      <p className="font-medium">{savedAddresses[activeAddress].additionalInfo || '-'}</p>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                // Formulaire d'édition des adresses
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Numéro de rue</label>
-                    <input
-                      type="text"
-                      {...register(`addresses.${activeAddress}.streetNumber`)}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="123"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Rue</label>
-                    <input
-                      type="text"
-                      {...register(`addresses.${activeAddress}.street`)}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Rue de la Paix"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Code postal</label>
-                    <input
-                      type="text"
-                      {...register(`addresses.${activeAddress}.postalCode`)}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="75001"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Ville</label>
-                    <input
-                      type="text"
-                      {...register(`addresses.${activeAddress}.city`)}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Paris"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Étage</label>
-                    <input
-                      type="text"
-                      {...register(`addresses.${activeAddress}.floor`)}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="2ème étage"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Appartement</label>
-                    <input
-                      type="text"
-                      {...register(`addresses.${activeAddress}.apartment`)}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Apt 4B"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Code d'entrée</label>
-                    <input
-                      type="text"
-                      {...register(`addresses.${activeAddress}.buildingCode`)}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="1234"
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Informations complémentaires</label>
-                    <textarea
-                      {...register(`addresses.${activeAddress}.additionalInfo`)}
-                      rows={3}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Instructions d'accès, interphone, etc."
-                    />
-                  </div>
-                </div>
-              )}
+                                                          {/* Affichage des adresses - Mode lecture ou édition */}
+               {(() => {
+                 const hasAddressData = profile?.addresses && 
+                   profile.addresses[activeAddress] && 
+                   Object.values(profile.addresses[activeAddress]).some(val => val && typeof val === 'string' && val.trim());
+                 
+                 console.log('🔍 Debug affichage adresses:');
+                 console.log('- isEditingAddress:', isEditingAddress);
+                 console.log('- profile.addresses:', profile?.addresses);
+                 console.log('- activeAddress:', activeAddress);
+                 console.log('- hasAddressData:', hasAddressData);
+                 
+                 if (!isEditingAddress && hasAddressData) {
+                   // AFFICHAGE EN DUR - Mode lecture avec vraies données
+                   return (
+                     <AddressDisplay
+                       addressType={activeAddress}
+                       address={profile.addresses![activeAddress]}
+                       onEdit={() => setIsEditingAddress(true)}
+                     />
+                   );
+                 } else {
+                   // MODE ÉDITION - Formulaire d'édition des adresses
+                   return (
+                     <AddressForm
+                       addressType={activeAddress}
+                       register={register}
+                       onView={() => setIsEditingAddress(false)}
+                       hasExistingData={!!hasAddressData}
+                     />
+                   );
+                 }
+               })()}
               
               <div className="mt-4 flex items-center gap-2">
                 <button
@@ -504,10 +451,37 @@ const ClientProfilePage = () => {
                   <FaMapPin />
                   Utiliser ma position actuelle
                 </button>
-              </div>
-            </div>
+                             </div>
+             </div>
 
-            <div className="pt-6">
+             {/* Section Préférences */}
+             {profile?.preferences && (
+               <div className="border-t pt-6">
+                 {!isEditingPreferences ? (
+                   <PreferencesDisplay
+                     preferences={profile.preferences}
+                     onEdit={() => setIsEditingPreferences(true)}
+                   />
+                 ) : (
+                   <div className="space-y-4">
+                     <div className="flex justify-between items-center">
+                       <h3 className="text-lg font-semibold">⚙️ Modifier les préférences</h3>
+                       <button
+                         type="button"
+                         onClick={() => setIsEditingPreferences(false)}
+                         className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm"
+                       >
+                         Annuler
+                       </button>
+                     </div>
+                     {/* Ici on pourrait ajouter un formulaire d'édition des préférences */}
+                     <p className="text-gray-600">Formulaire d'édition des préférences à implémenter</p>
+                   </div>
+                 )}
+               </div>
+             )}
+
+             <div className="pt-6">
               <button
                 type="submit"
                 className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"

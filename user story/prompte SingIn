@@ -1,0 +1,158 @@
+{
+  "meta": {
+    "title": "AUDIT → INVENTAIRE .TXT → SIGN-IN UTILISATEUR (NO-REGRESSION) → PRO → SALON",
+    "language": "fr-FR",
+    "rules": [
+      "Ne faire AUCUNE supposition technique: tout doit être détecté dans le repo.",
+      "Ne RIEN inventer côté données: utiliser exclusivement ce qui est défini dans le code (types, schémas, DTO, migrations).",
+      "Zéro régression: build, typecheck/tests (s’ils existent) doivent rester OK; en cas d’échec, STOP et rapporter."
+    ]
+  },
+  "agile_methods": {
+    "how_to_apply_moscow": {
+      "purpose": "Prioriser les TRAVAUX (pas inventer de champs).",
+      "levels": {
+        "Must": [
+          "P1 Audit complet de l’existant et fichier d’inventaire .txt.",
+          "P3 Sign-In Utilisateur en réutilisant les composants/services existants, insertions minimales, feature flag OFF→ON.",
+          "Zéro régression (build/type/tests) et parcours utilisateur intact."
+        ],
+        "Should": [
+          "P4 Préparer le Sign-In Coiffeur UNIQUEMENT si un domaine/schéma Pro existe déjà.",
+          "P6 Générer un script utilisateur test à partir des champs requis détectés."
+        ],
+        "Could": [
+          "Améliorations d’UX mineures sur l’onboarding SI hooks/components existent déjà."
+        ],
+        "Won't": [
+          "Créer de nouveaux champs ou dépendances non présents dans le repo.",
+          "Déployer Coiffeur/Salon si leurs schémas n’existent pas encore."
+        ]
+      },
+      "working_rules": [
+        "Chaque carte Kanban doit mentionner son niveau MoSCoW.",
+        "Aucune tâche Must ne dépend d’éléments non existants."
+      ]
+    },
+    "kanban": {
+      "columns": ["To Do", "In Progress", "Review", "QA", "Ready", "Done"],
+      "cards": [
+        {"id":"INV-001","title":"Audit automatique & inventaire .txt","moscow":"Must","type":"chore","dor":["repo lisible","scripts d’audit opérants"],"dod":["docs/inventaire_existant.txt généré","aucun code modifié"]},
+        {"id":"PLAN-002","title":"Plan Sign-In Utilisateur (points d’insertion minimaux)","moscow":"Must","type":"doc","dor":["inventaire validé"],"dod":["docs/plan_signin_user_no_regression.md produit"]},
+        {"id":"AUTHU-003","title":"Implémenter Sign-In Utilisateur (réutiliser existant)","moscow":"Must","type":"feature","dor":["plan approuvé","points d’insertion listés"],"dod":["build/type/tests OK","flag ON→parcours OK"]},
+        {"id":"PRO-004","title":"Préparer Sign-In Coiffeur (si schéma existe)","moscow":"Should","type":"feature","dor":["schéma/domaine Pro détecté"],"dod":["code derrière flag OFF","aucune régression"]},
+        {"id":"SALON-005","title":"Scaffold Salon (placeholders commentés, aucun champ inventé)","moscow":"Should","type":"chore","dor":["aucun schéma Salon détecté"],"dod":["fichiers placeholders + TODO","flag OFF"]},
+        {"id":"SEED-006","title":"Script utilisateur test (à partir du schéma détecté)","moscow":"Should","type":"chore","dor":["schéma User/profil détecté"],"dod":["scripts/seed_user_test.* créé","login test OK"]}
+      ]
+    },
+    "definitions": {
+      "DoR": [
+        "L’item s’appuie UNIQUEMENT sur des artefacts existants (fichiers/types).",
+        "Points d’insertion connus (fichiers + balises).",
+        "Critères QA/BDD rédigés."
+      ],
+      "DoD": [
+        "Build/type/tests (s’ils existent) OK.",
+        "Aucune régression sur Hub / Tableau de bord / Réservations / Favoris / Messagerie.",
+        "Docs mises à jour (inventaire/plan)."
+      ],
+      "BDD_examples": [
+        {
+          "feature":"Inventaire exact",
+          "scenario":"Extraction des jeux de données réels",
+          "given":"Le repo actuel",
+          "when":"L’outil génère l’inventaire",
+          "then":"Chaque modèle/champ listé correspond exactement au code détecté"
+        },
+        {
+          "feature":"Sign-In utilisateur sans régression",
+          "scenario":"Activation du flag",
+          "given":"Application existante",
+          "when":"enableUserAuth = true",
+          "then":"Le login fonctionne et aucune page existante ne casse"
+        }
+      ]
+    }
+  },
+  "workflow": [
+    {
+      "id": "P1_AUDIT",
+      "goal": "Inventaire EXACT de l’existant",
+      "actions": [
+        "Scanner le repo (pages/routes, composants UI, hooks, stores/état, services API, types/DTO, schémas/migrations, tests).",
+        "Pour chaque page (Hub, Tableau de bord, Mes réservations, Favoris, Messagerie) lister les données réellement consommées (selectors, appels, props).",
+        "Sortie: docs/inventaire_existant.txt (en-tête, sommaire, chemins, responsabilités, data I/O factuels, flags/configs, TODO/FIXME, code mort suspect)."
+      ],
+      "no_code_change": true,
+      "acceptance": ["docs/inventaire_existant.txt généré et complet."]
+    },
+    {
+      "id": "P2_PLAN",
+      "goal": "Plan d’intégration Sign-In Utilisateur basé sur l’inventaire",
+      "actions": [
+        "Rédiger docs/plan_signin_user_no_regression.md.",
+        "Lister les points d’insertion MINIMAUX (fichiers exacts, zones balisées).",
+        "Définir un feature flag générique (nom et mécanisme pris du code existant).",
+        "Stratégie rollback (désactivation flag + revert insertions)."
+      ],
+      "acceptance": ["Plan produit; aucun ajout de dépendance; insertions minimales identifiées."]
+    },
+    {
+      "id": "P3_IMPL_USER",
+      "goal": "Sign-In Utilisateur SANS RÉGRESSION",
+      "actions": [
+        "Réutiliser l’auth existante si présente; sinon créer un adapter conforme aux patterns du repo, sans dépendance nouvelle.",
+        "Insérer le minimum de code (balises /* CURSOR-SAFE-START/END */).",
+        "Mettre à jour le parcours utilisateur (redir, affichage profil) sans changer les schémas données.",
+        "Conserver Hub/Tableau/Favoris/Messagerie intacts; seulement brancher la lecture si nécessaire."
+      ],
+      "acceptance": [
+        "Build/type/tests verts.",
+        "Flag activé → login OK.",
+        "Parcours utilisateur inchangé en dehors du login."
+      ]
+    },
+    {
+      "id": "P4_PREP_PRO",
+      "goal": "Préparer Coiffeur UNIQUEMENT si schéma/domaine Pro existe",
+      "condition": "Exécuter seulement si détecté à l’audit.",
+      "actions": [
+        "Créer pages/bridges derrière feature flag (OFF).",
+        "AUCUN champ nouveau: se caler STRICTEMENT sur ce qui existe."
+      ],
+      "acceptance": ["Non visible tant que flag OFF; zéro régression."]
+    },
+    {
+      "id": "P5_SCAFFOLD_SALON",
+      "goal": "Scaffold Salon sans inventer",
+      "actions": [
+        "Créer fichiers placeholders commentés (+ TODO) alignés avec conventions du repo.",
+        "Derrière feature flag (OFF)."
+      ],
+      "acceptance": ["Aucun impact runtime; build OK; pas de champs inventés."]
+    },
+    {
+      "id": "P6_SEED_USER",
+      "goal": "Utilisateur test à partir du schéma détecté",
+      "actions": [
+        "Lire le schéma User/Profile détecté (types/migrations).",
+        "Identifier les champs REQUIS et ne remplir QUE ceux-là.",
+        "Générer scripts/seed_user_test.* et documentation d’usage."
+      ],
+      "acceptance": ["Le seed crée un utilisateur test qui peut se connecter; aucun autre domaine touché."]
+    }
+  ],
+  "guardrails_impl": [
+    "Toute insertion entourée de commentaires repérables pour revert rapide.",
+    "Pas d’exposition UI des parties Pro/Salon tant que flags OFF.",
+    "Toute divergence entre inventaire et code → STOP, ouvrir ticket avec extrait de code."
+  ],
+  "final_outputs": [
+    "docs/inventaire_existant.txt",
+    "docs/plan_signin_user_no_regression.md",
+    "Insertions minimales pour Sign-In Utilisateur (derrière feature flag)",
+    "Préparation Pro (si existant) derrière flag OFF",
+    "Scaffold Salon (placeholders commentés) derrière flag OFF",
+    "scripts/seed_user_test.* basé sur schéma réel"
+  ]
+}

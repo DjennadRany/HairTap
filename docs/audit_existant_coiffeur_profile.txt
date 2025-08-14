@@ -1,0 +1,203 @@
+# AUDIT EXISTANT - PAGE PROFIL COIFFEUR
+# Date: 2025-01-XX
+# Objectif: Analyser l'existant avant modification
+
+## 🔍 ANALYSE DE L'EXISTANT
+
+### 📁 FICHIERS ANALYSÉS
+- front/src/pages/CoiffeurProfilePage.tsx
+- back/models/User.js
+- back/routes/auth.js
+- back/routes/users.js
+
+### 🏗️ ARCHITECTURE ACTUELLE
+
+#### 1. MODÈLE USER (back/models/User.js)
+**Champs spécifiques coiffeur:**
+- speciality: String (une seule spécialité)
+- address: String (adresse simple)
+- rating: Number (note)
+- priceRange: String (fourchette de prix)
+- workingMode: String (mode de travail)
+- travelRadius: Number (rayon de déplacement)
+- workingHours: Object (horaires de travail)
+- formation: String (formation)
+- RIB: String (RIB bancaire)
+
+**PROBLÈMES IDENTIFIÉS:**
+- ❌ speciality: UNE SEULE spécialité (limite)
+- ❌ address: String simple (pas structuré)
+- ❌ workingHours: Pas de structure claire
+- ❌ Pas de gestion des créneaux
+- ❌ Pas de grille tarifaire détaillée
+- ❌ Pas de gestion des services/produits
+
+#### 2. PAGE PROFIL COIFFEUR ACTUELLE
+**Sections existantes:**
+- Photo de profil ✅
+- À propos de vous ✅
+- Spécialités (bouton "Ajouter une spécialité") ❌
+- Mode de travail (Salon/Domicile/Les deux) ✅
+- Informations professionnelles (SIREN, expérience, formation) ✅
+- Adresse du salon ✅
+- Informations de contact ✅
+
+**PROBLÈMES IDENTIFIÉS:**
+- ❌ Spécialités: Interface vide, pas de gestion
+- ❌ Pas de grille tarifaire
+- ❌ Pas de gestion des créneaux
+- ❌ Pas de services/produits
+- ❌ Pas de gestion des horaires détaillés
+
+#### 3. ROUTES BACKEND EXISTANTES
+**Endpoints coiffeur:**
+- GET /api/users/coiffeur/:id ✅
+- PUT /api/users/coiffeur/:id ✅
+- Pas de gestion des spécialités ❌
+- Pas de gestion des services ❌
+- Pas de gestion des créneaux ❌
+
+### 🚨 POINTS CRITIQUES IDENTIFIÉS
+
+#### 1. SPÉCIALITÉS
+- **Actuel:** Champ unique `speciality: String`
+- **Besoin:** Tableau de spécialités avec niveaux
+- **Impact:** Algorithme de recherche, filtrage
+
+#### 2. SERVICES ET PRODUITS
+- **Actuel:** Aucun système
+- **Besoin:** Catalogue de services avec prix
+- **Impact:** Réservations, facturation, recherche
+
+#### 3. CRÉNEAUX ET HORAIRES
+- **Actuel:** `workingHours` objet simple
+- **Besoin:** Système de créneaux avec disponibilité
+- **Impact:** Réservations, évitement des doublons
+
+#### 4. GRILLE TARIFAIRE
+- **Actuel:** `priceRange` string simple
+- **Besoin:** Prix par service, par créneau
+- **Impact:** Recherche par prix, facturation
+
+#### 5. GÉOLOCALISATION
+- **Actuel:** Adresse string
+- **Besoin:** Coordonnées GPS + rayon
+- **Impact:** Recherche géographique
+
+### 📊 DONNÉES MANQUANTES POUR L'ALGORITHME
+
+#### 1. SPÉCIALITÉS DÉTAILLÉES
+- Nom de la spécialité
+- Niveau d'expertise (1-5)
+- Années d'expérience dans cette spécialité
+- Certifications
+
+#### 2. SERVICES CATALOGUE
+- Nom du service
+- Description
+- Durée estimée
+- Prix
+- Catégorie (coupe, coloration, soin, etc.)
+- Disponibilité (salon/domicile)
+
+#### 3. CRÉNEAUX DISPONIBLES
+- Jour de la semaine
+- Heure de début
+- Heure de fin
+- Type de service possible
+- Disponibilité salon/domicile
+- Statut (disponible/réservé/maintenance)
+
+#### 4. GRILLE TARIFAIRE
+- Prix par service
+- Prix par créneau (matin/après-midi/soir)
+- Prix par lieu (salon/domicile)
+- Réductions (pack, fidélité)
+
+#### 5. MÉTRIQUES DE PERFORMANCE
+- Note moyenne
+- Nombre d'avis
+- Taux de satisfaction
+- Temps de réponse
+- Taux de réservation
+
+### 🔗 IMPACT SUR LES RÉSERVATIONS EXISTANTES
+
+#### 1. STRUCTURE ACTUELLE DES RÉSERVATIONS
+- Date et heure
+- Service demandé
+- Client
+- Coiffeur
+- Statut
+
+#### 2. RISQUES IDENTIFIÉS
+- ❌ Pas de vérification des créneaux disponibles
+- ❌ Pas de gestion des conflits
+- ❌ Pas de validation des services
+- ❌ Pas de gestion des prix
+
+#### 3. MIGRATION NÉCESSAIRE
+- Créer les nouveaux modèles
+- Migrer les données existantes
+- Maintenir la compatibilité
+- Tester les réservations existantes
+
+### 📈 IMPACT SUR L'ALGORITHME DE RECHERCHE
+
+#### 1. FACTEURS DE TRI ACTUELS
+- Note (rating)
+- Localisation (adresse string)
+
+#### 2. FACTEURS DE TRI FUTURS
+- Note pondérée (nombre d'avis)
+- Distance géographique (GPS)
+- Disponibilité des créneaux
+- Prix des services
+- Spécialités demandées
+- Mode de travail (salon/domicile)
+- Temps de réponse
+- Taux de satisfaction
+
+### 🎯 RECOMMANDATIONS IMMÉDIATES
+
+#### 1. NE PAS MODIFIER (pour l'instant)
+- Page profil coiffeur existante
+- Système de réservations
+- Modèle User actuel
+
+#### 2. CRÉER EN PARALLÈLE
+- Nouveaux modèles de données
+- Nouvelle page profil
+- Nouveau système de réservations
+
+#### 3. MIGRATION GRADUELLE
+- Phase 1: Nouveaux modèles
+- Phase 2: Nouvelle interface
+- Phase 3: Migration des données
+- Phase 4: Nouvel algorithme
+
+### 🔒 SÉCURITÉ ET INTÉGRITÉ
+
+#### 1. DONNÉES EXISTANTES
+- Sauvegarder avant modification
+- Tester la migration
+- Rollback possible
+
+#### 2. RÉSERVATIONS ACTIVES
+- Ne pas casser les réservations existantes
+- Maintenir la compatibilité
+- Migration transparente
+
+### 📝 PROCHAINES ÉTAPES
+
+1. ✅ Audit terminé
+2. 🔄 Créer le plan de l'algorithme optimal
+3. 🔄 Concevoir les nouveaux modèles de données
+4. 🔄 Planifier la migration
+5. 🔄 Développer la nouvelle interface
+6. 🔄 Tester et valider
+7. 🔄 Déployer progressivement
+
+---
+# FIN DE L'AUDIT
+# Prochaine étape: Plan de l'algorithme optimal

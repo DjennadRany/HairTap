@@ -50,6 +50,31 @@ function HomePage() {
           </Link>
         </div>
 
+        {/* Boutons d'inscription */}
+        <div className="flex flex-col sm:flex-row gap-4 mb-8 animate-slide-up" style={{ animationDelay: '0.2s' }}>
+          <Link
+            to="/signin/client"
+            className="group relative px-6 py-3 bg-blue-600 text-white rounded-full font-fashion font-medium text-base hover:bg-blue-700 transition-all duration-300 transform hover:scale-105 shadow-xl"
+          >
+            <div className="flex items-center gap-2">
+              <FaUser className="text-sm" />
+              <span>Devenir client</span>
+            </div>
+          </Link>
+
+          <Link
+            to="/signin/coiffeur"
+            className="group relative px-6 py-3 bg-purple-600 text-white rounded-full font-fashion font-medium text-base hover:bg-purple-700 transition-all duration-300 transform hover:scale-105 shadow-xl"
+          >
+            <div className="flex items-center gap-2">
+              <FaUser className="text-sm" />
+              <span>Devenir coiffeur</span>
+            </div>
+          </Link>
+        </div>
+
+
+
         {/* Statistiques */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl w-full animate-fade-in" style={{ animationDelay: '0.4s' }}>
           <div className="text-center">

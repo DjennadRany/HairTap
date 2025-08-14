@@ -75,11 +75,11 @@ const LoginPage = () => {
 
         <div className="text-center text-sm">
           <span className="text-gray-600">Pas encore de compte ?</span>{' '}
-          <Link to="/onboarding/client" className="text-[#DE6C5C] hover:text-[#DE6C5C]/90">
+          <Link to="/signin/client" className="text-[#DE6C5C] hover:text-[#DE6C5C]/90">
             Créer un compte client
           </Link>
           {' ou '}
-          <Link to="/onboarding/pro" className="text-[#DE6C5C] hover:text-[#DE6C5C]/90">
+          <Link to="/signin/coiffeur" className="text-[#DE6C5C] hover:text-[#DE6C5C]/90">
             Créer un compte coiffeur
           </Link>
         </div>

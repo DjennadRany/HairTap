@@ -175,6 +175,11 @@ const userSchema = new mongoose.Schema({
     type: Number,
     default: 10
   },
+  rib: {
+    type: String,
+    trim: true,
+    sparse: true
+  },
   
   // Galerie simple
   gallery: [{

@@ -25,6 +25,9 @@ import reviewRoutes from './routes/reviews.js';
 import productRoutes from './routes/products.js';
 import orderRoutes from './routes/orders.js';
 import connectionRoutes from './routes/connections.js';
+import specialtyRoutes from './routes/specialties.js';
+import workingSlotRoutes from './routes/working-slots.js';
+import pricingRoutes from './routes/pricing.js';
 // imageRoutes removed - simplified photo system
 
 const envPath = path.resolve(process.cwd(), '.env');
@@ -112,6 +115,9 @@ app.use('/api/reviews', reviewRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/connections', connectionRoutes);
+app.use('/api/specialties', specialtyRoutes);
+app.use('/api/working-slots', workingSlotRoutes);
+app.use('/api/pricing', pricingRoutes);
 // app.use('/api/images', imageRoutes); // Removed - simplified photo system
 
 // Configuration pour servir les fichiers statiques avec CORS
@@ -128,17 +134,16 @@ app.use('/', express.static('public')); // Pour servir default-avatar.png
 app.use(errorHandler);
 
 // Database Connection
-const PORT = process.env.PORT || 5000;
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/taphair';
+import connectDB from './config/database.js';
 
-mongoose.connect(MONGO_URI)
-  .then(() => {
-    logger.info('Connected to MongoDB');
-    app.listen(PORT, () => {
-      logger.info(`Server running on http://localhost:${PORT}`);
-    });
-  })
-  .catch((err) => {
-    logger.error('MongoDB connection error:', err);
-    process.exit(1);
-  }); 
+const PORT = process.env.PORT || 5000;
+
+// Utiliser la configuration centralisée
+connectDB().then(() => {
+  app.listen(PORT, () => {
+    logger.info(`Server running on http://localhost:${PORT}`);
+  });
+}).catch((err) => {
+  logger.error('Failed to start server:', err);
+  process.exit(1);
+}); 

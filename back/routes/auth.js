@@ -10,26 +10,145 @@ const router = express.Router();
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
+// Vérification téléphone
+router.get('/check-phone', async (req, res) => {
+  try {
+    const { phone } = req.query;
+    
+    if (!phone) {
+      return res.status(400).json({ message: 'Téléphone requis' });
+    }
+
+    // Vérifier si le téléphone existe déjà
+    const existingUser = await User.findOne({ phone });
+    
+    res.json({ 
+      exists: !!existingUser,
+      message: existingUser ? 'Téléphone déjà utilisé' : 'Téléphone disponible'
+    });
+  } catch (error) {
+    console.error('Check phone error:', error);
+    res.status(500).json({ message: 'Erreur lors de la vérification' });
+  }
+});
+
+// Vérification email (étape 1, contrôle temps réel)
+router.get('/check-email', async (req, res) => {
+  try {
+    const { email } = req.query;
+    
+    if (!email) {
+      return res.status(400).json({ message: 'Email requis' });
+    }
+
+    // Vérifier si l'email existe déjà (contrôle strict)
+    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    
+    res.json({ 
+      exists: !!existingUser,
+      message: existingUser ? 'Email déjà utilisé' : 'Email disponible'
+    });
+  } catch (error) {
+    console.error('Check email error:', error);
+    res.status(500).json({ message: 'Erreur lors de la vérification' });
+  }
+});
+
+// Vérification SIREN
+router.get('/check-siren', async (req, res) => {
+  try {
+    const { siren } = req.query;
+    
+    if (!siren) {
+      return res.status(400).json({ message: 'SIREN requis' });
+    }
+
+    // Vérifier si le SIREN existe déjà
+    const existingUser = await User.findOne({ siren });
+    
+    res.json({ 
+      exists: !!existingUser,
+      message: existingUser ? 'SIREN déjà utilisé' : 'SIREN disponible'
+    });
+  } catch (error) {
+    console.error('Check SIREN error:', error);
+    res.status(500).json({ message: 'Erreur lors de la vérification' });
+  }
+});
+
 // Inscription
 router.post('/register', validateAuth, async (req, res) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { 
+      name, 
+      email, 
+      password, 
+      role, 
+      phone, 
+      bio, 
+      addresses, 
+      preferences,
+      siren,
+      sirenStatus,
+      experience,
+      formation,
+      specialities,
+      workingMode,
+      travelRadius,
+      salonAddress,
+      workingHours,
+      services
+    } = req.body;
 
-    // Vérifier si l'utilisateur existe déjà
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ message: 'Cet email est déjà utilisé' });
-    }
+    console.log('📥 Données reçues lors de l\'inscription:', req.body);
 
-    // Créer le nouvel utilisateur
-    const user = new User({
+    // SUPPRIMÉ : Contrôle d'email de fin - cause de problèmes
+
+    // Créer le nouvel utilisateur avec TOUTES les données
+    const userData = {
       name,
       email,
       password,
       role: role || 'user'
-    });
+    };
 
+    // Ajouter les champs optionnels s'ils existent et ne sont pas vides
+    if (phone && phone.trim()) userData.phone = phone.trim();
+    if (bio && bio.trim()) userData.bio = bio.trim();
+    
+    // Champs coiffeur (simplifiés pour debug)
+    if (siren) userData.siren = siren;
+    if (sirenStatus) userData.sirenStatus = sirenStatus;
+    if (experience) userData.experience = experience;
+    if (formation) userData.formation = formation;
+    if (specialities) userData.specialities = specialities;
+    if (workingMode) userData.workingMode = workingMode;
+    if (travelRadius) userData.travelRadius = travelRadius;
+    if (salonAddress) userData.salonAddress = salonAddress;
+    if (workingHours) userData.workingHours = workingHours;
+    if (services) userData.services = services;
+    // Adresses simplifiées pour éviter les plantages
+    if (addresses) {
+      userData.addresses = addresses;
+    }
+    if (preferences && Object.keys(preferences).length > 0) {
+      userData.preferences = preferences;
+    }
+
+    console.log('📝 Données utilisateur à sauvegarder:', userData);
+
+    const user = new User(userData);
     await user.save();
+    
+    console.log('✅ Utilisateur créé avec succès:', {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      bio: user.bio,
+      addresses: user.addresses,
+      preferences: user.preferences
+    });
 
     // Créer le token JWT
     const token = jwt.sign(
@@ -45,6 +164,10 @@ router.post('/register', validateAuth, async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        phone: user.phone,
+        bio: user.bio,
+        addresses: user.addresses,
+        preferences: user.preferences,
         photo: user.photo,
         ...(user.role === 'coiffeur' && {
           speciality: user.speciality,

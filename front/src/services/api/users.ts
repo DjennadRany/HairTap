@@ -71,9 +71,9 @@ export const userService = {
   },
 
   // Upload de photo de profil - CORRIGÉ
-  async uploadProfilePhoto(id: string, file: File): Promise<{ success: boolean; photo: { url: string }; message: string }> {
+  async uploadProfilePhoto(id: string, file: File): Promise<{ success: boolean; photo: string; message: string }> {
     const formData = new FormData();
-    formData.append('image', file);
+    formData.append('photo', file); // CORRIGÉ : 'photo' au lieu de 'image'
 
     const response = await api.post(`/users/${id}/photo`, formData, {
       headers: {

@@ -11,6 +11,11 @@ import { MdVerified } from 'react-icons/md';
 import { useNotification } from '../components/ui/NotificationManager';
 import { ConnectionIndicator } from '../components/ConnectionIndicator';
 
+// Composants de gestion coiffeur
+import SpecialtyManager from '../components/SpecialtyManager';
+import WorkingSlotManager from '../components/WorkingSlotManager';
+import PricingManager from '../components/PricingManager';
+
 import Gallery from '../components/Gallery';
 import BookingForm from '../components/BookingForm';
 import Modal from '../components/ui/Modal';
@@ -34,6 +39,8 @@ const CoiffeurProfilePage = () => {
   const isOwner = user && user._id === id && user.role === 'coiffeur';
   const isClient = user && user.role === 'user';
 
+
+
   // Déterminer l'onglet actif basé sur l'URL
   const urlParams = new URLSearchParams(location.search);
   const tabParam = urlParams.get('tab') as 'gallery' | 'reviews' | 'services' | 'products';
@@ -43,6 +50,10 @@ const CoiffeurProfilePage = () => {
   const [loading, setLoading] = useState(true);
   const [servicesTab, setServicesTab] = useState<'services' | 'products' | 'product-gallery'>(defaultTab === 'services' || defaultTab === 'products' ? defaultTab : 'services');
   const [galleryTab, setGalleryTab] = useState<'gallery' | 'reviews' | 'product-gallery'>(defaultTab === 'gallery' || defaultTab === 'reviews' ? defaultTab : 'gallery');
+  
+  // État pour les onglets de gestion coiffeur
+  const [managementTab, setManagementTab] = useState<'specialties' | 'slots' | 'pricing'>('specialties');
+
   const [isFavorite, setIsFavorite] = useState(false);
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [selectedService, setSelectedService] = useState<any>(null);
@@ -52,6 +63,7 @@ const CoiffeurProfilePage = () => {
   const [hasProducts, setHasProducts] = useState(false);
   const [showAddServiceModal, setShowAddServiceModal] = useState(false);
   const [isCreatingConversation, setIsCreatingConversation] = useState(false);
+  const [showDetails, setShowDetails] = useState(false); // Added state for details visibility
 
   // Fonction pour gérer l'envoi de message
   const handleSendMessage = async () => {
@@ -286,48 +298,20 @@ const CoiffeurProfilePage = () => {
               </p>
             )}
 
-            {/* Spécialités - À GAUCHE */}
-            {coiffeur.specialities && coiffeur.specialities.length > 0 && (
+            {/* Mode de travail - À GAUCHE */}
+            {coiffeur.workingMode && coiffeur.workingMode.length > 0 && (
               <div className="text-left">
-                <h3 className="font-semibold text-gray-700 text-sm mb-1">Spécialités</h3>
+                <h3 className="font-semibold text-gray-700 text-sm mb-1">Mode de travail</h3>
                 <div className="flex flex-wrap gap-2">
-                  {coiffeur.specialities.map((speciality: string, index: number) => (
+                  {coiffeur.workingMode.map((mode: string, index: number) => (
                     <span
                       key={index}
-                      className="bg-accent/10 text-accent px-3 py-1 rounded-full text-xs font-medium"
+                      className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm"
                     >
-                      {speciality}
+                      {mode === 'salon' ? 'Salon' : mode === 'domicile' ? 'Domicile' : 'Les deux'}
                     </span>
                   ))}
                 </div>
-              </div>
-            )}
-
-            {/* Mode de travail - À GAUCHE */}
-            {coiffeur.workingMode && coiffeur.workingMode.length > 0 && (
-              <div className="flex items-center gap-2 text-gray-700 text-left">
-                <FaMapMarkerAlt className="text-accent text-sm" />
-                <span className="text-sm">
-                  {coiffeur.workingMode.includes('salon') && coiffeur.workingMode.includes('domicile')
-                    ? 'Salon & Domicile'
-                    : coiffeur.workingMode.includes('salon')
-                    ? 'Salon uniquement'
-                    : 'Domicile uniquement'}
-                </span>
-              </div>
-            )}
-
-            {/* Expérience - À GAUCHE */}
-            {coiffeur.experience && coiffeur.experience > 0 && (
-              <div className="text-sm text-gray-600 text-left">
-                <span className="font-semibold">Expérience:</span> {coiffeur.experience} ans
-              </div>
-            )}
-
-            {/* Formation - À GAUCHE */}
-            {coiffeur.formation && (
-              <div className="text-sm text-gray-600 text-left">
-                <span className="font-semibold">Formation:</span> {coiffeur.formation}
               </div>
             )}
 
@@ -337,14 +321,79 @@ const CoiffeurProfilePage = () => {
                 <FaMapMarkerAlt className="text-accent" />
                 Adresse du salon
               </h3>
-              {coiffeur.address ? (
+              {coiffeur.salonAddress?.street ? (
                 <p className="text-gray-600 text-sm">
-                  {coiffeur.address.streetNumber || ''} {coiffeur.address.street || ''}, {coiffeur.address.postalCode || ''} {coiffeur.address.city || ''}
+                  {coiffeur.salonAddress.streetNumber || ''} {coiffeur.salonAddress.street}, {coiffeur.salonAddress.postalCode} {coiffeur.salonAddress.city}
                 </p>
               ) : (
                 <p className="text-gray-500 text-sm">Adresse non renseignée</p>
               )}
             </div>
+
+            {/* Téléphone salon - HORS DÉPLIANT */}
+            {coiffeur.salonAddress?.phone && (
+              <div className="text-left">
+                <h3 className="font-semibold text-gray-700 text-sm mb-1">Téléphone salon</h3>
+                <p className="text-gray-600 text-sm">{coiffeur.salonAddress.phone}</p>
+              </div>
+            )}
+
+            {/* Bouton pour dérouler les informations détaillées - À GAUCHE */}
+            <div className="text-left mt-4">
+              <button
+                onClick={() => setShowDetails(!showDetails)}
+                className="text-sm text-gray-600 hover:text-gray-800 flex items-center gap-2 transition-colors"
+              >
+                <span>{showDetails ? 'Masquer' : 'Voir plus d\'informations'}</span>
+                <span className="text-xs">{showDetails ? '▲' : '▼'}</span>
+              </button>
+            </div>
+
+            {/* Informations détaillées - DÉROULABLES */}
+            {showDetails && (
+              <div className="text-left mt-3 space-y-3">
+                {/* Spécialités - DANS LE DÉPLIANT */}
+                {coiffeur.specialities && coiffeur.specialities.length > 0 && (
+                  <div>
+                    <h3 className="font-semibold text-gray-700 text-sm mb-1">Spécialités</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {coiffeur.specialities.map((speciality: string, index: number) => (
+                        <span
+                          key={index}
+                          className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm"
+                        >
+                          {speciality}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Expérience - DANS LE DÉPLIANT */}
+                <div>
+                  <h3 className="font-semibold text-gray-700 text-sm mb-1">Expérience</h3>
+                  <p className="text-gray-600 text-sm">
+                    {coiffeur.experience ? `${coiffeur.experience} an(s)` : 'Non renseignée'}
+                  </p>
+                </div>
+
+                {/* Formation */}
+                {coiffeur.formation && (
+                  <div>
+                    <h3 className="font-semibold text-gray-700 text-sm mb-1">Formation</h3>
+                    <p className="text-gray-600 text-sm">{coiffeur.formation}</p>
+                  </div>
+                )}
+
+                {/* Rayon de déplacement */}
+                {coiffeur.travelRadius && coiffeur.workingMode?.includes('domicile') && (
+                  <div>
+                    <h3 className="font-semibold text-gray-700 text-sm mb-1">Rayon de déplacement</h3>
+                    <p className="text-gray-600 text-sm">{coiffeur.travelRadius} km</p>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Bouton Envoyer un message - APRÈS l'adresse */}
             <div className="text-left mt-4">
@@ -373,11 +422,11 @@ const CoiffeurProfilePage = () => {
           </div>
 
           {/* Colonne droite - Carte à côté des informations */}
-          {coiffeur.address?.coordinates && (
+          {coiffeur.salonAddress?.coordinates && (
             <div className="w-full xl:w-[43rem] flex-shrink-0">
               <div className="relative h-64 rounded-lg border border-gray-200 overflow-hidden">
                 <iframe
-                  src={`https://www.openstreetmap.org/export/embed.html?bbox=${coiffeur.address.coordinates.lng - 0.001},${coiffeur.address.coordinates.lat - 0.001},${coiffeur.address.coordinates.lng + 0.001},${coiffeur.address.coordinates.lat + 0.001}&layer=mapnik&marker=${coiffeur.address.coordinates.lat},${coiffeur.address.coordinates.lng}&zoom=16&scrollWheelZoom=false&doubleClickZoom=false&dragPan=false&keyboard=false&touchZoom=false&zoomControl=false&attributionControl=false&minZoom=16&maxZoom=16`}
+                  src={`https://www.openstreetmap.org/export/embed.html?bbox=${coiffeur.salonAddress.coordinates.lng - 0.001},${coiffeur.salonAddress.coordinates.lat - 0.001},${coiffeur.salonAddress.coordinates.lng + 0.001},${coiffeur.salonAddress.coordinates.lat + 0.001}&layer=mapnik&marker=${coiffeur.salonAddress.coordinates.lat},${coiffeur.salonAddress.coordinates.lng}&zoom=16&scrollWheelZoom=false&doubleClickZoom=false&dragPan=false&keyboard=false&touchZoom=false&zoomControl=false&attributionControl=false&minZoom=16&maxZoom=16`}
                   width="100%"
                   height="100%"
                   frameBorder="0"
@@ -399,8 +448,8 @@ const CoiffeurProfilePage = () => {
               {/* Bouton itinéraire - SOUS LA CARTE */}
               <button
                 onClick={() => {
-                  if (coiffeur.address?.coordinates) {
-                    const url = `https://waze.com/ul?ll=${coiffeur.address.coordinates.lat},${coiffeur.address.coordinates.lng}&navigate=yes`;
+                  if (coiffeur.salonAddress?.coordinates) {
+                    const url = `https://waze.com/ul?ll=${coiffeur.salonAddress.coordinates.lat},${coiffeur.salonAddress.coordinates.lng}&navigate=yes`;
                     window.open(url, '_blank');
                   }
                 }}
@@ -409,6 +458,32 @@ const CoiffeurProfilePage = () => {
                 <FaMapMarkerAlt className="text-sm" />
                 Itinéraire
               </button>
+
+              {/* Horaires de travail - SOUS LA CARTE DANS LE MÊME CADRE */}
+              {coiffeur.salonAddress?.openingHours && (
+                <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+                  <h3 className="font-semibold text-gray-700 text-sm mb-2 flex items-center gap-2">
+                    🕐 Horaires
+                  </h3>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    {Object.entries(coiffeur.salonAddress.openingHours).map(([day, hours]) => (
+                      <div key={day} className="flex justify-between">
+                        <span className="text-gray-600 capitalize">
+                          {day === 'monday' ? 'Lun' : 
+                           day === 'tuesday' ? 'Mar' : 
+                           day === 'wednesday' ? 'Mer' : 
+                           day === 'thursday' ? 'Jeu' : 
+                           day === 'friday' ? 'Ven' : 
+                           day === 'saturday' ? 'Sam' : 'Dim'}
+                        </span>
+                        <span className={hours.closed ? 'text-red-600' : 'text-green-600'}>
+                          {hours.closed ? 'Fermé' : `${hours.open || '09:00'}-${hours.close || '18:00'}`}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -473,6 +548,65 @@ const CoiffeurProfilePage = () => {
               />
             </div>
           )}
+        </div>
+      )}
+
+      {/* Section Gestion Coiffeur - UNIQUEMENT POUR LES PROPRIÉTAIRES */}
+      {isOwner && (
+        <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-bold text-gray-800">Gestion de Mon Salon</h2>
+            <div className="text-sm text-gray-600">
+              Gérez vos spécialités, créneaux et tarifs
+            </div>
+          </div>
+          
+          {/* Onglets de gestion */}
+          <div className="flex space-x-2 mb-6">
+            <button
+              onClick={() => setManagementTab('specialties')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
+                managementTab === 'specialties'
+                  ? 'bg-gray-600 text-white shadow-md'
+                  : 'bg-gray-300 text-gray-700 hover:bg-gray-600 hover:text-white'
+              }`}
+            >
+              ✨ Spécialités
+            </button>
+            <button
+              onClick={() => setManagementTab('slots')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
+                managementTab === 'slots'
+                  ? 'bg-gray-600 text-white shadow-md'
+                  : 'bg-gray-300 text-gray-700 hover:bg-gray-600 hover:text-white'
+              }`}
+            >
+              🕐 Créneaux
+            </button>
+            <button
+              onClick={() => setManagementTab('pricing')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
+                managementTab === 'pricing'
+                  ? 'bg-gray-600 text-white shadow-md'
+                  : 'bg-gray-300 text-gray-700 hover:bg-gray-600 hover:text-white'
+              }`}
+            >
+              💰 Tarifs
+            </button>
+          </div>
+
+          {/* Contenu des onglets de gestion */}
+          <div className="min-h-[400px]">
+            {managementTab === 'specialties' && (
+              <SpecialtyManager />
+            )}
+            {managementTab === 'slots' && (
+              <WorkingSlotManager />
+            )}
+            {managementTab === 'pricing' && (
+              <PricingManager />
+            )}
+          </div>
         </div>
       )}
 

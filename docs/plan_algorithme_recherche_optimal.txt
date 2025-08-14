@@ -1,0 +1,428 @@
+# PLAN ALGORITHME DE RECHERCHE OPTIMAL - TAPHAIR
+# Date: 2025-01-XX
+# Objectif: Concevoir l'algorithme de recherche le plus performant
+
+## 🎯 OBJECTIFS DE L'ALGORITHME
+
+### 1. PRINCIPAUX OBJECTIFS
+- **Relever les meilleurs coiffeurs** selon les critères du client
+- **Optimiser l'expérience utilisateur** (résultats pertinents en < 2s)
+- **Maximiser le taux de conversion** (recherche → réservation)
+- **Gérer la concurrence équitable** entre coiffeurs
+- **Éviter les réservations en conflit**
+
+### 2. MÉTRIQUES DE SUCCÈS
+- Temps de réponse < 2 secondes
+- Taux de satisfaction > 90%
+- Taux de conversion > 15%
+- Pertinence des résultats > 95%
+
+## 🏗️ ARCHITECTURE DE L'ALGORITHME
+
+### 1. APPROCHE MULTI-ÉTAPES
+
+#### **ÉTAPE 1: FILTRAGE PRÉLIMINAIRE (Index MongoDB)**
+```javascript
+// Index composés pour performance
+db.users.createIndex({
+  "role": 1,
+  "status": 1,
+  "addresses.salon.coordinates": "2dsphere",
+  "workingMode": 1,
+  "isOnline": 1
+})
+```
+
+#### **ÉTAPE 2: SCORING ET TRI (Algorithme de scoring)**
+```javascript
+// Score = (Note × Poids) + (Disponibilité × Poids) + (Distance × Poids) + ...
+const calculateScore = (coiffeur, criteria) => {
+  let score = 0;
+  
+  // Note pondérée (0-100 points)
+  score += (coiffeur.rating * 0.3) * 100;
+  
+  // Disponibilité (0-100 points)
+  score += calculateAvailabilityScore(coiffeur, criteria.date) * 100;
+  
+  // Distance (0-100 points)
+  score += calculateDistanceScore(coiffeur, criteria.location) * 100;
+  
+  // Prix (0-100 points)
+  score += calculatePriceScore(coiffeur, criteria.budget) * 100;
+  
+  // Spécialités (0-100 points)
+  score += calculateSpecialtyScore(coiffeur, criteria.service) * 100;
+  
+  return score;
+};
+```
+
+#### **ÉTAPE 3: OPTIMISATION ET CACHE (Redis)**
+```javascript
+// Cache des résultats populaires
+const cacheKey = `search:${JSON.stringify(criteria)}`;
+const cachedResults = await redis.get(cacheKey);
+
+if (cachedResults) {
+  return JSON.parse(cachedResults);
+}
+```
+
+### 2. FACTEURS DE SCORING DÉTAILLÉS
+
+#### **A. NOTE ET RÉPUTATION (30% du score total)**
+```javascript
+const calculateRatingScore = (coiffeur) => {
+  const baseRating = coiffeur.rating || 0;
+  const reviewCount = coiffeur.reviews?.length || 0;
+  const satisfactionRate = coiffeur.satisfactionRate || 0;
+  
+  // Formule: Note × (1 + log10(nombre_avis)) × taux_satisfaction
+  return baseRating * (1 + Math.log10(Math.max(reviewCount, 1))) * satisfactionRate;
+};
+```
+
+#### **B. DISPONIBILITÉ (25% du score total)**
+```javascript
+const calculateAvailabilityScore = (coiffeur, requestedDate) => {
+  const dayOfWeek = new Date(requestedDate).getDay();
+  const requestedTime = new Date(requestedDate).getHours();
+  
+  // Vérifier les créneaux disponibles
+  const availableSlots = coiffeur.workingHours[dayOfWeek]?.slots || [];
+  const matchingSlots = availableSlots.filter(slot => 
+    slot.startTime <= requestedTime && 
+    slot.endTime > requestedTime && 
+    slot.status === 'available'
+  );
+  
+  // Score basé sur le nombre de créneaux disponibles
+  return Math.min(matchingSlots.length / 3, 1); // Max 1.0
+};
+```
+
+#### **C. DISTANCE GÉOGRAPHIQUE (20% du score total)**
+```javascript
+const calculateDistanceScore = (coiffeur, clientLocation) => {
+  const coiffeurLocation = coiffeur.addresses.salon.coordinates;
+  const distance = calculateHaversineDistance(clientLocation, coiffeurLocation);
+  
+  // Score inversement proportionnel à la distance
+  // 0km = 100 points, 50km+ = 0 points
+  const maxDistance = 50; // km
+  return Math.max(0, 1 - (distance / maxDistance));
+};
+```
+
+#### **D. PRIX ET BUDGET (15% du score total)**
+```javascript
+const calculatePriceScore = (coiffeur, clientBudget) => {
+  const servicePrice = coiffeur.services.find(s => s.name === clientBudget.service)?.price || 0;
+  
+  if (servicePrice === 0) return 0;
+  
+  // Score basé sur la proximité du budget
+  const budgetDiff = Math.abs(servicePrice - clientBudget.amount) / clientBudget.amount;
+  return Math.max(0, 1 - budgetDiff);
+};
+```
+
+#### **E. SPÉCIALITÉS ET EXPERTISE (10% du score total)**
+```javascript
+const calculateSpecialtyScore = (coiffeur, requestedService) => {
+  const matchingSpecialty = coiffeur.specialties.find(s => 
+    s.name.toLowerCase().includes(requestedService.toLowerCase())
+  );
+  
+  if (!matchingSpecialty) return 0;
+  
+  // Score basé sur le niveau d'expertise et l'expérience
+  const expertiseLevel = matchingSpecialty.expertiseLevel || 1; // 1-5
+  const yearsExperience = matchingSpecialty.yearsExperience || 0;
+  
+  return (expertiseLevel / 5) * 0.7 + Math.min(yearsExperience / 10, 1) * 0.3;
+};
+```
+
+## 📊 NOUVEAUX MODÈLES DE DONNÉES NÉCESSAIRES
+
+### 1. MODÈLE SPECIALTY
+```javascript
+const specialtySchema = new mongoose.Schema({
+  name: { type: String, required: true }, // "Coupe homme", "Coloration", etc.
+  expertiseLevel: { type: Number, min: 1, max: 5, default: 1 },
+  yearsExperience: { type: Number, min: 0, default: 0 },
+  certifications: [String],
+  description: String,
+  category: { type: String, enum: ['coupe', 'coloration', 'soin', 'extension', 'autre'] }
+});
+```
+
+### 2. MODÈLE SERVICE
+```javascript
+const serviceSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  description: String,
+  duration: { type: Number, required: true }, // minutes
+  basePrice: { type: Number, required: true },
+  category: { type: String, required: true },
+  availableAt: [{ type: String, enum: ['salon', 'domicile'] }],
+  specialRequirements: [String], // "Matériel spécial", "Formation spécifique"
+  isActive: { type: Boolean, default: true }
+});
+```
+
+### 3. MODÈLE WORKING_SLOT
+```javascript
+const workingSlotSchema = new mongoose.Schema({
+  dayOfWeek: { type: Number, required: true }, // 0-6 (Dimanche-Samedi)
+  startTime: { type: Number, required: true }, // 0-23 (heures)
+  endTime: { type: Number, required: true }, // 0-23 (heures)
+  serviceTypes: [String], // Types de services possibles
+  availableAt: { type: String, enum: ['salon', 'domicile', 'both'] },
+  status: { type: String, enum: ['available', 'booked', 'maintenance'], default: 'available' },
+  maxBookings: { type: Number, default: 1 }
+});
+```
+
+### 4. MODÈLE PRICING
+```javascript
+const pricingSchema = new mongoose.Schema({
+  serviceId: { type: mongoose.Schema.Types.ObjectId, ref: 'Service', required: true },
+  basePrice: { type: Number, required: true },
+  timeSlotMultiplier: { // Multiplicateurs par créneau
+    morning: { type: Number, default: 1.0 }, // 8h-12h
+    afternoon: { type: Number, default: 1.0 }, // 12h-18h
+    evening: { type: Number, default: 1.2 }, // 18h-22h
+    weekend: { type: Number, default: 1.3 } // Samedi-Dimanche
+  },
+  locationMultiplier: { // Multiplicateurs par lieu
+    salon: { type: Number, default: 1.0 },
+    domicile: { type: Number, default: 1.5 } // +50% pour déplacement
+  },
+  specialOffers: [{
+    name: String,
+    discount: Number, // Pourcentage
+    validFrom: Date,
+    validTo: Date,
+    conditions: [String]
+  }]
+});
+```
+
+## 🔄 ALGORITHME DE RECHERCHE COMPLET
+
+### 1. FLUX DE RECHERCHE
+```javascript
+// 1. Récupération des critères client
+const searchCriteria = {
+  service: "coupe_homme",
+  location: { lat: 48.8566, lng: 2.3522 },
+  date: "2025-01-20T14:00:00Z",
+  budget: { min: 20, max: 80 },
+  workingMode: "salon", // ou "domicile" ou "both"
+  maxDistance: 25, // km
+  minRating: 4.0
+};
+
+// 2. Filtrage préliminaire (MongoDB)
+const preliminaryResults = await User.find({
+  role: 'coiffeur',
+  status: 'active',
+  isOnline: true,
+  'addresses.salon.coordinates': {
+    $near: {
+      $geometry: {
+        type: 'Point',
+        coordinates: [searchCriteria.location.lng, searchCriteria.location.lat]
+      },
+      $maxDistance: searchCriteria.maxDistance * 1000 // mètres
+    }
+  },
+  'workingMode': { $in: [searchCriteria.workingMode, 'both'] },
+  'rating': { $gte: searchCriteria.minRating }
+}).limit(100);
+
+// 3. Scoring détaillé
+const scoredResults = preliminaryResults.map(coiffeur => ({
+  coiffeur,
+  score: calculateScore(coiffeur, searchCriteria),
+  details: {
+    rating: calculateRatingScore(coiffeur),
+    availability: calculateAvailabilityScore(coiffeur, searchCriteria.date),
+    distance: calculateDistanceScore(coiffeur, searchCriteria.location),
+    price: calculatePriceScore(coiffeur, searchCriteria.budget),
+    specialty: calculateSpecialtyScore(coiffeur, searchCriteria.service)
+  }
+}));
+
+// 4. Tri par score et pagination
+const sortedResults = scoredResults
+  .sort((a, b) => b.score - a.score)
+  .slice(0, 20); // Top 20 résultats
+
+// 5. Cache des résultats
+await redis.setex(cacheKey, 300, JSON.stringify(sortedResults)); // 5 minutes
+```
+
+### 2. OPTIMISATIONS DE PERFORMANCE
+
+#### **A. INDEX MONGODB OPTIMISÉS**
+```javascript
+// Index géospatial pour la recherche par distance
+db.users.createIndex({
+  "addresses.salon.coordinates": "2dsphere"
+});
+
+// Index composé pour le filtrage rapide
+db.users.createIndex({
+  "role": 1,
+  "status": 1,
+  "rating": -1,
+  "isOnline": 1
+});
+
+// Index pour les spécialités
+db.users.createIndex({
+  "specialties.name": 1,
+  "specialties.expertiseLevel": -1
+});
+```
+
+#### **B. CACHE REDIS STRATÉGIQUE**
+```javascript
+// Cache des recherches populaires
+const popularSearches = await redis.zrevrange('popular_searches', 0, 9);
+
+// Cache des profils coiffeur
+const coiffeurCache = await redis.get(`coiffeur:${coiffeurId}`);
+
+// Cache des créneaux disponibles
+const availabilityCache = await redis.get(`availability:${coiffeurId}:${date}`);
+```
+
+#### **C. PAGINATION ET LAZY LOADING**
+```javascript
+// Pagination intelligente
+const results = await getPaginatedResults(criteria, {
+  page: 1,
+  limit: 20,
+  sortBy: 'score',
+  sortOrder: 'desc'
+});
+
+// Lazy loading des détails
+const loadCoiffeurDetails = async (coiffeurId) => {
+  const basicInfo = await getBasicInfo(coiffeurId);
+  const detailedInfo = await getDetailedInfoAsync(coiffeurId); // Async loading
+  return { ...basicInfo, ...detailedInfo };
+};
+```
+
+## 🚀 IMPLÉMENTATION PAR PHASES
+
+### **PHASE 1: FONDATIONS (Semaine 1-2)**
+- ✅ Créer les nouveaux modèles de données
+- ✅ Implémenter les index MongoDB
+- ✅ Créer l'API de base
+
+### **PHASE 2: ALGORITHME CORE (Semaine 3-4)**
+- ✅ Implémenter le scoring de base
+- ✅ Créer le système de filtrage
+- ✅ Tester la performance
+
+### **PHASE 3: OPTIMISATIONS (Semaine 5-6)**
+- ✅ Ajouter le cache Redis
+- ✅ Optimiser les requêtes
+- ✅ Implémenter la pagination
+
+### **PHASE 4: INTÉGRATION (Semaine 7-8)**
+- ✅ Intégrer avec l'interface existante
+- ✅ Tester les réservations
+- ✅ Déployer progressivement
+
+## 🔒 GESTION DES RÉSERVATIONS ET CONFLITS
+
+### 1. VÉRIFICATION DES CRÉNEAUX
+```javascript
+const checkSlotAvailability = async (coiffeurId, date, service) => {
+  const slot = await WorkingSlot.findOne({
+    coiffeurId,
+    date,
+    startTime: { $lte: service.startTime },
+    endTime: { $gt: service.endTime },
+    status: 'available'
+  });
+  
+  if (!slot) return false;
+  
+  // Vérifier qu'il n'y a pas de réservation en conflit
+  const conflictingBooking = await Booking.findOne({
+    coiffeurId,
+    date: { $gte: service.startTime, $lt: service.endTime },
+    status: { $in: ['confirmed', 'pending'] }
+  });
+  
+  return !conflictingBooking;
+};
+```
+
+### 2. SYSTÈME DE RÉSERVATION ATOMIQUE
+```javascript
+const bookSlot = async (bookingData) => {
+  const session = await mongoose.startSession();
+  
+  try {
+    await session.withTransaction(async () => {
+      // 1. Vérifier la disponibilité
+      const isAvailable = await checkSlotAvailability(/* ... */);
+      if (!isAvailable) throw new Error('Créneau non disponible');
+      
+      // 2. Créer la réservation
+      const booking = new Booking(bookingData);
+      await booking.save({ session });
+      
+      // 3. Mettre à jour le créneau
+      await WorkingSlot.updateOne(
+        { _id: slotId },
+        { status: 'booked' },
+        { session }
+      );
+      
+      // 4. Notifier le coiffeur
+      await notifyCoiffeur(bookingData.coiffeurId, bookingData);
+    });
+    
+    return { success: true, bookingId: booking._id };
+  } catch (error) {
+    throw error;
+  } finally {
+    session.endSession();
+  }
+};
+```
+
+## 📈 MÉTRIQUES ET MONITORING
+
+### 1. MÉTRIQUES DE PERFORMANCE
+- Temps de réponse moyen
+- Taux de cache hit/miss
+- Nombre de requêtes par seconde
+- Utilisation mémoire/CPU
+
+### 2. MÉTRIQUES BUSINESS
+- Taux de conversion recherche → réservation
+- Temps moyen avant réservation
+- Satisfaction utilisateur
+- Taux de réservation en conflit
+
+### 3. ALERTES ET NOTIFICATIONS
+- Performance dégradée
+- Erreurs de réservation
+- Conflits détectés
+- Surcharge système
+
+---
+# FIN DU PLAN ALGORITHME
+# Prochaine étape: Conception des nouveaux modèles de données

@@ -1,20 +1,26 @@
 @echo off
-echo 🚀 Démarrage des serveurs TapHair...
+echo ========================================
+echo    TAPHAIR - DEMARRAGE AUTOMATIQUE
+echo ========================================
+echo.
+
+echo 🔌 Demarrage du backend...
+start "Backend TapHair" cmd /k "cd back && npm start"
+
+echo ⏳ Attente de 5 secondes pour le backend...
+timeout /t 5 /nobreak >nul
+
+echo 🌐 Demarrage du frontend...
+start "Frontend TapHair" cmd /k "cd front && npm run dev"
 
 echo.
-echo 📦 Démarrage du serveur backend...
-cd back
-start "Backend Server" cmd /k "npm run dev"
-
+echo ✅ Serveurs demarres !
 echo.
-echo 🌐 Démarrage du serveur frontend...
-cd ../front
-start "Frontend Server" cmd /k "npm run dev"
-
+echo 📱 Backend: http://localhost:5000
+echo 🌐 Frontend: http://localhost:5173
+echo 📚 API Docs: http://localhost:5000/api-docs
 echo.
-echo ✅ Serveurs démarrés !
-echo 📱 Frontend: http://localhost:5173
-echo 🔧 Backend: http://localhost:5000
+echo 🔍 Pour tester la connexion MongoDB:
+echo    cd back && node test-connection.js
 echo.
-echo Appuyez sur une touche pour fermer...
 pause 

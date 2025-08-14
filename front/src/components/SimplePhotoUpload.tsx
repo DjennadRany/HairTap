@@ -1,179 +1,146 @@
-import React, { useState, useRef } from 'react';
-import { FaCamera, FaTrash, FaSpinner } from 'react-icons/fa';
-import { PHOTO_URLS } from '../config/api';
-import { getImageUrl, handleImageError, DEFAULT_USER_IMAGE } from '../utils/imageUtils';
-import userService from '../services/api/users';
+import React, { useState } from 'react';
+import { FaCamera, FaTimes } from 'react-icons/fa';
+import { userService } from '../services/api/users';
 
 interface SimplePhotoUploadProps {
   userId: string;
   currentPhoto: string;
   onPhotoUpdate: (photoUrl: string) => void;
-  className?: string;
 }
 
 const SimplePhotoUpload: React.FC<SimplePhotoUploadProps> = ({
   userId,
   currentPhoto,
-  onPhotoUpdate,
-  className = ''
+  onPhotoUpdate
 }) => {
   const [isUploading, setIsUploading] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [error, setError] = useState<string>('');
-  const [success, setSuccess] = useState<string>('');
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // CORRIGER : Construire l'URL complète pour l'initialisation
+  const getFullPhotoUrl = (photoUrl: string) => {
+    if (!photoUrl) return '';
+    return photoUrl.startsWith('http') 
+      ? photoUrl 
+      : `http://localhost:5000${photoUrl}`;
+  };
+  
+  const [previewUrl, setPreviewUrl] = useState<string>(getFullPhotoUrl(currentPhoto));
 
-  // Log pour déboguer - DÉSACTIVÉ pour éviter la boucle infinie
-  // console.log('🎨 [SimplePhotoUpload] Rendu avec currentPhoto:', currentPhoto);
-
-  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     // Validation du fichier
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-    if (!allowedTypes.includes(file.type)) {
-      setError('Type de fichier non autorisé. Utilisez JPEG, PNG ou WebP.');
+    if (!file.type.startsWith('image/')) {
+      alert('Veuillez sélectionner une image valide (JPEG, PNG, WebP)');
       return;
     }
 
-    const maxSize = 5 * 1024 * 1024; // 5MB
-    if (file.size > maxSize) {
-      setError('Fichier trop volumineux. Taille maximum : 5MB.');
+    if (file.size > 5 * 1024 * 1024) { // 5MB max
+      alert('L\'image doit faire moins de 5MB');
       return;
     }
 
-    await uploadPhoto(file);
-  };
+    setIsUploading(true);
 
-  const uploadPhoto = async (file: File) => {
     try {
-      setIsUploading(true);
-      setError('');
-      setSuccess('');
-
-      const formData = new FormData();
-      formData.append('photo', file);
-
-      const response = await fetch(`http://localhost:5000/api/users/${userId}/photo`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: formData
-      });
-
-      const result = await response.json();
-
-      if (response.ok && result.success) {
-        console.log('✅ [SimplePhotoUpload] Photo uploadée:', result.photo);
-        onPhotoUpdate(result.photo);
-        setSuccess('Photo mise à jour avec succès !');
+      console.log('🔄 Début de l\'upload de la photo...');
+      
+      // FAIRE UN VRAI UPLOAD VERS LE SERVEUR
+      const response = await userService.uploadProfilePhoto(userId, file);
+      
+      if (response.success) {
+        console.log('✅ Photo uploadée avec succès:', response.photo);
+        
+        // CORRIGER : Construire l'URL complète
+        const fullPhotoUrl = response.photo.startsWith('http') 
+          ? response.photo 
+          : `http://localhost:5000${response.photo}`;
+        
+        console.log('🌐 URL complète de la photo:', fullPhotoUrl);
+        
+        // Mettre à jour l'aperçu avec l'URL complète du serveur
+        setPreviewUrl(fullPhotoUrl);
+        onPhotoUpdate(fullPhotoUrl);
+        
+        // Afficher un message de succès
+        alert('Photo de profil mise à jour avec succès !');
       } else {
-        setError(result.message || 'Erreur lors de l\'upload de la photo');
+        throw new Error(response.message || 'Erreur lors de l\'upload');
       }
-    } catch (error: any) {
-      console.error('Erreur upload photo:', error);
-      setError('Erreur lors de l\'upload de la photo');
+      
+    } catch (error) {
+      console.error('❌ Erreur lors de l\'upload:', error);
+      alert('Erreur lors de l\'upload de l\'image. Veuillez réessayer.');
     } finally {
       setIsUploading(false);
     }
   };
 
-  const deletePhoto = async () => {
+  const handleRemovePhoto = async () => {
     try {
-      setIsDeleting(true);
-      setError('');
-      setSuccess('');
-
-      const response = await fetch(`http://localhost:5000/api/users/${userId}/photo`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      const result = await response.json();
-
-      if (response.ok && result.success) {
-        onPhotoUpdate(result.photo);
-        setSuccess('Photo supprimée avec succès !');
+      console.log('🗑️ Suppression de la photo...');
+      
+      // Supprimer la photo du serveur
+      const response = await userService.deleteProfilePhoto(userId);
+      
+      if (response.success) {
+        console.log('✅ Photo supprimée avec succès');
+        setPreviewUrl('');
+        onPhotoUpdate('');
+        alert('Photo de profil supprimée avec succès !');
       } else {
-        setError(result.message || 'Erreur lors de la suppression de la photo');
+        throw new Error(response.message || 'Erreur lors de la suppression');
       }
-    } catch (error: any) {
-      console.error('Erreur suppression photo:', error);
-      setError('Erreur lors de la suppression de la photo');
-    } finally {
-      setIsDeleting(false);
+      
+    } catch (error) {
+      console.error('❌ Erreur lors de la suppression:', error);
+      alert('Erreur lors de la suppression de la photo. Veuillez réessayer.');
     }
   };
 
-  const handleCameraClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  console.log('🎨 [SimplePhotoUpload] Rendu avec currentPhoto:', currentPhoto);
-  
   return (
-    <div className={`flex flex-col items-center ${className}`}>
-      {/* Photo actuelle */}
-      <div className="relative group">
-        <img
-          src={getImageUrl(currentPhoto, DEFAULT_USER_IMAGE)}
-          alt="Photo de profil"
-          className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-lg"
-          onError={(e) => handleImageError(e, DEFAULT_USER_IMAGE)}
-          onLoad={() => {
-            // console.log('✅ [SimplePhotoUpload] Image chargée avec succès:', currentPhoto);
-          }}
-        />
-        
-        {/* Overlay avec boutons */}
-        <div className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
-          <div className="flex gap-2">
-            <button
-              onClick={handleCameraClick}
-              disabled={isUploading}
-              className="p-2 bg-white/20 hover:bg-white/30 text-white rounded-full transition-colors duration-200 disabled:opacity-50"
-              title="Changer la photo"
-            >
-              {isUploading ? <FaSpinner className="animate-spin" /> : <FaCamera />}
-            </button>
-            
-            {currentPhoto && currentPhoto !== PHOTO_URLS.DEFAULT_AVATAR && (
-              <button
-                onClick={deletePhoto}
-                disabled={isDeleting}
-                className="p-2 bg-red-500/80 hover:bg-red-500 text-white rounded-full transition-colors duration-200 disabled:opacity-50"
-                title="Supprimer la photo"
-              >
-                {isDeleting ? <FaSpinner className="animate-spin" /> : <FaTrash />}
-              </button>
-            )}
-          </div>
+    <div className="flex flex-col items-center">
+      <div className="relative">
+        {/* Photo de profil */}
+        <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-gray-200 bg-gray-100 flex items-center justify-center">
+          {previewUrl ? (
+            <img
+              src={previewUrl}
+              alt="Photo de profil"
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <FaCamera className="w-8 h-8 text-gray-400" />
+          )}
         </div>
+
+        {/* Bouton d'upload */}
+        <label className="absolute bottom-0 right-0 w-8 h-8 bg-gray-800 rounded-full flex items-center justify-center cursor-pointer hover:bg-gray-900 transition-colors duration-200 shadow-lg">
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleFileChange}
+            className="hidden"
+            disabled={isUploading}
+          />
+          <FaCamera className="w-4 h-4 text-white" />
+        </label>
+
+        {/* Bouton de suppression */}
+        {previewUrl && (
+          <button
+            onClick={handleRemovePhoto}
+            className="absolute top-0 right-0 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center cursor-pointer hover:bg-red-600 transition-colors duration-200 shadow-lg"
+          >
+            <FaTimes className="w-3 h-3 text-white" />
+          </button>
+        )}
       </div>
 
-      {/* Input file caché */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/jpeg,image/jpg,image/png,image/webp"
-        onChange={handleFileSelect}
-        className="hidden"
-      />
-
-      {/* Messages d'état */}
-      {error && (
-        <div className="mt-2 p-2 bg-red-100 border border-red-400 text-red-700 rounded text-sm">
-          {error}
-        </div>
-      )}
-      
-      {success && (
-        <div className="mt-2 p-2 bg-green-100 border border-green-400 text-green-700 rounded text-sm">
-          {success}
+      {/* Indicateur de chargement */}
+      {isUploading && (
+        <div className="mt-2 text-sm text-gray-600 animate-pulse">
+          Upload en cours...
         </div>
       )}
     </div>

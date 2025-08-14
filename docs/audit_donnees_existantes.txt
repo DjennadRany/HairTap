@@ -1,0 +1,262 @@
+# AUDIT COMPLET DES DONNÉES EXISTANTES - TAPHAIR
+# Date: 2025-01-XX
+# Objectif: Connaître exactement ce qui existe déjà dans la base
+
+## 🔍 ANALYSE DES MODÈLES EXISTANTS
+
+### ✅ MODÈLES DÉJÀ CRÉÉS ET OPTIMISÉS
+
+#### 1. **User.js** - Modèle utilisateur principal
+**Champs existants:**
+- `_id`: ObjectId (clé primaire)
+- `name`: String (nom complet)
+- `email`: String (email unique)
+- `password`: String (hashé)
+- `role`: String (enum: 'user', 'coiffeur', 'admin')
+- `phone`: String (téléphone)
+- `bio`: String (biographie)
+- `photo`: String (chemin photo)
+- `addresses`: Object structuré
+  - `home`: Object (adresse domicile)
+    - `streetNumber`: String
+    - `street`: String
+    - `postalCode`: String
+    - `city`: String
+    - `floor`: String
+    - `apartment`: String
+    - `buildingCode`: String
+    - `additionalInfo`: String
+    - `coordinates`: Object {lat: Number, lng: Number}
+  - `office`: Object (adresse bureau)
+    - (même structure que home)
+- `preferences`: Object structuré
+  - `notifications`: Object
+    - `email`: Boolean
+    - `sms`: Boolean
+    - `push`: Boolean
+    - `marketing`: Boolean
+    - `updates`: Boolean
+  - `language`: String (enum: 'fr', 'en')
+  - `theme`: String (enum: 'light', 'dark')
+  - `timezone`: String
+  - `currency`: String
+  - `privacy`: Object
+    - `showAddress`: Boolean
+    - `showPhone`: Boolean
+    - `showEmail`: Boolean
+
+**Champs spécifiques coiffeur:**
+- `speciality`: String (UNE SEULE spécialité - LIMITATION)
+- `rating`: Number (note moyenne)
+- `workingMode`: String (enum: 'salon', 'domicile', 'both')
+- `travelRadius`: Number (rayon de déplacement en km)
+- `workingHours`: Object (horaires de travail - STRUCTURE SIMPLE)
+- `formation`: String (formation professionnelle)
+- `RIB`: String (RIB bancaire)
+- `yearsExperience`: Number (années d'expérience)
+
+**Index existants:**
+- `email: 1` (unique)
+- `role: 1`
+- `addresses.salon.coordinates: "2dsphere"` (géospatial)
+
+#### 2. **Service.js** - Modèle services (DÉJÀ PARFAIT !)
+**Champs existants:**
+- `_id`: ObjectId (clé primaire)
+- `name`: String (nom du service)
+- `description`: String (description détaillée)
+- `price`: Number (prix en euros)
+- `duration`: Number (durée en minutes, 15-480)
+- `category`: String (enum: 'coupe', 'coloration', 'brushing', 'lissage', 'permanente', 'barbe', 'soin', 'autre')
+- `keywords`: [String] (mots-clés pour recherche)
+- `examplePhotos`: [String] (photos d'exemples)
+- `likes`: Number (nombre de likes)
+- `likedBy`: [ObjectId] (utilisateurs qui ont liké)
+- `coiffeur`: ObjectId (référence vers User)
+- `isActive`: Boolean (service actif ou non)
+- `createdAt`: Date
+- `updatedAt`: Date
+
+**Méthodes existantes:**
+- `deactivate()`: Désactiver un service
+- `activate()`: Réactiver un service
+- `updateDetails()`: Mettre à jour les détails
+- `addLike()`: Ajouter un like
+- `removeLike()`: Retirer un like
+- `isLikedBy()`: Vérifier si liké par un utilisateur
+- `syncLikes()`: Synchroniser likes avec likedBy
+
+**Index existants:**
+- `coiffeur: 1`
+- `category: 1`
+- `isActive: 1`
+- `keywords: 1`
+- `likes: -1`
+
+#### 3. **Booking.js** - Modèle réservations (DÉJÀ PARFAIT !)
+**Champs existants:**
+- `_id`: ObjectId (clé primaire)
+- `client`: ObjectId (référence vers User - client)
+- `coiffeur`: ObjectId (référence vers User - coiffeur)
+- `service`: String (nom du service demandé)
+- `date`: Date (date et heure de la réservation)
+- `duration`: Number (durée en minutes)
+- `status`: String (enum: 'pending', 'confirmed', 'completed', 'cancelled')
+- `paymentStatus`: String (enum: 'pending', 'paid', 'refunded')
+- `price`: Number (prix en euros)
+- `mode`: String (enum: 'salon', 'domicile')
+- `address`: Object structuré (adresse de la prestation)
+  - `street`: String
+  - `streetNumber`: String
+  - `city`: String
+  - `postalCode`: String
+  - `floor`: String
+  - `apartment`: String
+  - `buildingCode`: String
+  - `additionalInfo`: String
+- `notes`: String (notes additionnelles)
+- `cancellationReason`: String (raison de l'annulation)
+- `createdAt`: Date
+- `updatedAt`: Date
+
+**Méthodes existantes:**
+- `canBeCancelled()`: Vérifier si annulable (24h avant)
+- `cancel()`: Annuler la réservation
+- `confirm()`: Confirmer la réservation
+- `complete()`: Marquer comme terminée
+
+**Index existants:**
+- `client: 1`
+- `coiffeur: 1`
+- `date: 1`
+- `status: 1`
+- `paymentStatus: 1`
+
+#### 4. **Product.js** - Modèle produits
+**Champs existants:**
+- `_id`: ObjectId (clé primaire)
+- `name`: String (nom du produit)
+- `description`: String (description)
+- `price`: Number (prix)
+- `category`: String (catégorie)
+- `stock`: Number (stock disponible)
+- `coiffeur`: ObjectId (référence vers User)
+- `isActive`: Boolean
+- `createdAt`: Date
+- `updatedAt`: Date
+
+#### 5. **Review.js** - Modèle avis
+**Champs existants:**
+- `_id`: ObjectId (clé primaire)
+- `client`: ObjectId (référence vers User - client)
+- `coiffeur`: ObjectId (référence vers User - coiffeur)
+- `rating`: Number (note 1-5)
+- `comment`: String (commentaire)
+- `createdAt`: Date
+
+#### 6. **Connection.js** - Modèle connexions
+**Champs existants:**
+- `_id`: ObjectId (clé primaire)
+- `user`: ObjectId (référence vers User)
+- `status`: String (enum: 'online', 'offline', 'away')
+- `lastSeen`: Date
+- `createdAt`: Date
+
+#### 7. **Conversation.js** - Modèle conversations
+**Champs existants:**
+- `_id`: ObjectId (clé primaire)
+- `participants`: [ObjectId] (références vers User)
+- `lastMessage`: ObjectId (référence vers Message)
+- `createdAt`: Date
+- `updatedAt`: Date
+
+#### 8. **Message.js** - Modèle messages
+**Champs existants:**
+- `_id`: ObjectId (clé primaire)
+- `conversation`: ObjectId (référence vers Conversation)
+- `sender`: ObjectId (référence vers User)
+- `content`: String (contenu du message)
+- `createdAt`: Date
+
+#### 9. **Order.js** - Modèle commandes
+**Champs existants:**
+- `_id`: ObjectId (clé primaire)
+- `client`: ObjectId (référence vers User)
+- `products`: [Object] (produits commandés)
+- `total`: Number (total de la commande)
+- `status`: String (enum: 'pending', 'confirmed', 'shipped', 'delivered')
+- `createdAt`: Date
+
+## 🚨 POINTS CRITIQUES IDENTIFIÉS
+
+### **1. SPÉCIALITÉS - LIMITATION MAJEURE**
+- **Actuel:** `speciality: String` (UNE SEULE spécialité)
+- **Besoin:** Tableau de spécialités avec niveaux d'expertise
+- **Impact:** Algorithme de recherche limité
+
+### **2. CRÉNEAUX - ABSENCE TOTALE**
+- **Actuel:** `workingHours: Object` (structure simple)
+- **Besoin:** Système de créneaux avec disponibilité
+- **Impact:** Réservations sans vérification des créneaux
+
+### **3. PRIX DYNAMIQUES - ABSENCE TOTALE**
+- **Actuel:** `price: Number` (prix fixe dans Service)
+- **Besoin:** Prix variables par créneau et lieu
+- **Impact:** Pas de gestion des tarifs dynamiques
+
+### **4. GÉOLOCALISATION - PARTIELLEMENT PRÉSENTE**
+- **Actuel:** `coordinates: {lat, lng}` dans addresses
+- **Besoin:** Optimisation pour recherche géospatiale
+- **Impact:** Recherche par distance limitée
+
+## 📊 DONNÉES MANQUANTES POUR L'ALGORITHME
+
+### **1. SPÉCIALITÉS DÉTAILLÉES**
+- Nom de la spécialité
+- Niveau d'expertise (1-5)
+- Années d'expérience dans cette spécialité
+- Certifications
+- Catégorie de spécialité
+
+### **2. CRÉNEAUX DISPONIBLES**
+- Jour de la semaine
+- Heure de début
+- Heure de fin
+- Type de service possible
+- Disponibilité salon/domicile
+- Statut (disponible/réservé/maintenance)
+
+### **3. GRILLE TARIFAIRE DYNAMIQUE**
+- Prix par service
+- Prix par créneau (matin/après-midi/soir)
+- Prix par lieu (salon/domicile)
+- Réductions (pack, fidélité)
+- Offres spéciales
+
+### **4. MÉTRIQUES DE PERFORMANCE**
+- Note moyenne pondérée
+- Nombre d'avis
+- Taux de satisfaction
+- Temps de réponse
+- Taux de réservation
+
+## 🎯 PLAN D'ACTION IMMÉDIAT
+
+### **ÉTAPE 1: CRÉER LES MODÈLES MANQUANTS**
+1. **Specialty.js** - Spécialités avec niveaux
+2. **WorkingSlot.js** - Gestion des créneaux
+3. **Pricing.js** - Prix dynamiques
+
+### **ÉTAPE 2: MIGRER LES DONNÉES EXISTANTES**
+1. Créer des spécialités basées sur `speciality` existant
+2. Créer des créneaux par défaut basés sur `workingHours`
+3. Créer des prix par défaut basés sur `price` des services
+
+### **ÉTAPE 3: OPTIMISER LES INDEX**
+1. Index géospatial pour recherche par distance
+2. Index composés pour performance
+3. Index text pour recherche par mots-clés
+
+---
+# FIN DE L'AUDIT
+# Prochaine étape: Création des modèles manquants

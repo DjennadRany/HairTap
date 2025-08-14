@@ -91,6 +91,7 @@ export interface User {
     };
   };
   travelRadius?: number;
+  rib?: string;
   services?: Service[];
   gallery?: GalleryImage[];
   likes?: number;

@@ -1,0 +1,857 @@
+# PLAN DE MIGRATION ET IMPLÉMENTATION - TAPHAIR
+# Date: 2025-01-XX
+# Objectif: Planifier la migration progressive sans casser l'existant
+
+## 🎯 STRATÉGIE DE MIGRATION
+
+### 1. PRINCIPES DIRECTEURS
+- **ZÉRO DOWNTIME** : L'application reste fonctionnelle pendant la migration
+- **COMPATIBILITÉ ARRIÈRE** : Les anciennes données et fonctionnalités continuent de marcher
+- **ROLLBACK IMMÉDIAT** : Possibilité de revenir en arrière en cas de problème
+- **MIGRATION GRADUELLE** : Phase par phase, utilisateur par utilisateur
+
+### 2. APPROCHE "SHADOW MODE"
+```javascript
+// Pendant la migration, on utilise les DEUX systèmes en parallèle
+const getCoiffeurData = async (coiffeurId) => {
+  // 1. Essayer le nouveau système
+  try {
+    const newData = await getNewCoiffeurData(coiffeurId);
+    if (newData) return { source: 'new', data: newData };
+  } catch (error) {
+    console.log('Nouveau système non disponible, fallback sur l\'ancien');
+  }
+  
+  // 2. Fallback sur l'ancien système
+  const oldData = await getOldCoiffeurData(coiffeurId);
+  return { source: 'old', data: oldData };
+};
+```
+
+## 📅 CALENDRIER DE MIGRATION
+
+### **SEMAINE 1-2: FONDATIONS**
+- ✅ Créer les nouveaux modèles de données
+- ✅ Implémenter les index MongoDB
+- ✅ Créer les nouvelles API (en parallèle)
+- ✅ Tester en environnement de développement
+
+### **SEMAINE 3-4: MIGRATION DES DONNÉES**
+- ✅ Créer les scripts de migration
+- ✅ Migrer les données existantes
+- ✅ Valider l'intégrité des données
+- ✅ Tester les réservations existantes
+
+### **SEMAINE 5-6: INTERFACE UTILISATEUR**
+- ✅ Créer la nouvelle page profil coiffeur
+- ✅ Implémenter la gestion des spécialités
+- ✅ Implémenter la grille tarifaire
+- ✅ Implémenter la gestion des créneaux
+
+### **SEMAINE 7-8: INTÉGRATION ET TESTS**
+- ✅ Intégrer avec l'interface existante
+- ✅ Tester le parcours complet
+- ✅ Optimiser les performances
+- ✅ Préparer le déploiement
+
+### **SEMAINE 9: DÉPLOIEMENT PROGRESSIF**
+- ✅ Déployer sur 10% des utilisateurs
+- ✅ Monitorer et ajuster
+- ✅ Déployer sur 50% des utilisateurs
+- ✅ Déployer sur 100% des utilisateurs
+
+## 🏗️ ARCHITECTURE DE MIGRATION
+
+### 1. NOUVEAUX MODÈLES À CRÉER
+
+#### **A. MODÈLE SPECIALTY**
+```javascript
+// back/models/Specialty.js
+const specialtySchema = new mongoose.Schema({
+  coiffeurId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  name: { type: String, required: true },
+  expertiseLevel: { type: Number, min: 1, max: 5, default: 1 },
+  yearsExperience: { type: Number, min: 0, default: 0 },
+  certifications: [String],
+  description: String,
+  category: { type: String, enum: ['coupe', 'coloration', 'soin', 'extension', 'autre'] },
+  isActive: { type: Boolean, default: true },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
+});
+
+// Index pour performance
+specialtySchema.index({ coiffeurId: 1, category: 1 });
+specialtySchema.index({ name: 'text', category: 1 });
+```
+
+#### **B. MODÈLE SERVICE**
+```javascript
+// back/models/Service.js
+const serviceSchema = new mongoose.Schema({
+  coiffeurId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  name: { type: String, required: true },
+  description: String,
+  duration: { type: Number, required: true }, // minutes
+  basePrice: { type: Number, required: true },
+  category: { type: String, required: true },
+  availableAt: [{ type: String, enum: ['salon', 'domicile'] }],
+  specialRequirements: [String],
+  isActive: { type: Boolean, default: true },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
+});
+
+// Index pour performance
+serviceSchema.index({ coiffeurId: 1, category: 1, isActive: 1 });
+serviceSchema.index({ name: 'text', category: 1 });
+```
+
+#### **C. MODÈLE WORKING_SLOT**
+```javascript
+// back/models/WorkingSlot.js
+const workingSlotSchema = new mongoose.Schema({
+  coiffeurId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  dayOfWeek: { type: Number, required: true }, // 0-6
+  startTime: { type: Number, required: true }, // 0-23
+  endTime: { type: Number, required: true }, // 0-23
+  serviceTypes: [String],
+  availableAt: { type: String, enum: ['salon', 'domicile', 'both'] },
+  status: { type: String, enum: ['available', 'booked', 'maintenance'], default: 'available' },
+  maxBookings: { type: Number, default: 1 },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
+});
+
+// Index pour performance
+workingSlotSchema.index({ coiffeurId: 1, dayOfWeek: 1, status: 1 });
+workingSlotSchema.index({ coiffeurId: 1, 'date': 1, status: 1 });
+```
+
+#### **D. MODÈLE PRICING**
+```javascript
+// back/models/Pricing.js
+const pricingSchema = new mongoose.Schema({
+  coiffeurId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  serviceId: { type: mongoose.Schema.Types.ObjectId, ref: 'Service', required: true },
+  basePrice: { type: Number, required: true },
+  timeSlotMultiplier: {
+    morning: { type: Number, default: 1.0 },
+    afternoon: { type: Number, default: 1.0 },
+    evening: { type: Number, default: 1.2 },
+    weekend: { type: Number, default: 1.3 }
+  },
+  locationMultiplier: {
+    salon: { type: Number, default: 1.0 },
+    domicile: { type: Number, default: 1.5 }
+  },
+  specialOffers: [{
+    name: String,
+    discount: Number,
+    validFrom: Date,
+    validTo: Date,
+    conditions: [String]
+  }],
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
+});
+
+// Index pour performance
+pricingSchema.index({ coiffeurId: 1, serviceId: 1 });
+```
+
+### 2. SCRIPT DE MIGRATION DES DONNÉES EXISTANTES
+
+#### **A. MIGRATION DES SPÉCIALITÉS**
+```javascript
+// back/scripts/migrate-specialties.js
+const migrateSpecialties = async () => {
+  const coiffeurs = await User.find({ role: 'coiffeur' });
+  
+  for (const coiffeur of coiffeurs) {
+    // Créer une spécialité basée sur l'ancien champ 'speciality'
+    if (coiffeur.speciality) {
+      const specialty = new Specialty({
+        coiffeurId: coiffeur._id,
+        name: coiffeur.speciality,
+        expertiseLevel: 3, // Niveau moyen par défaut
+        yearsExperience: coiffeur.yearsExperience || 0,
+        category: 'coupe', // Catégorie par défaut
+        description: `Spécialité: ${coiffeur.speciality}`
+      });
+      
+      await specialty.save();
+      console.log(`✅ Spécialité migrée pour ${coiffeur.name}`);
+    }
+  }
+};
+```
+
+#### **B. MIGRATION DES SERVICES**
+```javascript
+// back/scripts/migrate-services.js
+const migrateServices = async () => {
+  const coiffeurs = await User.find({ role: 'coiffeur' });
+  
+  // Services par défaut pour tous les coiffeurs
+  const defaultServices = [
+    {
+      name: 'Coupe homme',
+      description: 'Coupe classique pour homme',
+      duration: 30,
+      basePrice: 25,
+      category: 'coupe',
+      availableAt: ['salon', 'domicile']
+    },
+    {
+      name: 'Coupe femme',
+      description: 'Coupe pour femme',
+      duration: 45,
+      basePrice: 35,
+      category: 'coupe',
+      availableAt: ['salon', 'domicile']
+    },
+    {
+      name: 'Coloration',
+      description: 'Coloration complète',
+      duration: 90,
+      basePrice: 60,
+      category: 'coloration',
+      availableAt: ['salon']
+    }
+  ];
+  
+  for (const coiffeur of coiffeurs) {
+    for (const defaultService of defaultServices) {
+      const service = new Service({
+        coiffeurId: coiffeur._id,
+        ...defaultService
+      });
+      
+      await service.save();
+    }
+    
+    console.log(`✅ Services migrés pour ${coiffeur.name}`);
+  }
+};
+```
+
+#### **C. MIGRATION DES CRÉNEAUX**
+```javascript
+// back/scripts/migrate-working-slots.js
+const migrateWorkingSlots = async () => {
+  const coiffeurs = await User.find({ role: 'coiffeur' });
+  
+  for (const coiffeur of coiffeurs) {
+    // Créer des créneaux par défaut (Lundi-Vendredi, 9h-18h)
+    const defaultSlots = [];
+    
+    for (let day = 1; day <= 5; day++) { // Lundi = 1, Vendredi = 5
+      defaultSlots.push({
+        coiffeurId: coiffeur._id,
+        dayOfWeek: day,
+        startTime: 9,
+        endTime: 18,
+        serviceTypes: ['coupe', 'coloration', 'soin'],
+        availableAt: coiffeur.workingMode === 'both' ? 'both' : 
+                    coiffeur.workingMode === 'domicile' ? 'domicile' : 'salon',
+        status: 'available',
+        maxBookings: 1
+      });
+    }
+    
+    // Ajouter le samedi si le coiffeur travaille le weekend
+    if (coiffeur.workingMode !== 'salon') {
+      defaultSlots.push({
+        coiffeurId: coiffeur._id,
+        dayOfWeek: 6, // Samedi
+        startTime: 9,
+        endTime: 17,
+        serviceTypes: ['coupe', 'coloration', 'soin'],
+        availableAt: coiffeur.workingMode === 'both' ? 'both' : 
+                    coiffeur.workingMode === 'domicile' ? 'domicile' : 'salon',
+        status: 'available',
+        maxBookings: 1
+      });
+    }
+    
+    for (const slot of defaultSlots) {
+      const workingSlot = new WorkingSlot(slot);
+      await workingSlot.save();
+    }
+    
+    console.log(`✅ Créneaux migrés pour ${coiffeur.name}`);
+  }
+};
+```
+
+### 3. NOUVELLES API À CRÉER
+
+#### **A. API SPÉCIALITÉS**
+```javascript
+// back/routes/specialties.js
+router.get('/coiffeur/:coiffeurId/specialties', async (req, res) => {
+  try {
+    const specialties = await Specialty.find({ 
+      coiffeurId: req.params.coiffeurId,
+      isActive: true 
+    });
+    res.json(specialties);
+  } catch (error) {
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
+router.post('/coiffeur/:coiffeurId/specialties', async (req, res) => {
+  try {
+    const specialty = new Specialty({
+      coiffeurId: req.params.coiffeurId,
+      ...req.body
+    });
+    await specialty.save();
+    res.status(201).json(specialty);
+  } catch (error) {
+    res.status(400).json({ message: 'Données invalides' });
+  }
+});
+```
+
+#### **B. API SERVICES**
+```javascript
+// back/routes/services.js
+router.get('/coiffeur/:coiffeurId/services', async (req, res) => {
+  try {
+    const services = await Service.find({ 
+      coiffeurId: req.params.coiffeurId,
+      isActive: true 
+    });
+    res.json(services);
+  } catch (error) {
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
+router.post('/coiffeur/:coiffeurId/services', async (req, res) => {
+  try {
+    const service = new Service({
+      coiffeurId: req.params.coiffeurId,
+      ...req.body
+    });
+    await service.save();
+    res.status(201).json(service);
+  } catch (error) {
+    res.status(400).json({ message: 'Données invalides' });
+  }
+});
+```
+
+#### **C. API CRÉNEAUX**
+```javascript
+// back/routes/working-slots.js
+router.get('/coiffeur/:coiffeurId/slots', async (req, res) => {
+  try {
+    const { date, serviceType } = req.query;
+    let query = { coiffeurId: req.params.coiffeurId };
+    
+    if (date) {
+      const dayOfWeek = new Date(date).getDay();
+      query.dayOfWeek = dayOfWeek;
+    }
+    
+    if (serviceType) {
+      query.serviceTypes = { $in: [serviceType] };
+    }
+    
+    const slots = await WorkingSlot.find(query);
+    res.json(slots);
+  } catch (error) {
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+```
+
+### 4. NOUVELLE INTERFACE UTILISATEUR
+
+#### **A. COMPOSANT GESTION DES SPÉCIALITÉS**
+```javascript
+// front/src/components/SpecialtyManager.tsx
+const SpecialtyManager = ({ coiffeurId, specialties, onUpdate }) => {
+  const [isAdding, setIsAdding] = useState(false);
+  const [newSpecialty, setNewSpecialty] = useState({
+    name: '',
+    expertiseLevel: 3,
+    yearsExperience: 0,
+    category: 'coupe',
+    description: ''
+  });
+  
+  const handleAddSpecialty = async () => {
+    try {
+      const response = await fetch(`/api/specialties/coiffeur/${coiffeurId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newSpecialty)
+      });
+      
+      if (response.ok) {
+        const addedSpecialty = await response.json();
+        onUpdate([...specialties, addedSpecialty]);
+        setIsAdding(false);
+        setNewSpecialty({ name: '', expertiseLevel: 3, yearsExperience: 0, category: 'coupe', description: '' });
+      }
+    } catch (error) {
+      console.error('Erreur lors de l\'ajout de la spécialité:', error);
+    }
+  };
+  
+  return (
+    <div className="bg-white p-6 rounded-lg shadow-md">
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-lg font-semibold">Spécialités</h3>
+        <button
+          onClick={() => setIsAdding(true)}
+          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+        >
+          Ajouter une spécialité
+        </button>
+      </div>
+      
+      {/* Liste des spécialités existantes */}
+      <div className="space-y-3 mb-4">
+        {specialties.map((specialty, index) => (
+          <div key={index} className="border p-3 rounded-lg">
+            <div className="flex justify-between items-start">
+              <div>
+                <h4 className="font-medium">{specialty.name}</h4>
+                <p className="text-sm text-gray-600">{specialty.description}</p>
+                <div className="flex gap-4 text-sm text-gray-500 mt-2">
+                  <span>Niveau: {specialty.expertiseLevel}/5</span>
+                  <span>Expérience: {specialty.yearsExperience} ans</span>
+                  <span>Catégorie: {specialty.category}</span>
+                </div>
+              </div>
+              <button className="text-red-600 hover:text-red-800">Supprimer</button>
+            </div>
+          </div>
+        ))}
+      </div>
+      
+      {/* Formulaire d'ajout */}
+      {isAdding && (
+        <div className="border-t pt-4">
+          <h4 className="font-medium mb-3">Nouvelle spécialité</h4>
+          <div className="grid grid-cols-2 gap-4">
+            <input
+              type="text"
+              placeholder="Nom de la spécialité"
+              value={newSpecialty.name}
+              onChange={(e) => setNewSpecialty({...newSpecialty, name: e.target.value})}
+              className="border p-2 rounded"
+            />
+            <select
+              value={newSpecialty.category}
+              onChange={(e) => setNewSpecialty({...newSpecialty, category: e.target.value})}
+              className="border p-2 rounded"
+            >
+              <option value="coupe">Coupe</option>
+              <option value="coloration">Coloration</option>
+              <option value="soin">Soin</option>
+              <option value="extension">Extension</option>
+              <option value="autre">Autre</option>
+            </select>
+            <input
+              type="number"
+              placeholder="Années d'expérience"
+              value={newSpecialty.yearsExperience}
+              onChange={(e) => setNewSpecialty({...newSpecialty, yearsExperience: parseInt(e.target.value)})}
+              className="border p-2 rounded"
+            />
+            <select
+              value={newSpecialty.expertiseLevel}
+              onChange={(e) => setNewSpecialty({...newSpecialty, expertiseLevel: parseInt(e.target.value)})}
+              className="border p-2 rounded"
+            >
+              <option value={1}>Niveau 1</option>
+              <option value={2}>Niveau 2</option>
+              <option value={3}>Niveau 3</option>
+              <option value={4}>Niveau 4</option>
+              <option value={5}>Niveau 5</option>
+            </select>
+          </div>
+          <textarea
+            placeholder="Description de la spécialité"
+            value={newSpecialty.description}
+            onChange={(e) => setNewSpecialty({...newSpecialty, description: e.target.value})}
+            className="w-full border p-2 rounded mt-3"
+            rows={3}
+          />
+          <div className="flex gap-2 mt-3">
+            <button
+              onClick={handleAddSpecialty}
+              className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+            >
+              Ajouter
+            </button>
+            <button
+              onClick={() => setIsAdding(false)}
+              className="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700"
+            >
+              Annuler
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+```
+
+#### **B. COMPOSANT GESTION DES SERVICES**
+```javascript
+// front/src/components/ServiceManager.tsx
+const ServiceManager = ({ coiffeurId, services, onUpdate }) => {
+  const [isAdding, setIsAdding] = useState(false);
+  const [newService, setNewService] = useState({
+    name: '',
+    description: '',
+    duration: 30,
+    basePrice: 0,
+    category: 'coupe',
+    availableAt: ['salon'],
+    specialRequirements: []
+  });
+  
+  const handleAddService = async () => {
+    try {
+      const response = await fetch(`/api/services/coiffeur/${coiffeurId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newService)
+      });
+      
+      if (response.ok) {
+        const addedService = await response.json();
+        onUpdate([...services, addedService]);
+        setIsAdding(false);
+        setNewService({
+          name: '',
+          description: '',
+          duration: 30,
+          basePrice: 0,
+          category: 'coupe',
+          availableAt: ['salon'],
+          specialRequirements: []
+        });
+      }
+    } catch (error) {
+      console.error('Erreur lors de l\'ajout du service:', error);
+    }
+  };
+  
+  return (
+    <div className="bg-white p-6 rounded-lg shadow-md">
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-lg font-semibold">Services et Produits</h3>
+        <button
+          onClick={() => setIsAdding(true)}
+          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+        >
+          Ajouter un service
+        </button>
+      </div>
+      
+      {/* Liste des services existants */}
+      <div className="space-y-3 mb-4">
+        {services.map((service, index) => (
+          <div key={index} className="border p-3 rounded-lg">
+            <div className="flex justify-between items-start">
+              <div>
+                <h4 className="font-medium">{service.name}</h4>
+                <p className="text-sm text-gray-600">{service.description}</p>
+                <div className="flex gap-4 text-sm text-gray-500 mt-2">
+                  <span>Durée: {service.duration} min</span>
+                  <span>Prix: {service.basePrice}€</span>
+                  <span>Catégorie: {service.category}</span>
+                  <span>Disponible: {service.availableAt.join(', ')}</span>
+                </div>
+              </div>
+              <button className="text-red-600 hover:text-red-800">Supprimer</button>
+            </div>
+          </div>
+        ))}
+      </div>
+      
+      {/* Formulaire d'ajout */}
+      {isAdding && (
+        <div className="border-t pt-4">
+          <h4 className="font-medium mb-3">Nouveau service</h4>
+          <div className="grid grid-cols-2 gap-4">
+            <input
+              type="text"
+              placeholder="Nom du service"
+              value={newService.name}
+              onChange={(e) => setNewService({...newService, name: e.target.value})}
+              className="border p-2 rounded"
+            />
+            <select
+              value={newService.category}
+              onChange={(e) => setNewService({...newService, category: e.target.value})}
+              className="border p-2 rounded"
+            >
+              <option value="coupe">Coupe</option>
+              <option value="coloration">Coloration</option>
+              <option value="soin">Soin</option>
+              <option value="extension">Extension</option>
+              <option value="autre">Autre</option>
+            </select>
+            <input
+              type="number"
+              placeholder="Durée (minutes)"
+              value={newService.duration}
+              onChange={(e) => setNewService({...newService, duration: parseInt(e.target.value)})}
+              className="border p-2 rounded"
+            />
+            <input
+              type="number"
+              placeholder="Prix de base (€)"
+              value={newService.basePrice}
+              onChange={(e) => setNewService({...newService, basePrice: parseFloat(e.target.value)})}
+              className="border p-2 rounded"
+            />
+          </div>
+          <textarea
+            placeholder="Description du service"
+            value={newService.description}
+            onChange={(e) => setNewService({...newService, description: e.target.value})}
+            className="w-full border p-2 rounded mt-3"
+            rows={3}
+          />
+          <div className="mt-3">
+            <label className="block text-sm font-medium mb-2">Disponible à:</label>
+            <div className="flex gap-4">
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={newService.availableAt.includes('salon')}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setNewService({...newService, availableAt: [...newService.availableAt, 'salon']});
+                    } else {
+                      setNewService({...newService, availableAt: newService.availableAt.filter(a => a !== 'salon')});
+                    }
+                  }}
+                  className="mr-2"
+                />
+                Salon
+              </label>
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={newService.availableAt.includes('domicile')}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setNewService({...newService, availableAt: [...newService.availableAt, 'domicile']});
+                    } else {
+                      setNewService({...newService, availableAt: newService.availableAt.filter(a => a !== 'domicile')});
+                    }
+                  }}
+                  className="mr-2"
+                />
+                Domicile
+              </label>
+            </div>
+          </div>
+          <div className="flex gap-2 mt-3">
+            <button
+              onClick={handleAddService}
+              className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+            >
+              Ajouter
+            </button>
+            <button
+              onClick={() => setIsAdding(false)}
+              className="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700"
+            >
+              Annuler
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+```
+
+## 🔒 SÉCURITÉ ET VALIDATION
+
+### 1. VALIDATION DES DONNÉES
+```javascript
+// Validation côté serveur
+const validateSpecialty = (specialty) => {
+  const errors = [];
+  
+  if (!specialty.name || specialty.name.trim().length < 2) {
+    errors.push('Le nom de la spécialité doit contenir au moins 2 caractères');
+  }
+  
+  if (specialty.expertiseLevel < 1 || specialty.expertiseLevel > 5) {
+    errors.push('Le niveau d\'expertise doit être entre 1 et 5');
+  }
+  
+  if (specialty.yearsExperience < 0) {
+    errors.push('Les années d\'expérience ne peuvent pas être négatives');
+  }
+  
+  return errors;
+};
+```
+
+### 2. GESTION DES PERMISSIONS
+```javascript
+// Middleware de vérification des permissions
+const checkCoiffeurPermission = async (req, res, next) => {
+  try {
+    const coiffeurId = req.params.coiffeurId;
+    const userId = req.user.id;
+    
+    // Vérifier que l'utilisateur est bien le coiffeur concerné
+    if (coiffeurId !== userId) {
+      return res.status(403).json({ message: 'Accès non autorisé' });
+    }
+    
+    next();
+  } catch (error) {
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+};
+```
+
+## 📊 TESTS ET VALIDATION
+
+### 1. TESTS UNITAIRES
+```javascript
+// Tests pour les nouveaux modèles
+describe('Specialty Model', () => {
+  it('should create a valid specialty', async () => {
+    const validSpecialty = {
+      coiffeurId: new mongoose.Types.ObjectId(),
+      name: 'Coupe homme',
+      expertiseLevel: 4,
+      yearsExperience: 5,
+      category: 'coupe'
+    };
+    
+    const specialty = new Specialty(validSpecialty);
+    const savedSpecialty = await specialty.save();
+    
+    expect(savedSpecialty.name).toBe(validSpecialty.name);
+    expect(savedSpecialty.expertiseLevel).toBe(validSpecialty.expertiseLevel);
+  });
+});
+```
+
+### 2. TESTS D'INTÉGRATION
+```javascript
+// Tests pour les nouvelles API
+describe('Specialty API', () => {
+  it('should create a new specialty', async () => {
+    const response = await request(app)
+      .post('/api/specialties/coiffeur/123')
+      .send({
+        name: 'Coloration',
+        expertiseLevel: 5,
+        yearsExperience: 8,
+        category: 'coloration'
+      });
+    
+    expect(response.status).toBe(201);
+    expect(response.body.name).toBe('Coloration');
+  });
+});
+```
+
+## 🚀 DÉPLOIEMENT ET MONITORING
+
+### 1. SCRIPT DE DÉPLOIEMENT
+```bash
+#!/bin/bash
+# deploy-migration.sh
+
+echo "🚀 Début du déploiement de la migration..."
+
+# 1. Sauvegarde de la base de données
+echo "📦 Sauvegarde de la base de données..."
+mongodump --db taphair --out ./backup-$(date +%Y%m%d-%H%M%S)
+
+# 2. Arrêt de l'application
+echo "⏹️ Arrêt de l'application..."
+pm2 stop taphair
+
+# 3. Déploiement du nouveau code
+echo "📤 Déploiement du nouveau code..."
+git pull origin main
+npm install
+
+# 4. Migration des données
+echo "🔄 Migration des données..."
+node back/scripts/migrate-all.js
+
+# 5. Redémarrage de l'application
+echo "▶️ Redémarrage de l'application..."
+pm2 start taphair
+
+# 6. Vérification de la santé
+echo "🏥 Vérification de la santé..."
+sleep 10
+curl -f http://localhost:5000/health || exit 1
+
+echo "✅ Migration déployée avec succès!"
+```
+
+### 2. MONITORING ET ALERTES
+```javascript
+// Monitoring des performances
+const monitorMigration = async () => {
+  const metrics = {
+    responseTime: await measureResponseTime(),
+    errorRate: await calculateErrorRate(),
+    dataIntegrity: await validateDataIntegrity(),
+    userSatisfaction: await getUserSatisfaction()
+  };
+  
+  // Envoyer les métriques
+  await sendMetrics(metrics);
+  
+  // Alerter si nécessaire
+  if (metrics.errorRate > 0.05) { // 5% d'erreurs
+    await sendAlert('Taux d\'erreur élevé détecté');
+  }
+};
+```
+
+## 📝 CHECKLIST DE MIGRATION
+
+### **AVANT LA MIGRATION**
+- [ ] Sauvegarde complète de la base de données
+- [ ] Tests complets en environnement de développement
+- [ ] Validation des scripts de migration
+- [ ] Plan de rollback préparé
+- [ ] Équipe de support disponible
+
+### **PENDANT LA MIGRATION**
+- [ ] Migration des données par petits lots
+- [ ] Validation de l'intégrité des données
+- [ ] Tests des fonctionnalités critiques
+- [ ] Monitoring des performances
+- [ ] Communication aux utilisateurs
+
+### **APRÈS LA MIGRATION**
+- [ ] Validation complète des données
+- [ ] Tests de charge
+- [ ] Vérification des réservations existantes
+- [ ] Formation des utilisateurs
+- [ ] Documentation mise à jour
+
+---
+# FIN DU PLAN DE MIGRATION
+# Prochaine étape: Implémentation des nouveaux modèles

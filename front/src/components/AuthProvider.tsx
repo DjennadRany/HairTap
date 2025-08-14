@@ -81,7 +81,7 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     } else {
       // Utilisateur non connecté
-      const publicRoutes = ['/login', '/register', '/', '/about', '/contact', '/terms', '/privacy'];
+      const publicRoutes = ['/login', '/register', '/', '/about', '/contact', '/terms', '/privacy', '/signin/client', '/signin/coiffeur', '/photo-setup'];
       if (!publicRoutes.includes(currentPath)) {
         navigate('/login');
       }
