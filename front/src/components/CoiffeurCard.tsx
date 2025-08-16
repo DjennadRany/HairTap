@@ -134,8 +134,8 @@ const CoiffeurCard: React.FC<CoiffeurCardProps> = ({
 
   const handleReservation = () => {
     if (selectedImage) {
-      // Rediriger vers la page de réservation
-      navigate(`/booking/${selectedImage.serviceId}`);
+      // Rediriger vers la page du coiffeur avec la modal de réservation ouverte
+      navigate(`/coiffeur/${coiffeur._id}?booking=true&service=${selectedImage.serviceId}`);
       setShowImageModal(false);
     }
   };

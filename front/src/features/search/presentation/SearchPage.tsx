@@ -12,10 +12,15 @@ import { favoriteService } from '@/services/api/favorites';
 import type { User } from '../../../types/models';
 import { Map } from '../../../components/Map';
 import { useGeolocation } from '../../../hooks/useGeolocation';
+import { GalleryHub } from '../../../components/GalleryHub';
+import { FaImages, FaUserTie } from 'react-icons/fa';
+
+type SearchTab = 'gallery' | 'coiffeurs';
 
 export const SearchPage: React.FC = () => {
   const navigate = useNavigate();
   const { location, error: locationError } = useGeolocation();
+  const [activeTab, setActiveTab] = useState<SearchTab>('gallery');
   const [showMap, setShowMap] = useState(false);
   const [loading, setLoading] = useState(false);
   const [selectedResults, setSelectedResults] = useState<User[]>([]);
@@ -28,7 +33,8 @@ export const SearchPage: React.FC = () => {
     priceRange: [0, 200],
     rating: 0,
     city: '',
-    date: ''
+    date: '',
+    specialities: []
   });
 
   const [center, setCenter] = useState<{ latitude: number; longitude: number }>({ latitude: 48.8566, longitude: 2.3522 });
@@ -130,46 +136,65 @@ export const SearchPage: React.FC = () => {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="md:col-span-1">
-          <SearchFilters
-            filters={filters}
-            onFilterChange={setFilters}
-            isLoading={loading}
-          />
+      {/* Onglets de navigation */}
+      <div className="flex justify-center mb-8">
+        <div className="flex space-x-1 bg-gray-100 p-1 rounded-xl">
           <button
-            onClick={handleSearch}
-            disabled={loading}
-            className="w-full mt-4 bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-black disabled:opacity-50"
+            onClick={() => setActiveTab('gallery')}
+            className={`flex items-center space-x-2 px-6 py-3 rounded-lg font-medium transition-all duration-200 ${
+              activeTab === 'gallery'
+                ? 'bg-white text-pink-600 shadow-md'
+                : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+            }`}
           >
-            {loading ? 'Recherche...' : 'Rechercher'}
+            <FaImages className="w-5 h-5" />
+            <span>Galerie des Services</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('coiffeurs')}
+            className={`flex items-center space-x-2 px-6 py-3 rounded-lg font-medium transition-all duration-200 ${
+              activeTab === 'coiffeurs'
+                ? 'bg-white text-pink-600 shadow-md'
+                : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+            }`}
+          >
+            <FaUserTie className="w-5 h-5" />
+            <span>Rechercher des Coiffeurs</span>
           </button>
         </div>
+      </div>
 
-        <div className="md:col-span-3">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold">
-              {results.length} coiffeurs trouvés
-            </h2>
+      {/* Contenu basé sur l'onglet actif */}
+      {activeTab === 'gallery' ? (
+        <GalleryHub />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="md:col-span-1">
+            <SearchFilters
+              filters={filters}
+              onFilterChange={setFilters}
+              isLoading={loading}
+            />
             <button
-              onClick={() => setShowMap(!showMap)}
-              className="text-accent hover:text-accent-dark"
+              onClick={handleSearch}
+              disabled={loading}
+              className="w-full mt-4 bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-black disabled:opacity-50"
             >
-              {showMap ? 'Voir la liste' : 'Voir la carte'}
+              {loading ? 'Recherche...' : 'Rechercher'}
             </button>
           </div>
 
-          {results.length === 0 && !loading && (
-            <div className="text-center text-gray-500">Aucun coiffeur trouvé.</div>
-          )}
+          <div className="md:col-span-3">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-bold">
+                {results.length} coiffeurs trouvés
+              </h2>
+            </div>
 
-          {showMap ? (
-            <Map
-              coiffeurs={selectedResults}
-              userLocation={location || undefined}
-              onCoiffeurClick={handleCoiffeurClick}
-            />
-          ) : (
+            {results.length === 0 && !loading && (
+              <div className="text-center text-gray-500">Aucun coiffeur trouvé.</div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {results.map(coiffeur => (
                 <CoiffeurCard
@@ -182,9 +207,9 @@ export const SearchPage: React.FC = () => {
                 />
               ))}
             </div>
-          )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

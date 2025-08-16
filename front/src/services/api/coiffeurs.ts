@@ -47,11 +47,14 @@ export const coiffeurService = {
     if (query.city) params.append('city', query.city);
     if (query.date) params.append('date', query.date);
 
-    const response = await api.get<User[]>(`/coiffeurs?${params.toString()}`);
+    const response = await api.get<{ success: boolean; data: User[]; count: number }>(`/coiffeurs?${params.toString()}`);
+    
+    // Extraire les données du nouveau format de réponse
+    const coiffeurs = response.data.success ? response.data.data : [];
     
     // Récupérer automatiquement le statut de connexion pour chaque coiffeur
     const coiffeursWithStatus = await Promise.all(
-      response.data.map(async (coiffeur) => {
+      coiffeurs.map(async (coiffeur) => {
         if (coiffeur.role === 'coiffeur') {
           try {
             const connectionResponse = await api.get(`/connections/status/${coiffeur._id}`);

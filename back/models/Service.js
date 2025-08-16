@@ -27,14 +27,72 @@ const serviceSchema = new mongoose.Schema({
     enum: ['coupe', 'coloration', 'brushing', 'lissage', 'permanente', 'barbe', 'soin', 'autre'],
     default: 'autre'
   },
+  // NOUVEAU: Spécialités liées au service
+  specialities: [{
+    specialtyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'GlobalSpecialty',
+      required: true
+    },
+    expertiseLevel: {
+      type: Number,
+      min: 1,
+      max: 5,
+      default: 3
+    }
+  }],
   keywords: {
     type: [String],
     default: []
   },
+  // NOUVEAU: Tags pour la recherche avancée
+  tags: [{
+    type: String,
+    trim: true,
+    maxlength: 50
+  }],
+  // NOUVEAU: Style et tendance
+  style: {
+    type: String,
+    enum: ['classique', 'moderne', 'vintage', 'tendance', 'minimaliste', 'extravagant'],
+    default: 'moderne'
+  },
+  // NOUVEAU: Public cible
+  targetAudience: [{
+    type: String,
+    enum: ['homme', 'femme', 'enfant', 'adolescent', 'senior'],
+    default: 'femme'
+  }],
   examplePhotos: {
     type: [String],
     default: []
   },
+  // NOUVEAU: Photos avec métadonnées
+  gallery: [{
+    photoUrl: {
+      type: String,
+      required: true
+    },
+    caption: String,
+    tags: [String],
+    isBeforeAfter: {
+      type: Boolean,
+      default: false
+    },
+    beforeAfterType: {
+      type: String,
+      enum: ['before', 'after', 'both'],
+      default: 'both'
+    },
+    likes: {
+      type: Number,
+      default: 0
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
   likes: {
     type: Number,
     default: 0,
@@ -45,6 +103,25 @@ const serviceSchema = new mongoose.Schema({
     ref: 'User',
     default: []
   },
+  // NOUVEAU: Métriques d'engagement
+  views: {
+    type: Number,
+    default: 0
+  },
+  shares: {
+    type: Number,
+    default: 0
+  },
+  // NOUVEAU: Disponibilité et créneaux
+  availability: {
+    type: String,
+    enum: ['immédiat', 'planifié', 'sur_demande'],
+    default: 'immédiat'
+  },
+  estimatedWaitTime: {
+    type: Number, // en jours
+    default: 0
+  },
   coiffeur: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -53,6 +130,16 @@ const serviceSchema = new mongoose.Schema({
   isActive: {
     type: Boolean,
     default: true
+  },
+  // NOUVEAU: Statut de vérification
+  isVerified: {
+    type: Boolean,
+    default: false
+  },
+  // NOUVEAU: Score de popularité calculé
+  popularityScore: {
+    type: Number,
+    default: 0
   },
   createdAt: {
     type: Date,
@@ -72,6 +159,20 @@ serviceSchema.index({ 'category': 1 });
 serviceSchema.index({ 'isActive': 1 });
 serviceSchema.index({ 'keywords': 1 });
 serviceSchema.index({ 'likes': -1 });
+// NOUVEAUX INDEX
+serviceSchema.index({ 'specialities.specialtyId': 1 });
+serviceSchema.index({ 'style': 1 });
+serviceSchema.index({ 'targetAudience': 1 });
+serviceSchema.index({ 'popularityScore': -1 });
+serviceSchema.index({ 'isVerified': 1 });
+serviceSchema.index({ 'tags': 1 });
+// Index de recherche textuelle
+serviceSchema.index({ 
+  name: 'text', 
+  description: 'text', 
+  keywords: 'text', 
+  tags: 'text' 
+});
 
 // Méthode pour désactiver un service
 serviceSchema.methods.deactivate = async function() {
@@ -87,7 +188,12 @@ serviceSchema.methods.activate = async function() {
 
 // Méthode pour mettre à jour les détails d'un service
 serviceSchema.methods.updateDetails = async function(details) {
-  const allowedUpdates = ['name', 'description', 'price', 'duration', 'category', 'keywords', 'examplePhotos'];
+  const allowedUpdates = [
+    'name', 'description', 'price', 'duration', 'category', 
+    'keywords', 'examplePhotos', 'specialities', 'tags', 
+    'style', 'targetAudience', 'gallery', 'availability', 
+    'estimatedWaitTime'
+  ];
   Object.keys(details).forEach(key => {
     if (allowedUpdates.includes(key)) {
       this[key] = details[key];
@@ -96,62 +202,187 @@ serviceSchema.methods.updateDetails = async function(details) {
   await this.save();
 };
 
-// Méthode pour ajouter un like
-serviceSchema.methods.addLike = async function(userId) {
-  const userIdStr = userId.toString();
+// NOUVELLE MÉTHODE: Ajouter une spécialité
+serviceSchema.methods.addSpecialty = async function(specialtyId, expertiseLevel = 3) {
+  const existingIndex = this.specialities.findIndex(s => 
+    s.specialtyId.toString() === specialtyId.toString()
+  );
   
-  // Vérifier si l'utilisateur a déjà liké
-  const alreadyLiked = this.likedBy.some(id => id.toString() === userIdStr);
-  
-  if (!alreadyLiked) {
-    this.likes += 1;
-    this.likedBy.push(userId);
-    await this.save();
-    console.log(`✅ Like ajouté pour l'utilisateur ${userIdStr} - Total: ${this.likes}`);
+  if (existingIndex >= 0) {
+    this.specialities[existingIndex].expertiseLevel = expertiseLevel;
   } else {
-    console.log(`⚠️ L'utilisateur ${userIdStr} a déjà liké ce service`);
+    this.specialities.push({ specialtyId, expertiseLevel });
   }
   
-  return this.likes;
+  await this.save();
+  return this;
+};
+
+// NOUVELLE MÉTHODE: Supprimer une spécialité
+serviceSchema.methods.removeSpecialty = async function(specialtyId) {
+  this.specialities = this.specialities.filter(s => 
+    s.specialtyId.toString() !== specialtyId.toString()
+  );
+  await this.save();
+  return this;
+};
+
+// NOUVELLE MÉTHODE: Ajouter une photo à la galerie
+serviceSchema.methods.addGalleryPhoto = async function(photoData) {
+  this.gallery.push(photoData);
+  await this.save();
+  return this;
+};
+
+// NOUVELLE MÉTHODE: Calculer le score de popularité
+serviceSchema.methods.calculatePopularityScore = async function() {
+  const baseScore = this.likes * 10 + this.views * 0.1 + this.shares * 5;
+  const timeBonus = Math.max(0, (Date.now() - this.createdAt.getTime()) / (1000 * 60 * 60 * 24 * 7)); // Bonus hebdomadaire
+  const verificationBonus = this.isVerified ? 100 : 0;
+  
+  this.popularityScore = Math.round(baseScore + timeBonus + verificationBonus);
+  await this.save();
+  return this.popularityScore;
+};
+
+// Méthode pour ajouter un like
+serviceSchema.methods.addLike = async function(userId) {
+  if (!this.likedBy.includes(userId)) {
+    this.likedBy.push(userId);
+    this.likes += 1;
+    await this.save();
+    // Recalculer le score de popularité
+    await this.calculatePopularityScore();
+  }
+  return this;
 };
 
 // Méthode pour retirer un like
 serviceSchema.methods.removeLike = async function(userId) {
-  const userIdStr = userId.toString();
-  
-  // Vérifier si l'utilisateur a liké
-  const hasLiked = this.likedBy.some(id => id.toString() === userIdStr);
-  
-  if (hasLiked) {
+  const index = this.likedBy.indexOf(userId);
+  if (index > -1) {
+    this.likedBy.splice(index, 1);
     this.likes = Math.max(0, this.likes - 1);
-    this.likedBy = this.likedBy.filter(id => id.toString() !== userIdStr);
     await this.save();
-    console.log(`✅ Like retiré pour l'utilisateur ${userIdStr} - Total: ${this.likes}`);
-  } else {
-    console.log(`⚠️ L'utilisateur ${userIdStr} n'avait pas liké ce service`);
+    // Recalculer le score de popularité
+    await this.calculatePopularityScore();
+  }
+  return this;
+};
+
+// NOUVELLE MÉTHODE: Incrémenter les vues
+serviceSchema.methods.incrementViews = async function() {
+  this.views += 1;
+  await this.save();
+  return this;
+};
+
+// NOUVELLE MÉTHODE: Incrémenter les partages
+serviceSchema.methods.incrementShares = async function() {
+  this.shares += 1;
+  await this.save();
+  return this;
+};
+
+// MÉTHODES STATIQUES POUR LA RECHERCHE AVANCÉE
+serviceSchema.statics.searchBySpecialties = async function(specialtyIds, options = {}) {
+  const { limit = 20, sortBy = 'popularityScore', category, style, targetAudience } = options;
+  
+  let query = {
+    isActive: true,
+    'specialities.specialtyId': { $in: specialtyIds }
+  };
+  
+  if (category) query.category = category;
+  if (style) query.style = style;
+  if (targetAudience) query.targetAudience = { $in: [targetAudience] };
+  
+  let sortOptions = {};
+  if (sortBy === 'popularityScore') {
+    sortOptions = { popularityScore: -1, likes: -1, createdAt: -1 };
+  } else if (sortBy === 'likes') {
+    sortOptions = { likes: -1, popularityScore: -1 };
+  } else if (sortBy === 'recent') {
+    sortOptions = { createdAt: -1 };
   }
   
-  return this.likes;
+  return await this.find(query)
+    .populate('coiffeur', 'name photo rating city')
+    .populate('specialities.specialtyId', 'name category')
+    .sort(sortOptions)
+    .limit(limit);
 };
 
-// Méthode pour vérifier si un utilisateur a liké
-serviceSchema.methods.isLikedBy = function(userId) {
-  return this.likedBy.some(id => id.toString() === userId.toString());
+serviceSchema.statics.getTrendingServices = async function(category = null, limit = 20) {
+  let query = { isActive: true, popularityScore: { $gt: 0 } };
+  if (category) query.category = category;
+  
+  return await this.find(query)
+    .populate('coiffeur', 'name photo rating city')
+    .populate('specialities.specialtyId', 'name category')
+    .sort({ popularityScore: -1, createdAt: -1 })
+    .limit(limit);
 };
 
-// Méthode pour synchroniser les likes avec likedBy
-serviceSchema.methods.syncLikes = async function() {
-  this.likes = this.likedBy ? this.likedBy.length : 0;
-  await this.save();
-  return this.likes;
+serviceSchema.statics.searchByKeywords = async function(keywords, options = {}) {
+  const { limit = 20, category, style } = options;
+  
+  let query = {
+    isActive: true,
+    $or: [
+      { keywords: { $in: keywords } },
+      { tags: { $in: keywords } },
+      { name: { $regex: keywords.join('|'), $i: true } },
+      { description: { $regex: keywords.join('|'), $i: true } }
+    ]
+  };
+  
+  if (category) query.category = category;
+  if (style) query.style = style;
+  
+  return await this.find(query)
+    .populate('coiffeur', 'name photo rating city')
+    .populate('specialities.specialtyId', 'name category')
+    .sort({ popularityScore: -1, likes: -1 })
+    .limit(limit);
 };
 
-// Middleware pour mettre à jour le champ updatedAt
+// Validation personnalisée
 serviceSchema.pre('save', function(next) {
   this.updatedAt = Date.now();
+  
+  // Mettre à jour les mots-clés automatiquement basés sur les spécialités
+  if (this.specialities && this.specialities.length > 0) {
+    // Les mots-clés seront mis à jour après population des spécialités
+  }
+  
   next();
 });
 
-const Service = mongoose.model('Service', serviceSchema);
+// Middleware post-save pour mettre à jour les mots-clés
+serviceSchema.post('save', async function(doc) {
+  if (doc.specialities && doc.specialities.length > 0) {
+    try {
+      // Populate les spécialités pour récupérer les noms
+      await doc.populate('specialities.specialtyId', 'name aliases');
+      
+      // Mettre à jour les mots-clés basés sur les spécialités
+      const specialtyKeywords = doc.specialities.flatMap(s => 
+        [s.specialtyId.name, ...(s.specialtyId.aliases || [])]
+      );
+      
+      // Ajouter les mots-clés existants et les nouveaux
+      const allKeywords = [...new Set([...doc.keywords, ...specialtyKeywords])];
+      
+      if (JSON.stringify(doc.keywords) !== JSON.stringify(allKeywords)) {
+        doc.keywords = allKeywords;
+        await doc.save();
+      }
+    } catch (error) {
+      console.error('Erreur mise à jour mots-clés:', error);
+    }
+  }
+});
 
+const Service = mongoose.model('Service', serviceSchema);
 export default Service; 

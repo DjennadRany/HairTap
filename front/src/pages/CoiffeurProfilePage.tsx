@@ -45,6 +45,10 @@ const CoiffeurProfilePage = () => {
   const urlParams = new URLSearchParams(location.search);
   const tabParam = urlParams.get('tab') as 'gallery' | 'reviews' | 'services' | 'products';
   const defaultTab = tabParam || 'services'; // Par défaut, afficher les services
+  
+  // Gérer l'ouverture automatique de la modal de réservation
+  const shouldOpenBooking = urlParams.get('booking') === 'true';
+  const serviceIdFromUrl = urlParams.get('service');
 
   const [coiffeur, setCoiffeur] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -155,6 +159,31 @@ const CoiffeurProfilePage = () => {
       }
     }
   }, [tabParam]);
+
+  // Gérer l'ouverture automatique de la modal de réservation
+  useEffect(() => {
+    if (shouldOpenBooking && serviceIdFromUrl && coiffeur) {
+      // Récupérer le service correspondant
+      const fetchServiceAndOpenModal = async () => {
+        try {
+          const { coiffeurService } = await import('../services/api/coiffeurs');
+          const services = await coiffeurService.getCoiffeurServices(coiffeur._id);
+          const service = services.find(s => s._id === serviceIdFromUrl);
+          
+          if (service) {
+            setSelectedService(service);
+            setShowBookingModal(true);
+            // Nettoyer l'URL pour éviter la réouverture automatique
+            navigate(`/coiffeur/${coiffeur._id}`, { replace: true });
+          }
+        } catch (error) {
+          console.error('Erreur lors de la récupération du service:', error);
+        }
+      };
+      
+      fetchServiceAndOpenModal();
+    }
+  }, [shouldOpenBooking, serviceIdFromUrl, coiffeur, navigate]);
 
   const handleServiceBook = (service: any) => {
     console.log('🔍 handleServiceBook appelé avec:', service);

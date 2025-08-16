@@ -28,6 +28,7 @@ import connectionRoutes from './routes/connections.js';
 import specialtyRoutes from './routes/specialties.js';
 import workingSlotRoutes from './routes/working-slots.js';
 import pricingRoutes from './routes/pricing.js';
+import globalSpecialtyRoutes from './routes/globalSpecialties.js';
 // imageRoutes removed - simplified photo system
 
 const envPath = path.resolve(process.cwd(), '.env');
@@ -116,6 +117,7 @@ app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/connections', connectionRoutes);
 app.use('/api/specialties', specialtyRoutes);
+app.use('/api/global-specialties', globalSpecialtyRoutes);
 app.use('/api/working-slots', workingSlotRoutes);
 app.use('/api/pricing', pricingRoutes);
 // app.use('/api/images', imageRoutes); // Removed - simplified photo system

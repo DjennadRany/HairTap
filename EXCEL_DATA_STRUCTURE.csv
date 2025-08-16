@@ -1,0 +1,129 @@
+Collection,Field,Type,Required,Description,Example,Status
+users,_id,ObjectId,TRUE,Identifiant unique de l'utilisateur,507f1f77bcf86cd799439011,EXISTING
+users,name,String,TRUE,Nom complet de l'utilisateur,"Marie Dubois",EXISTING
+users,email,String,TRUE,Email unique de l'utilisateur,marie.dubois@taphair.com,EXISTING
+users,password,String,TRUE,Mot de passe hashé,hashedPassword123,EXISTING
+users,role,String,TRUE,Rôle de l'utilisateur,"user|coiffeur|admin",EXISTING
+users,photo,String,FALSE,URL de la photo de profil,/uploads/profile.jpg,EXISTING
+users,bio,String,FALSE,Biographie de l'utilisateur,"Coiffeuse professionnelle avec 8 ans d'expérience",EXISTING
+users,phone,String,FALSE,Numéro de téléphone,+33123456789,EXISTING
+users,address.street,String,FALSE,Rue de l'adresse principale,15 Rue de la Paix,EXISTING
+users,address.city,String,FALSE,Ville de l'adresse principale,Paris,EXISTING
+users,address.postalCode,String,FALSE,Code postal,75001,EXISTING
+users,address.coordinates.lat,Number,FALSE,Latitude GPS,48.8566,EXISTING
+users,address.coordinates.lng,Number,FALSE,Longitude GPS,2.3522,EXISTING
+users,addresses.home.street,String,FALSE,Rue de l'adresse domicile,10 Avenue des Champs,EXISTING
+users,addresses.home.city,String,FALSE,Ville de l'adresse domicile,Paris,EXISTING
+users,addresses.home.coordinates.lat,Number,FALSE,Latitude domicile,48.8566,EXISTING
+users,addresses.home.coordinates.lng,Number,FALSE,Longitude domicile,2.3522,EXISTING
+users,addresses.salon.street,String,FALSE,Rue de l'adresse salon,25 Boulevard Saint-Germain,EXISTING
+users,addresses.salon.city,String,FALSE,Ville de l'adresse salon,Paris,EXISTING
+users,addresses.salon.coordinates.lat,Number,FALSE,Latitude salon,48.8566,EXISTING
+users,addresses.salon.coordinates.lng,Number,FALSE,Longitude salon,2.3522,EXISTING
+users,siren,String,FALSE,Numéro SIREN du coiffeur,123456789,EXISTING
+users,sirenStatus,String,FALSE,Statut de vérification SIREN,"pending|verified|none",EXISTING
+users,experience,Number,FALSE,Années d'expérience,8,EXISTING
+users,formation,String,FALSE,Formation professionnelle,"CAP Coiffure, BP",EXISTING
+users,specialities,[String],FALSE,Spécialités actuelles (à migrer),["Coupe moderne","Coloration"],TO_MIGRATE
+users,specialties,[Object],FALSE,Nouvelles spécialités structurées,[{specialtyId: ObjectId, expertiseLevel: 3}],NEW
+users,rating,Number,FALSE,Note moyenne du coiffeur,4.5,EXISTING
+users,totalRatings,Number,FALSE,Nombre total d'avis,25,EXISTING
+users,workingMode,[String],FALSE,Mode de travail,"[salon,domicile]",EXISTING
+users,travelRadius,Number,FALSE,Rayon de déplacement en km,15,EXISTING
+users,gallery,[Object],FALSE,Galerie de photos,[{url: String, description: String}],EXISTING
+users,likes,Number,FALSE,Nombre de likes reçus,150,EXISTING
+users,favorites,[ObjectId],FALSE,Coiffeurs favoris,[ObjectId],EXISTING
+users,createdAt,Date,TRUE,Date de création,2025-01-20T10:00:00Z,EXISTING
+users,updatedAt,Date,TRUE,Date de mise à jour,2025-01-20T15:30:00Z,EXISTING
+specialties,_id,ObjectId,TRUE,Identifiant unique de la spécialité,507f1f77bcf86cd799439012,NEW
+specialties,name,String,TRUE,Nom de la spécialité,Coupe moderne,NEW
+specialties,category,String,TRUE,Catégorie de la spécialité,"coupe|coloration|soin|extension|autre",NEW
+specialties,aliases,[String],FALSE,Alias et synonymes,["coupe","coiffure moderne"],NEW
+specialties,description,String,FALSE,Description détaillée,"Coupe de cheveux moderne et tendance",NEW
+specialties,isActive,Boolean,TRUE,Spécialité active,true,NEW
+specialties,usageCount,Number,TRUE,Nombre d'utilisations,45,NEW
+specialties,createdAt,Date,TRUE,Date de création,2025-01-20T10:00:00Z,NEW
+specialties,updatedAt,Date,TRUE,Date de mise à jour,2025-01-20T15:30:00Z,NEW
+services,_id,ObjectId,TRUE,Identifiant unique du service,507f1f77bcf86cd799439013,EXISTING
+services,name,String,TRUE,Nom du service,Coupe homme,NEW
+services,description,String,TRUE,Description du service,Coupe de cheveux pour homme,EXISTING
+services,price,Number,TRUE,Prix du service en euros,35,EXISTING
+services,duration,Number,TRUE,Durée en minutes,45,EXISTING
+services,category,String,TRUE,Catégorie du service,"coupe|coloration|brushing|lissage|permanente|barbe|soin|autre",EXISTING
+services,keywords,[String],FALSE,Mots-clés pour la recherche,["coupe","homme","moderne"],EXISTING
+services,examplePhotos,[String],FALSE,Photos d'exemple du service,["/uploads/service1.jpg"],EXISTING
+services,likes,Number,FALSE,Nombre de likes,25,EXISTING
+services,likedBy,[ObjectId],FALSE,Utilisateurs qui ont liké,[ObjectId],EXISTING
+services,coiffeur,ObjectId,TRUE,Référence vers le coiffeur,ObjectId,EXISTING
+services,isActive,Boolean,TRUE,Service actif,true,EXISTING
+services,createdAt,Date,TRUE,Date de création,2025-01-20T10:00:00Z,EXISTING
+services,updatedAt,Date,TRUE,Date de mise à jour,2025-01-20T15:30:00Z,EXISTING
+bookings,_id,ObjectId,TRUE,Identifiant unique de la réservation,507f1f77bcf86cd799439014,EXISTING
+bookings,client,ObjectId,TRUE,Référence vers le client,ObjectId,EXISTING
+bookings,coiffeur,ObjectId,TRUE,Référence vers le coiffeur,ObjectId,EXISTING
+bookings,service,ObjectId,TRUE,Référence vers le service,ObjectId,EXISTING
+bookings,date,Date,TRUE,Date et heure de la réservation,2025-01-25T14:00:00Z,EXISTING
+bookings,status,String,TRUE,Statut de la réservation,"pending|confirmed|cancelled|completed",EXISTING
+bookings,address,Object,TRUE,Adresse de la prestation,{street: "15 Rue de la Paix", city: "Paris"},EXISTING
+bookings,price,Number,TRUE,Prix final de la prestation,45,EXISTING
+bookings,paymentStatus,String,TRUE,Statut du paiement,"pending|paid|refunded",EXISTING
+bookings,createdAt,Date,TRUE,Date de création,2025-01-20T10:00:00Z,EXISTING
+bookings,updatedAt,Date,TRUE,Date de mise à jour,2025-01-20T15:30:00Z,EXISTING
+workingSlots,_id,ObjectId,TRUE,Identifiant unique du créneau,507f1f77bcf86cd799439015,NEW
+workingSlots,coiffeurId,ObjectId,TRUE,Référence vers le coiffeur,ObjectId,NEW
+workingSlots,dayOfWeek,Number,TRUE,Jour de la semaine (0-6),1,NEW
+workingSlots,startTime,Number,TRUE,Heure de début (0-23),9,NEW
+workingSlots,endTime,Number,TRUE,Heure de fin (0-23),18,NEW
+workingSlots,serviceTypes,[String],FALSE,Types de services possibles,["coupe","coloration"],NEW
+workingSlots,availableAt,String,TRUE,Disponibilité,"salon|domicile|both",NEW
+workingSlots,status,String,TRUE,Statut du créneau,"available|booked|maintenance|unavailable",NEW
+workingSlots,maxBookings,Number,TRUE,Nombre maximum de réservations,3,NEW
+workingSlots,currentBookings,Number,TRUE,Nombre actuel de réservations,1,NEW
+workingSlots,isRecurring,Boolean,TRUE,Créneau récurrent,true,NEW
+workingSlots,createdAt,Date,TRUE,Date de création,2025-01-20T10:00:00Z,NEW
+workingSlots,updatedAt,Date,TRUE,Date de mise à jour,2025-01-20T15:30:00Z,NEW
+pricing,_id,ObjectId,TRUE,Identifiant unique du tarif,507f1f77bcf86cd799439016,NEW
+pricing,serviceId,ObjectId,TRUE,Référence vers le service,ObjectId,NEW
+pricing,basePrice,Number,TRUE,Prix de base,35,NEW
+pricing,timeSlotMultiplier.morning,Number,TRUE,Multiplicateur matin (8h-12h),1.0,NEW
+pricing,timeSlotMultiplier.afternoon,Number,TRUE,Multiplicateur après-midi (12h-18h),1.0,NEW
+pricing,timeSlotMultiplier.evening,Number,TRUE,Multiplicateur soir (18h-22h),1.2,NEW
+pricing,timeSlotMultiplier.weekend,Number,TRUE,Multiplicateur weekend,1.3,NEW
+pricing,locationMultiplier.salon,Number,TRUE,Multiplicateur salon,1.0,NEW
+pricing,locationMultiplier.domicile,Number,TRUE,Multiplicateur domicile,1.5,NEW
+pricing,specialOffers,[Object],FALSE,Offres spéciales,[{name: "Pack fidélité", discount: 10}],NEW
+pricing,createdAt,Date,TRUE,Date de création,2025-01-20T10:00:00Z,NEW
+pricing,updatedAt,Date,TRUE,Date de mise à jour,2025-01-20T15:30:00Z,NEW
+salons,_id,ObjectId,TRUE,Identifiant unique du salon,507f1f77bcf86cd799439017,NEW
+salons,name,String,TRUE,Nom du salon,Salon de Beauté Marie,NEW
+salons,owner,ObjectId,TRUE,Référence vers le propriétaire,ObjectId,NEW
+salons,coiffeurs,[Object],FALSE,Coiffeurs du salon,[{coiffeurId: ObjectId, role: "employee"}],NEW
+salons,availableSpots,[Object],FALSE,Places disponibles,[{type: "station", price: 50}],NEW
+salons,location.address.street,String,TRUE,Rue du salon,25 Boulevard Saint-Germain,NEW
+salons,location.address.city,String,TRUE,Ville du salon,Paris,NEW
+salons,location.coordinates.lat,Number,TRUE,Latitude du salon,48.8566,NEW
+salons,location.coordinates.lng,Number,TRUE,Longitude du salon,2.3522,NEW
+salons,services,[String],FALSE,Services proposés,["coupe","coloration","soin"],NEW
+salons,rating,Number,TRUE,Note moyenne du salon,4.3,NEW
+salons,totalRatings,Number,TRUE,Nombre total d'avis,120,NEW
+salons,createdAt,Date,TRUE,Date de création,2025-01-20T10:00:00Z,NEW
+salons,updatedAt,Date,TRUE,Date de mise à jour,2025-01-20T15:30:00Z,NEW
+reviews,_id,ObjectId,TRUE,Identifiant unique de l'avis,507f1f77bcf86cd799439018,EXISTING
+reviews,client,ObjectId,TRUE,Référence vers le client,ObjectId,EXISTING
+reviews,coiffeur,ObjectId,TRUE,Référence vers le coiffeur,ObjectId,EXISTING
+reviews,service,ObjectId,FALSE,Référence vers le service,ObjectId,EXISTING
+reviews,rating,Number,TRUE,Note de 1 à 5,5,EXISTING
+reviews,comment,String,FALSE,Commentaire de l'avis,"Excellent service, très professionnel",EXISTING
+reviews,photos,[String],FALSE,Photos du résultat,["/uploads/review1.jpg"],EXISTING
+reviews,createdAt,Date,TRUE,Date de création,2025-01-20T10:00:00Z,EXISTING
+reviews,updatedAt,Date,TRUE,Date de mise à jour,2025-01-20T15:30:00Z,EXISTING
+conversations,_id,ObjectId,TRUE,Identifiant unique de la conversation,507f1f77bcf86cd799439019,EXISTING
+conversations,participants,[ObjectId],TRUE,Participants de la conversation,[ObjectId, ObjectId],EXISTING
+conversations,lastMessage,ObjectId,FALSE,Dernier message de la conversation,ObjectId,EXISTING
+conversations,createdAt,Date,TRUE,Date de création,2025-01-20T10:00:00Z,EXISTING
+conversations,updatedAt,Date,TRUE,Date de mise à jour,2025-01-20T15:30:00Z,EXISTING
+messages,_id,ObjectId,TRUE,Identifiant unique du message,507f1f77bcf86cd799439020,EXISTING
+messages,conversation,ObjectId,TRUE,Référence vers la conversation,ObjectId,EXISTING
+messages,sender,ObjectId,TRUE,Référence vers l'expéditeur,ObjectId,EXISTING
+messages,content,String,TRUE,Contenu du message,Bonjour, je souhaite prendre rendez-vous,EXISTING
+messages,createdAt,Date,TRUE,Date de création,2025-01-20T10:00:00Z,EXISTING

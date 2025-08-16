@@ -156,7 +156,11 @@ router.get('/', async (req, res) => {
         query._id = { $in: servicesWithName };
       } else {
         // Si aucun service trouvé, retourner un tableau vide
-        return res.json([]);
+        return res.json({
+          success: true,
+          data: [],
+          count: 0
+        });
       }
     }
     
@@ -169,12 +173,21 @@ router.get('/', async (req, res) => {
     }
 
     const coiffeurs = await User.find(query)
-      .select('-password');
+      .select('-password')
+      .sort({ rating: -1, totalRatings: -1 }); // Trier par note et nombre d'avis
 
-    res.json(coiffeurs);
+    // Format de réponse cohérent
+    res.json({
+      success: true,
+      data: coiffeurs,
+      count: coiffeurs.length
+    });
   } catch (error) {
     console.error('Get coiffeurs error:', error);
-    res.status(500).json({ message: 'Erreur lors de la récupération des coiffeurs' });
+    res.status(500).json({ 
+      success: false,
+      message: 'Erreur lors de la récupération des coiffeurs' 
+    });
   }
 });
 

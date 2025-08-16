@@ -23,10 +23,39 @@ const upload = multer({
 // GET /api/services - Récupérer tous les services
 router.get('/', async (req, res) => {
   try {
-    const services = await Service.find({ isActive: true });
-    res.json(services);
+    const { populate } = req.query;
+    
+    let query = Service.find({ isActive: true });
+    
+    // Gérer la population des relations si demandée
+    if (populate) {
+      const populateFields = populate.split(',');
+      populateFields.forEach(field => {
+        if (field === 'coiffeur') {
+          query = query.populate('coiffeur', 'name rating address photo bio');
+        } else if (field === 'specialities.specialtyId') {
+          query = query.populate({
+            path: 'specialities.specialtyId',
+            select: 'name category'
+          });
+        }
+      });
+    }
+    
+    const services = await query.exec();
+    
+    // Format de réponse cohérent avec le frontend
+    res.json({
+      success: true,
+      data: services,
+      count: services.length
+    });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Erreur lors de la récupération des services:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: error.message 
+    });
   }
 });
 
