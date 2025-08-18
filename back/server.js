@@ -29,6 +29,7 @@ import specialtyRoutes from './routes/specialties.js';
 import workingSlotRoutes from './routes/working-slots.js';
 import pricingRoutes from './routes/pricing.js';
 import globalSpecialtyRoutes from './routes/globalSpecialties.js';
+import adminRoutes from './routes/admin.js'; // ✅ AJOUT ROUTES ADMIN
 // imageRoutes removed - simplified photo system
 
 const envPath = path.resolve(process.cwd(), '.env');
@@ -120,6 +121,7 @@ app.use('/api/specialties', specialtyRoutes);
 app.use('/api/global-specialties', globalSpecialtyRoutes);
 app.use('/api/working-slots', workingSlotRoutes);
 app.use('/api/pricing', pricingRoutes);
+app.use('/api/admin', adminRoutes); // ✅ MONTAGE ROUTES ADMIN
 // app.use('/api/images', imageRoutes); // Removed - simplified photo system
 
 // Configuration pour servir les fichiers statiques avec CORS

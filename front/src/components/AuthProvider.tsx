@@ -35,12 +35,27 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         try {
           const response = await authService.verifyToken();
           
+          // ✅ CORRECTION : GESTION CORRECTE DU RÔLE ADMIN
+          let userRole: 'client' | 'coiffeur' | 'admin';
+          
+          // Transformer 'user' en 'client' mais garder 'admin' et 'coiffeur'
+          if (response.user.role === 'user') {
+            userRole = 'client';
+          } else if (response.user.role === 'admin') {
+            userRole = 'admin';
+          } else if (response.user.role === 'coiffeur') {
+            userRole = 'coiffeur';
+          } else {
+            // Fallback par défaut
+            userRole = 'client';
+          }
+          
           // Mettre à jour le store avec les données du serveur
           dispatch(setUser({
             _id: response.user._id,
             email: response.user.email,
             name: response.user.name,
-            role: response.user.role === 'user' ? 'client' : 'coiffeur',
+            role: userRole, // ✅ RÔLE ADMIN PRÉSERVÉ
             photo: response.user.photo
           }));
           
@@ -72,10 +87,12 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (isAuthenticated && user) {
       // Utilisateur connecté
       if (currentPath === '/login' || currentPath === '/register' || currentPath === '/') {
-        // Rediriger vers le dashboard approprié
-        if (user.role === 'coiffeur') {
+        // ✅ CORRECTION : REDIRECTION SPÉCIFIQUE POUR ADMIN
+        if (user.role === 'admin') {
+          navigate('/admin');
+        } else if (user.role === 'coiffeur') {
           navigate('/coiffeur/dashboard');
-        } else {
+        } else if (user.role === 'client') {
           navigate('/client/dashboard');
         }
       }
