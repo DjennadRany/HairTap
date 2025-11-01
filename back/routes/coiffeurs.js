@@ -364,28 +364,53 @@ router.delete('/:coiffeurId/services/:serviceId', auth, async (req, res) => {
 // Toggle like sur un service - UTILISE LES MÉTHODES DU MODÈLE
 router.post('/:coiffeurId/services/:serviceId/like', auth, async (req, res) => {
   try {
+    console.log('🔍 [Coiffeurs API] Like request:', {
+      coiffeurId: req.params.coiffeurId,
+      serviceId: req.params.serviceId,
+      userId: req.user?.id,
+      user: req.user
+    });
+
     const { coiffeurId, serviceId } = req.params;
-    const userId = req.user._id;
+    const userId = req.user.id;
+    
+    if (!userId) {
+      console.error('❌ User ID not found in request');
+      return res.status(401).json({ message: 'Utilisateur non authentifié' });
+    }
     
     const service = await Service.findById(serviceId);
     if (!service) {
+      console.error('❌ Service not found:', serviceId);
       return res.status(404).json({ message: 'Service introuvable' });
     }
 
     if (service.coiffeur.toString() !== coiffeurId) {
+      console.error('❌ Service coiffeur mismatch:', {
+        serviceCoiffeur: service.coiffeur.toString(),
+        requestedCoiffeur: coiffeurId
+      });
       return res.status(400).json({ message: 'Service ne correspond pas au coiffeur' });
     }
 
     // Utiliser les méthodes du modèle
     const userLiked = service.isLikedBy(userId);
+    console.log('💖 [Coiffeurs API] User liked status:', userLiked);
     
     if (userLiked) {
       // Unlike - Utilise la méthode du modèle
+      console.log('👎 [Coiffeurs API] Removing like...');
       await service.removeLike(userId);
     } else {
       // Like - Utilise la méthode du modèle
+      console.log('👍 [Coiffeurs API] Adding like...');
       await service.addLike(userId);
     }
+
+    console.log('✅ [Coiffeurs API] Like operation completed:', {
+      newLikes: service.likes,
+      newIsLiked: !userLiked
+    });
 
     // Réponse standardisée
     res.json({
@@ -397,7 +422,7 @@ router.post('/:coiffeurId/services/:serviceId/like', auth, async (req, res) => {
       message: userLiked ? 'Like retiré' : 'Service liké'
     });
   } catch (error) {
-    console.error('Toggle service like error:', error);
+    console.error('❌ [Coiffeurs API] Toggle service like error:', error);
     res.status(500).json({ 
       success: false,
       message: 'Erreur lors du like/unlike' 

@@ -30,6 +30,10 @@ import workingSlotRoutes from './routes/working-slots.js';
 import pricingRoutes from './routes/pricing.js';
 import globalSpecialtyRoutes from './routes/globalSpecialties.js';
 import adminRoutes from './routes/admin.js'; // ✅ AJOUT ROUTES ADMIN
+import timeChangeRequestRoutes from './routes/time-change-requests.js'; // ✅ NOUVELLES ROUTES
+import notificationRoutes from './routes/notifications.js'; // ✅ NOUVELLES ROUTES NOTIFICATIONS
+import commentRoutes from './routes/comments.js'; // ✅ ROUTES COMMENTAIRES
+import paymentRoutes from './routes/payments.js'; // ✅ ROUTES PAIEMENTS STRIPE
 // imageRoutes removed - simplified photo system
 
 const envPath = path.resolve(process.cwd(), '.env');
@@ -122,6 +126,10 @@ app.use('/api/global-specialties', globalSpecialtyRoutes);
 app.use('/api/working-slots', workingSlotRoutes);
 app.use('/api/pricing', pricingRoutes);
 app.use('/api/admin', adminRoutes); // ✅ MONTAGE ROUTES ADMIN
+app.use('/api/time-change-requests', timeChangeRequestRoutes); // ✅ MONTAGE ROUTES TIME CHANGE REQUESTS
+app.use('/api/notifications', notificationRoutes); // ✅ MONTAGE ROUTES NOTIFICATIONS
+app.use('/api/comments', commentRoutes); // ✅ MONTAGE ROUTES COMMENTAIRES
+app.use('/api/payments', paymentRoutes); // ✅ MONTAGE ROUTES PAIEMENTS STRIPE
 // app.use('/api/images', imageRoutes); // Removed - simplified photo system
 
 // Configuration pour servir les fichiers statiques avec CORS

@@ -10,12 +10,13 @@ const router = express.Router();
 const storage = multer.memoryStorage();
 const upload = multer({
   storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB max
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB max pour les vidéos
   fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) {
+    // Autoriser les images et les vidéos
+    if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) {
       cb(null, true);
     } else {
-      cb(new Error('Seuls les fichiers image sont autorisés'), false);
+      cb(new Error('Seuls les fichiers image et vidéo sont autorisés'), false);
     }
   }
 });
@@ -121,8 +122,8 @@ router.delete('/:id', auth, async (req, res) => {
   }
 });
 
-// Upload de photo de service - SIMPLIFIÉ
-router.post('/:id/photo', auth, upload.single('photo'), async (req, res) => {
+// Upload de média (photo ou vidéo) de service
+router.post('/:id/media', auth, upload.single('media'), async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -139,8 +140,13 @@ router.post('/:id/photo', auth, upload.single('photo'), async (req, res) => {
       return res.status(400).json({ success: false, message: 'Aucun fichier fourni' });
     }
 
-    // Upload de la nouvelle photo - SIMPLIFIÉ
-    const fileName = `service-${id}-${Date.now()}-${Math.random().toString(36).substring(2)}.${req.file.originalname.split('.').pop()}`;
+    // Déterminer le type de média
+    const isVideo = req.file.mimetype.startsWith('video/');
+    const mediaType = isVideo ? 'video' : 'image';
+    const fileExtension = req.file.originalname.split('.').pop();
+    
+    // Upload du fichier
+    const fileName = `service-${id}-${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExtension}`;
     const filePath = `uploads/services/${fileName}`;
 
     // Sauvegarder le fichier
@@ -154,25 +160,51 @@ router.post('/:id/photo', auth, upload.single('photo'), async (req, res) => {
 
     fs.writeFileSync(path.join(uploadDir, fileName), req.file.buffer);
 
-    // Ajouter la photo au service
+    // Ajouter le média à la galerie du service
+    const mediaData = {
+      mediaUrl: `/${filePath}`,
+      mediaType: mediaType,
+      caption: '',
+      tags: [],
+      likes: 0,
+      createdAt: new Date()
+    };
+
+    if (!service.gallery) {
+      service.gallery = [];
+    }
+    service.gallery.push(mediaData);
+
+    // Aussi ajouter à examplePhotos pour la compatibilité
     if (!service.examplePhotos) {
       service.examplePhotos = [];
     }
     service.examplePhotos.push(`/${filePath}`);
+
     await service.save();
 
     res.json({
       success: true,
-      message: 'Photo ajoutée au service',
-      photo: { url: `/${filePath}` }
+      message: `${mediaType === 'video' ? 'Vidéo' : 'Photo'} ajoutée au service`,
+      media: { 
+        url: `/${filePath}`,
+        type: mediaType
+      }
     });
   } catch (error) {
-    console.error('Upload service photo error:', error);
+    console.error('Upload service media error:', error);
     res.status(500).json({ 
       success: false, 
       message: error.message || 'Erreur lors de l\'upload' 
     });
   }
+});
+
+// Route de compatibilité pour les photos (ancienne route)
+router.post('/:id/photo', auth, upload.single('photo'), async (req, res) => {
+  // Rediriger vers la nouvelle route media
+  req.file = req.file; // Le fichier est déjà dans req.file
+  return router.handle({ ...req, url: `/${req.params.id}/media` }, res);
 });
 
 // Supprimer une photo de service
@@ -238,27 +270,94 @@ router.get('/coiffeur/:coiffeurId', async (req, res) => {
   }
 });
 
+// Récupérer les services likés par l'utilisateur
+router.get('/user/liked', auth, async (req, res) => {
+  try {
+    console.log('🔍 [Services API] Get user liked services:', {
+      userId: req.user?.id,
+      user: req.user
+    });
+
+    const userId = req.user.id;
+    
+    if (!userId) {
+      console.error('❌ User ID not found in request');
+      return res.status(401).json({ message: 'Utilisateur non authentifié' });
+    }
+
+    // Trouver tous les services likés par l'utilisateur
+    const likedServices = await Service.find({
+      likedBy: userId,
+      isActive: true
+    }).populate('coiffeur', 'name rating address photo bio');
+
+    console.log('✅ [Services API] User liked services found:', likedServices.length);
+
+    res.json({
+      success: true,
+      data: likedServices,
+      message: 'Services likés récupérés'
+    });
+  } catch (error) {
+    console.error('❌ [Services API] Get user liked services error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Erreur lors de la récupération des likes',
+      error: error.message
+    });
+  }
+});
+
 // Toggle like sur un service - UTILISE LES MÉTHODES DU MODÈLE
 router.post('/:serviceId/like', auth, async (req, res) => {
+  console.log('🚀 [Services API] Route hit - POST /:serviceId/like');
   try {
+    console.log('🔍 [Services API] Like request:', {
+      serviceId: req.params.serviceId,
+      userId: req.user?.id,
+      user: req.user
+    });
+
     const { serviceId } = req.params;
     const userId = req.user.id;
     
+    if (!userId) {
+      console.error('❌ User ID not found in request');
+      return res.status(401).json({ message: 'Utilisateur non authentifié' });
+    }
+    
+    console.log('🔍 [Services API] Finding service:', serviceId);
     const service = await Service.findById(serviceId);
     if (!service) {
+      console.error('❌ Service not found:', serviceId);
       return res.status(404).json({ message: 'Service introuvable' });
     }
 
+    console.log('🔍 [Services API] Service found:', {
+      id: service._id,
+      name: service.name,
+      currentLikes: service.likes,
+      likedBy: service.likedBy?.length || 0
+    });
+
     // Utiliser les méthodes du modèle
     const userLiked = service.isLikedBy(userId);
+    console.log('💖 [Services API] User liked status:', userLiked);
     
     if (userLiked) {
       // Unlike - Utilise la méthode du modèle
+      console.log('👎 [Services API] Removing like...');
       await service.removeLike(userId);
     } else {
       // Like - Utilise la méthode du modèle
+      console.log('👍 [Services API] Adding like...');
       await service.addLike(userId);
     }
+
+    console.log('✅ [Services API] Like operation completed:', {
+      newLikes: service.likes,
+      newIsLiked: !userLiked
+    });
 
     // Réponse standardisée
     res.json({
@@ -270,10 +369,16 @@ router.post('/:serviceId/like', auth, async (req, res) => {
       message: userLiked ? 'Like retiré' : 'Service liké'
     });
   } catch (error) {
-    console.error('Toggle service like error:', error);
+    console.error('❌ [Services API] Toggle service like error:', error);
+    console.error('❌ [Services API] Error details:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
     res.status(500).json({ 
       success: false,
-      message: 'Erreur lors du like/unlike' 
+      message: 'Erreur lors du like/unlike',
+      error: error.message
     });
   }
 });

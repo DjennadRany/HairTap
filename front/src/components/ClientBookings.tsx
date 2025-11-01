@@ -9,12 +9,19 @@ import { reviewService } from '../services/api/reviews';
 import BookingNotification from './BookingNotification';
 import ReviewForm from './ReviewForm';
 import Modal from './ui/Modal';
+import { getImageUrl, handleImageError, DEFAULT_USER_IMAGE } from '../utils/imageUtils';
 import type { User } from '../types/models';
 
 interface Booking {
   _id: string;
   coiffeur: User;
-  service: string;
+  service: {
+    _id: string;
+    name: string;
+    description?: string;
+    price: number;
+    duration: number;
+  };
   date: string;
   duration: number;
   price: number;
@@ -227,7 +234,7 @@ const ClientBookings: React.FC = () => {
                     <div className="flex items-center gap-3">
                       <FaCalendarAlt className="text-accent mt-1" />
                       <div>
-                        <h3 className="font-semibold text-lg">{booking.service}</h3>
+                        <h3 className="font-semibold text-lg">{booking.service.name}</h3>
                         <p className="text-gray-600 text-sm">
                           {new Date(booking.date).toLocaleDateString('fr-FR')} à{' '}
                           {new Date(booking.date).toLocaleTimeString('fr-FR', { 
@@ -251,12 +258,28 @@ const ClientBookings: React.FC = () => {
                         <FaUser className="text-accent" />
                         Coiffeur
                       </h4>
-                      <div className="space-y-1 text-sm">
-                        <div><span className="font-medium">Nom:</span> {booking.coiffeur.name}</div>
-                        <div><span className="font-medium">Prix:</span> {booking.price}€ ({booking.duration} min)</div>
-                        {booking.coiffeur.phone && (
-                          <div><span className="font-medium">Tél:</span> {booking.coiffeur.phone}</div>
+                      <div className="flex items-center gap-3 mb-2">
+                        {booking.coiffeur.photo ? (
+                          <img 
+                            src={getImageUrl(booking.coiffeur.photo, DEFAULT_USER_IMAGE)} 
+                            alt={booking.coiffeur.name}
+                            className="w-12 h-12 rounded-full object-cover border-2 border-gray-200"
+                            onError={(e) => handleImageError(e, DEFAULT_USER_IMAGE)}
+                          />
+                        ) : (
+                          <div className="w-12 h-12 rounded-full bg-gray-300 flex items-center justify-center">
+                            <FaUser className="h-6 w-6 text-gray-600" />
+                          </div>
                         )}
+                        <div>
+                          <div className="font-medium">{booking.coiffeur.name}</div>
+                          {booking.coiffeur.phone && (
+                            <div className="text-sm text-gray-600">{booking.coiffeur.phone}</div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-sm">
+                        <div><span className="font-medium">Prix:</span> {booking.price}€ ({booking.duration} min)</div>
                       </div>
                     </div>
 

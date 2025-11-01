@@ -1,23 +1,31 @@
 import React, { useState } from 'react';
 
-const TestVideo: React.FC = () => {
+interface VideoTestProps {
+  className?: string;
+  showStatus?: boolean;
+  videoSrc?: string;
+}
+
+const VideoTest: React.FC<VideoTestProps> = ({ 
+  className = '', 
+  showStatus = true,
+  videoSrc = "/src/assets/videos/6144280-uhd_4096_2160_25fps.mp4"
+}) => {
   const [videoLoaded, setVideoLoaded] = useState(false);
   const [videoError, setVideoError] = useState(false);
 
   const handleVideoLoad = () => {
-    console.log('✅ Vidéo de test chargée avec succès !');
     setVideoLoaded(true);
     setVideoError(false);
   };
 
   const handleVideoError = () => {
-    console.log('❌ Erreur de chargement de la vidéo de test');
     setVideoError(true);
     setVideoLoaded(false);
   };
 
   return (
-    <div className="absolute inset-0 w-full h-full">
+    <div className={`absolute inset-0 w-full h-full ${className}`}>
       <video
         className="w-full h-full object-cover"
         autoPlay
@@ -37,18 +45,20 @@ const TestVideo: React.FC = () => {
           zIndex: 0
         }}
       >
-        <source src="/src/assets/videos/6144280-uhd_4096_2160_25fps.mp4" type="video/mp4" />
+        <source src={videoSrc} type="video/mp4" />
         Votre navigateur ne supporte pas la lecture de vidéos.
       </video>
       
-      {/* Indicateur de statut */}
-      <div className="absolute top-4 left-4 z-30">
-        <div className="px-3 py-1 bg-black/50 backdrop-blur-sm rounded-full text-white text-xs">
-          {videoError ? '❌ Erreur' : videoLoaded ? '✅ Chargée' : '⏳ Chargement...'}
+      {/* Indicateur de statut conditionnel */}
+      {showStatus && (
+        <div className="absolute top-4 left-4 z-30">
+          <div className="px-3 py-1 bg-black/50 backdrop-blur-sm rounded-full text-white text-xs">
+            {videoError ? '❌ Erreur' : videoLoaded ? '✅ Chargée' : '⏳ Chargement...'}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
 
-export default TestVideo; 
+export default VideoTest;

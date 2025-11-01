@@ -10,6 +10,7 @@ import { FaStar, FaMapMarkerAlt, FaHeart, FaEdit, FaPlus, FaClock, FaPhone, FaEn
 import { MdVerified } from 'react-icons/md';
 import { useNotification } from '../components/ui/NotificationManager';
 import { ConnectionIndicator } from '../components/ConnectionIndicator';
+import { useIsMobile } from '../hooks/useIsMobile';
 
 // Composants de gestion coiffeur
 import SpecialtyManager from '../components/SpecialtyManager';
@@ -37,7 +38,8 @@ const CoiffeurProfilePage = () => {
   const user = useSelector((state: any) => state.auth.user) as User | null;
   const id = paramId || user?._id;
   const isOwner = user && user._id === id && user.role === 'coiffeur';
-  const isClient = user && user.role === 'user';
+  const isClient = user && (user.role === 'user' || user.role === 'client');
+  const isMobile = useIsMobile();
 
 
 
@@ -191,6 +193,12 @@ const CoiffeurProfilePage = () => {
     console.log('🏪 Coiffeur:', coiffeur);
     console.log('👑 isOwner:', isOwner);
     console.log('👤 isClient:', isClient);
+    console.log('📋 Service sélectionné:', {
+      id: service?._id,
+      name: service?.name,
+      price: service?.price,
+      duration: service?.duration
+    });
     
     setSelectedService(service);
     setShowBookingModal(true);
@@ -245,7 +253,7 @@ const CoiffeurProfilePage = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className={`container mx-auto py-8 ${galleryTab === 'gallery' && isMobile ? 'px-0' : 'px-4'}`}>
       {/* Section principale du profil - Layout comme capture d'écran */}
       <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
         <div className="flex flex-col xl:flex-row gap-4">
@@ -640,7 +648,7 @@ const CoiffeurProfilePage = () => {
       )}
 
       {/* Section Galerie & Avis - VISIBLE POUR TOUS */}
-      <div className="bg-white rounded-xl shadow-lg p-6">
+      <div className={`bg-white rounded-xl shadow-lg ${galleryTab === 'gallery' && isMobile ? 'p-0' : 'p-6'}`}>
         <h2 className="text-xl font-bold text-gray-800 mb-4">Galerie & Avis</h2>
         
         {/* Onglets Galerie/Avis */}
@@ -756,11 +764,16 @@ const CoiffeurProfilePage = () => {
       {/* Modal de réservation */}
       {showBookingModal && selectedService && coiffeur && (
         <Modal
-          open={showBookingModal}
+          isOpen={showBookingModal}
           onClose={() => setShowBookingModal(false)}
           title="Réserver un service"
           size="xl"
         >
+          {console.log('🔍 [Modal] Données passées au BookingForm:', {
+            coiffeur: coiffeur?.name,
+            selectedService: selectedService,
+            hasSelectedService: !!selectedService
+          })}
           <BookingForm
             coiffeur={coiffeur}
             selectedService={selectedService}

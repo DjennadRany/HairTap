@@ -10,6 +10,8 @@ import AddressDisplay from '../components/AddressDisplay';
 import AddressForm from '../components/AddressForm';
 import ProfileInfoDisplay from '../components/ProfileInfoDisplay';
 import PreferencesDisplay from '../components/PreferencesDisplay';
+import PaymentMethodsList from '../components/PaymentMethodsList';
+import AddPaymentMethodModal from '../components/modals/AddPaymentMethodModal';
 
 
 import type { User as UserModel } from '../types/models';
@@ -56,6 +58,7 @@ const ClientProfilePage = () => {
   const [isEditingAddress, setIsEditingAddress] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isEditingPreferences, setIsEditingPreferences] = useState(false);
+  const [showAddPaymentMethodModal, setShowAddPaymentMethodModal] = useState(false);
 
 
   const defaultName = profile?.name || user?.name || '';
@@ -454,6 +457,14 @@ const ClientProfilePage = () => {
                              </div>
              </div>
 
+             {/* Section Méthodes de paiement */}
+             <div className="border-t pt-6">
+               <PaymentMethodsList
+                 onAddPaymentMethod={() => setShowAddPaymentMethodModal(true)}
+                 showAddButton={true}
+               />
+             </div>
+
              {/* Section Préférences */}
              {profile?.preferences && (
                <div className="border-t pt-6">
@@ -489,6 +500,63 @@ const ClientProfilePage = () => {
                 <FaSave />
                 Enregistrer les modifications
               </button>
+            </div>
+
+            {/* Modal d'ajout de méthode de paiement */}
+            <AddPaymentMethodModal
+              isOpen={showAddPaymentMethodModal}
+              onClose={() => setShowAddPaymentMethodModal(false)}
+              onSuccess={() => {
+                // Le composant PaymentMethodsList se rechargera automatiquement
+                setSuccess('Carte ajoutée avec succès !');
+              }}
+            />
+
+            {/* Section Suppression de compte */}
+            <div className="pt-6 border-t border-red-200">
+              <div className="bg-red-50 p-4 rounded-lg">
+                <h3 className="text-lg font-semibold text-red-800 mb-2">⚠️ Zone dangereuse</h3>
+                <p className="text-red-700 text-sm mb-4">
+                  La suppression de votre compte est irréversible. Toutes vos données, réservations et informations seront définitivement supprimées.
+                </p>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (window.confirm('⚠️ ATTENTION : Cette action est irréversible !\n\nÊtes-vous absolument sûr de vouloir supprimer votre compte ?\n\nToutes vos données seront définitivement perdues.')) {
+                      try {
+                        if (!id) {
+                          setErrorMsg("Impossible de retrouver l'utilisateur.");
+                          return;
+                        }
+                        
+                        setErrorMsg('');
+                        setSuccess('Suppression du compte en cours...');
+                        
+                        // Supprimer le compte
+                        await userService.deleteUser(id);
+                        
+                        setSuccess('Compte supprimé avec succès. Redirection...');
+                        
+                        // Rediriger vers logout après 2 secondes
+                        setTimeout(() => {
+                          // Déconnexion et redirection
+                          localStorage.removeItem('token');
+                          localStorage.removeItem('user');
+                          window.location.href = '/';
+                        }, 2000);
+                        
+                      } catch (error: any) {
+                        console.error('Erreur suppression compte:', error);
+                        setErrorMsg(error.response?.data?.message || 'Erreur lors de la suppression du compte');
+                        setSuccess('');
+                      }
+                    }
+                  }}
+                  className="w-full bg-red-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-red-700 transition-colors flex items-center justify-center gap-2"
+                >
+                  🗑️ Supprimer mon compte
+                </button>
+              </div>
             </div>
           </form>
         </div>

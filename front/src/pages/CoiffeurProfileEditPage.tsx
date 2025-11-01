@@ -677,6 +677,67 @@ const CoiffeurProfileEditPage = () => {
                 Annuler
               </Button>
             </div>
+
+            {/* Section Suppression de compte */}
+            <div className="pt-6 border-t border-red-200">
+              <div className="bg-red-50 p-4 rounded-lg">
+                <h3 className="text-lg font-semibold text-red-800 mb-2">⚠️ Zone dangereuse</h3>
+                <p className="text-red-700 text-sm mb-4">
+                  La suppression de votre compte est irréversible. Toutes vos données, services, réservations et informations seront définitivement supprimés.
+                </p>
+                <Button
+                  type="button"
+                  onClick={async () => {
+                    if (window.confirm('⚠️ ATTENTION : Cette action est irréversible !\n\nÊtes-vous absolument sûr de vouloir supprimer votre compte ?\n\nToutes vos données seront définitivement perdues.')) {
+                      try {
+                        console.log('🔍 DEBUG: Début de la suppression de compte');
+                        console.log('👤 User object:', user);
+                        console.log('🆔 User ID:', user?._id);
+                        
+                        if (!user?._id) {
+                          console.error('❌ DEBUG: Pas d\'ID utilisateur');
+                          setErrorMessage("Impossible de retrouver l'utilisateur.");
+                          return;
+                        }
+                        
+                        console.log('✅ DEBUG: ID utilisateur trouvé, début de la suppression...');
+                        setErrorMessage('');
+                        setSuccessMessage('Suppression du compte en cours...');
+                        
+                        // Supprimer le compte
+                        console.log('📡 DEBUG: Appel de userService.deleteUser avec ID:', user._id);
+                        const result = await userService.deleteUser(user._id);
+                        console.log('✅ DEBUG: Résultat de la suppression:', result);
+                        
+                        setSuccessMessage('Compte supprimé avec succès. Redirection...');
+                        
+                        // Rediriger vers logout après 2 secondes
+                        setTimeout(() => {
+                          console.log('🔄 DEBUG: Redirection vers logout...');
+                          // Déconnexion et redirection
+                          localStorage.removeItem('token');
+                          localStorage.removeItem('user');
+                          window.location.href = '/';
+                        }, 2000);
+                        
+                      } catch (error: any) {
+                        console.error('❌ DEBUG: Erreur lors de la suppression:', error);
+                        console.error('❌ DEBUG: Détails de l\'erreur:', {
+                          message: error.message,
+                          response: error.response?.data,
+                          status: error.response?.status
+                        });
+                        setErrorMessage(error.response?.data?.message || 'Erreur lors de la suppression du compte');
+                        setSuccessMessage('');
+                      }
+                    }
+                  }}
+                  className="w-full bg-red-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-red-700 transition-colors flex items-center justify-center gap-2"
+                >
+                  🗑️ Supprimer mon compte
+                </Button>
+              </div>
+            </div>
           </form>
         )}
       </div>

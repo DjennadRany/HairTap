@@ -12,6 +12,7 @@ import {
   Settings
 } from 'lucide-react';
 import { adminService, AdminStats } from '../services/api/admin';
+import { AdminDebug } from '../components/AdminDebug';
 
 const AdminDashboardPage: React.FC = () => {
   const [stats, setStats] = useState<AdminStats | null>(null);
@@ -82,6 +83,9 @@ const AdminDashboardPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+      {/* Debug Panel - Only in development */}
+      {process.env.NODE_ENV === 'development' && <AdminDebug />}
+      
       {/* Header du Dashboard */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">

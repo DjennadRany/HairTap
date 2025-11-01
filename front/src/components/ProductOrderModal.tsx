@@ -98,7 +98,7 @@ const ProductOrderModal: React.FC<ProductOrderModalProps> = ({
 
   if (success) {
     return (
-      <Modal open={open} onClose={onClose} title="Commande confirmée">
+      <Modal isOpen={open} onClose={onClose} title="Commande confirmée">
         <div className="text-center py-8">
           <div className="text-green-500 text-6xl mb-4">✓</div>
           <h3 className="text-xl font-semibold text-gray-800 mb-2">
@@ -113,7 +113,7 @@ const ProductOrderModal: React.FC<ProductOrderModalProps> = ({
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Commander le produit">
+    <Modal isOpen={open} onClose={onClose} title="Commander le produit">
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Résumé du produit */}
         <div className="bg-gray-50 rounded-lg p-4">

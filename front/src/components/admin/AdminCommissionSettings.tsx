@@ -9,3 +9,4 @@ export const AdminCommissionSettings: React.FC = () => {
 		</div>
 	);
 };
+

@@ -118,5 +118,11 @@ export const userService = {
   async updateSalonAddress(salonAddress: any): Promise<{ message: string; salonAddress: any }> {
     const response = await api.put('/users/salon-address', { salonAddress });
     return response.data;
+  },
+
+  // Supprimer un compte utilisateur
+  async deleteUser(id: string): Promise<{ success: boolean; message: string }> {
+    const response = await api.delete(`/users/${id}`);
+    return response.data;
   }
 }; 

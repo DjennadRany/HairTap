@@ -6,7 +6,7 @@ export interface User {
   _id: string;
   name: string;
   email: string;
-  role: 'client' | 'coiffeur';
+  role: 'client' | 'coiffeur' | 'admin'; // ✅ AJOUT DU RÔLE ADMIN
   photo?: string;
 }
 
@@ -57,7 +57,9 @@ export const authSlice = createSlice({
   reducers: {
     setUser: (state, action: PayloadAction<User | null>) => {
       const user = action.payload;
-      const isValid = !!user && !!user._id && !!user.email && (user.role === 'client' || user.role === 'coiffeur');
+      // ✅ VALIDATION INCLUT MAINTENANT ADMIN
+      const isValid = !!user && !!user._id && !!user.email && 
+        (user.role === 'client' || user.role === 'coiffeur' || user.role === 'admin');
       state.user = isValid ? user : null;
       state.isAuthenticated = isValid;
       state.loading = false;
@@ -101,6 +103,10 @@ export const authSlice = createSlice({
         localStorage.removeItem('user');
       }
     },
+    clearError: (state) => {
+      state.error = null;
+    },
+    // ✅ RESTAURER L'EXPORT checkAuth MANQUANT
     checkAuth: (state) => {
       const token = getStoredToken();
       const user = getStoredUser();
@@ -114,16 +120,22 @@ export const authSlice = createSlice({
         state.user = null;
         state.isAuthenticated = false;
       }
-    },
-  },
+    }
+  }
 });
 
-export const { setUser, setToken, setLoading, setError, logout, checkAuth } = authSlice.actions;
+export const { setUser, setToken, setLoading, setError, logout, clearError, checkAuth } = authSlice.actions;
 
+// Sélecteurs
 export const selectCurrentUser = (state: RootState) => state.auth.user;
 export const selectIsAuthenticated = (state: RootState) => state.auth.isAuthenticated;
 export const selectAuthLoading = (state: RootState) => state.auth.loading;
 export const selectAuthError = (state: RootState) => state.auth.error;
 export const selectAuthToken = (state: RootState) => state.auth.token;
+
+// ✅ NOUVEAUX SÉLECTEURS POUR ADMIN
+export const selectIsAdmin = (state: RootState) => state.auth.user?.role === 'admin';
+export const selectIsCoiffeur = (state: RootState) => state.auth.user?.role === 'coiffeur';
+export const selectIsClient = (state: RootState) => state.auth.user?.role === 'client';
 
 export default authSlice.reducer; 

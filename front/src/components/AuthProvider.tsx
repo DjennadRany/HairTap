@@ -86,7 +86,7 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     
     if (isAuthenticated && user) {
       // Utilisateur connecté
-      if (currentPath === '/login' || currentPath === '/register' || currentPath === '/') {
+      if (currentPath === '/login' || currentPath === '/register') {
         // ✅ CORRECTION : REDIRECTION SPÉCIFIQUE POUR ADMIN
         if (user.role === 'admin') {
           navigate('/admin');
@@ -96,6 +96,7 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           navigate('/client/dashboard');
         }
       }
+      // ✅ SUPPRIMÉ : Plus de redirection automatique depuis la page d'accueil
     } else {
       // Utilisateur non connecté
       const publicRoutes = ['/login', '/register', '/', '/about', '/contact', '/terms', '/privacy', '/signin/client', '/signin/coiffeur', '/photo-setup'];

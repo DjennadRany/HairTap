@@ -36,6 +36,8 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
+
+
 // Récupérer un utilisateur par ID
 router.get('/:id', auth, async (req, res) => {
   try {
@@ -292,6 +294,48 @@ router.delete('/:id/booking-addresses/:addressId', auth, async (req, res) => {
   } catch (error) {
     console.error('❌ [DELETE /users/:id/booking-addresses/:addressId] Erreur:', error);
     res.status(500).json({ message: 'Erreur lors de la suppression de l\'adresse de réservation' });
+  }
+});
+
+// Route pour supprimer un compte utilisateur
+router.delete('/:id', auth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    console.log('🗑️ [DELETE /users/:id] Suppression du compte utilisateur:', id);
+    
+    // Vérifier que l'utilisateur existe
+    const userToDelete = await User.findById(id);
+    if (!userToDelete) {
+      console.log('❌ [DELETE /users/:id] Utilisateur non trouvé:', id);
+      return res.status(404).json({ message: 'Utilisateur non trouvé' });
+    }
+    
+    // Vérifier les permissions : l'utilisateur peut supprimer son propre compte OU admin
+    if (req.user._id.toString() !== id && req.user.role !== 'admin') {
+      console.log('❌ [DELETE /users/:id] Non autorisé - User ID:', req.user._id, 'vs', id);
+      return res.status(403).json({ message: 'Non autorisé à supprimer ce compte' });
+    }
+    
+    // Empêcher la suppression d'un compte admin par un non-admin
+    if (userToDelete.role === 'admin' && req.user.role !== 'admin') {
+      console.log('❌ [DELETE /users/:id] Tentative de suppression d\'un compte admin par un non-admin');
+      return res.status(403).json({ message: 'Impossible de supprimer un compte administrateur' });
+    }
+    
+    // Supprimer l'utilisateur
+    await User.findByIdAndDelete(id);
+    
+    console.log('✅ [DELETE /users/:id] Compte supprimé avec succès:', id);
+    
+    res.json({ 
+      success: true, 
+      message: 'Compte supprimé avec succès' 
+    });
+    
+  } catch (error) {
+    console.error('❌ [DELETE /users/:id] Erreur:', error);
+    res.status(500).json({ message: 'Erreur lors de la suppression du compte' });
   }
 });
 

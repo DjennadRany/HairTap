@@ -10,6 +10,7 @@ import { fr } from 'date-fns/locale';
 import { FaCalendarAlt, FaMapMarkerAlt, FaClock, FaEuroSign, FaUser } from 'react-icons/fa';
 import { bookingService } from '../services/api/bookings';
 import { userService } from '../services/api/users';
+import StripePaymentModal from './modals/StripePaymentModal';
 import type { User } from '../types/models';
 
 // Type étendu pour les adresses
@@ -47,6 +48,7 @@ interface BookingFormProps {
     duration: number;
   };
   onSuccess?: () => void;
+  onClose?: () => void;
   onCancel?: () => void;
 }
 
@@ -54,14 +56,24 @@ const BookingForm: React.FC<BookingFormProps> = ({
   coiffeur,
   selectedService,
   onSuccess,
+  onClose,
   onCancel
 }) => {
   const navigate = useNavigate();
   const user = useSelector(selectCurrentUser) as UserWithAddresses;
+  
+  // Debug: Vérifier les données reçues
+  console.log('🔍 [BookingForm] Données reçues:', {
+    coiffeur: coiffeur?.name,
+    selectedService: selectedService,
+    hasSelectedService: !!selectedService
+  });
   const [userWithAddresses, setUserWithAddresses] = useState<UserWithAddresses | null>(null);
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedTime, setSelectedTime] = useState<string>('');
   const [bookingMode, setBookingMode] = useState<'salon' | 'domicile'>('salon');
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [createdBooking, setCreatedBooking] = useState<any>(null);
   const [addressType, setAddressType] = useState<'home' | 'office' | 'other'>('home');
   const [clientAddress, setClientAddress] = useState<{
     street: string;
@@ -290,10 +302,23 @@ const BookingForm: React.FC<BookingFormProps> = ({
         }
       }
       
-      if (onSuccess) {
-        onSuccess();
+      // Vérifier si la réservation a été créée avec succès
+      if (booking && (booking.success || booking.data || booking._id)) {
+        const bookingData = booking.data || booking;
+        const bookingId = bookingData._id || booking._id;
+        
+        console.log('✅ [BookingForm] Réservation créée avec succès:', bookingId);
+        
+        // Afficher le modal de paiement Stripe
+        setCreatedBooking(bookingData);
+        setShowPaymentModal(true);
       } else {
-        navigate('/client/bookings');
+        // Si pas de paiement requis ou erreur, rediriger normalement
+        if (onSuccess) {
+          onSuccess();
+        } else {
+          navigate('/client/bookings');
+        }
       }
     } catch (error: any) {
       console.error('Error creating booking:', error);
@@ -308,8 +333,39 @@ const BookingForm: React.FC<BookingFormProps> = ({
     }
   };
 
+  const handlePaymentSuccess = () => {
+    console.log('✅ [BookingForm] Paiement réussi');
+    setShowPaymentModal(false);
+    if (onSuccess) {
+      onSuccess();
+    } else {
+      navigate('/client/bookings');
+    }
+  };
+
+  const handlePaymentClose = () => {
+    setShowPaymentModal(false);
+    // Rediriger quand même vers les réservations (l'utilisateur peut payer plus tard)
+    if (onSuccess) {
+      onSuccess();
+    } else {
+      navigate('/client/bookings');
+    }
+  };
+
   return (
     <div className="max-w-4xl mx-auto">
+      {/* Modal de paiement Stripe */}
+      {showPaymentModal && createdBooking && selectedService && (
+        <StripePaymentModal
+          isOpen={showPaymentModal}
+          onClose={handlePaymentClose}
+          onSuccess={handlePaymentSuccess}
+          bookingId={createdBooking._id || createdBooking.data?._id}
+          amount={selectedService.price}
+          serviceName={selectedService.name}
+        />
+      )}
       {/* En-tête avec informations du coiffeur */}
       <div className="mb-8">
         <div className="flex items-center gap-4 mb-4">
@@ -331,15 +387,15 @@ const BookingForm: React.FC<BookingFormProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <span className="text-fashion-gray-600">Service</span>
-                <p className="font-medium text-fashion-black">{selectedService.name}</p>
+                <p className="font-medium text-fashion-black">{selectedService.name || 'Non défini'}</p>
               </div>
               <div>
                 <span className="text-fashion-gray-600">Prix</span>
-                <p className="font-medium text-fashion-black">{selectedService.price}€</p>
+                <p className="font-medium text-fashion-black">{selectedService.price || 0}€</p>
               </div>
               <div>
                 <span className="text-fashion-gray-600">Durée</span>
-                <p className="font-medium text-fashion-black">{selectedService.duration} min</p>
+                <p className="font-medium text-fashion-black">{selectedService.duration || 0} min</p>
               </div>
             </div>
           </div>
@@ -704,9 +760,9 @@ const BookingForm: React.FC<BookingFormProps> = ({
             'Confirmer la réservation'
           )}
         </Button>
-        {onCancel && (
+        {(onCancel || onClose) && (
           <Button
-            onClick={onCancel}
+            onClick={onCancel || onClose}
             variant="outline"
             className="flex-1 py-4 text-lg font-medium"
           >

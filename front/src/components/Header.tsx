@@ -5,19 +5,23 @@ import { useState, useRef, useEffect } from 'react';
 import { getUnreadCount } from '../hooks/useChat';
 import { logout } from '../store/slices/authSlice';
 import type { RootState } from '../store/store';
-import { FaUser, FaSignOutAlt, FaCog, FaBell, FaSearch } from 'react-icons/fa';
+import { FaUser, FaSignOutAlt, FaCog, FaImages, FaUserTie } from 'react-icons/fa';
 import { PHOTO_URLS } from '../config/api';
 import { getImageUrl, handleImageError, DEFAULT_USER_IMAGE } from '../utils/imageUtils';
+import { useIsMobile } from '../hooks/useIsMobile';
 import { ConnectionStatusManager } from './ConnectionStatusManager';
+import { useGallery } from '../contexts/GalleryContext';
 
 const Header: FC = () => {
   const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
+  const isMobile = useIsMobile();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [unreadCount, setUnreadCount] = useState(0);
+  const { activeTab, toggleTab } = useGallery();
 
   const isUserValid =
     isAuthenticated &&
@@ -66,6 +70,7 @@ const Header: FC = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+
   return (
     <header className="bg-fashion-light-gray/95 backdrop-blur-md border-b border-fashion-gray-200 shadow-sm sticky top-0 z-50">
       <div className="container mx-auto px-4">
@@ -77,9 +82,34 @@ const Header: FC = () => {
             </span>
           </a>
 
+          {/* Bouton toggle galerie - Mobile uniquement sur la page de recherche */}
+          {isMobile && location.pathname === '/search' && (
+            <div className="flex-1 flex justify-center">
+              <button
+                onClick={toggleTab}
+                className="flex items-center space-x-2 px-4 py-2 bg-pink-100 text-pink-600 rounded-full font-medium transition-all duration-200 hover:bg-pink-200"
+              >
+                {activeTab === 'gallery' ? (
+                  <>
+                    <FaImages className="w-4 h-4" />
+                    <span className="text-sm">Galerie</span>
+                  </>
+                ) : (
+                  <>
+                    <FaUserTie className="w-4 h-4" />
+                    <span className="text-sm">Coiffeurs</span>
+                  </>
+                )}
+              </button>
+            </div>
+          )}
+
           {/* Menu principal */}
           {isUserValid && (
-            <nav className="flex items-center gap-6">
+            <>
+              {/* Menu desktop */}
+              {!isMobile && (
+                <nav className="flex items-center gap-6">
               {user.role === 'client' ? (
                 <>
                   <Link 
@@ -151,7 +181,10 @@ const Header: FC = () => {
                   </Link>
                 </>
               )}
-            </nav>
+                </nav>
+              )}
+
+            </>
           )}
 
           <div className="flex-1" />
@@ -245,6 +278,7 @@ const Header: FC = () => {
           )}
         </div>
       </div>
+
     </header>
   );
 };

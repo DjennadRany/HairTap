@@ -19,6 +19,7 @@ interface CoiffeurCardProps {
   isFavorite?: boolean;
   onClick?: () => void;
   userLocation?: { latitude: number; longitude: number } | null | undefined;
+  viewMode?: 'grid' | 'list';
 }
 
 interface ServiceImage {
@@ -35,7 +36,8 @@ const CoiffeurCard: React.FC<CoiffeurCardProps> = ({
   onFavoriteToggle,
   isFavorite = false,
   onClick,
-  userLocation
+  userLocation,
+  viewMode = 'grid'
 }) => {
   const user = useSelector(selectCurrentUser);
   const navigate = useNavigate();
@@ -69,7 +71,7 @@ const CoiffeurCard: React.FC<CoiffeurCardProps> = ({
           lastSeen: coiffeur.connectionStatus?.lastSeen || new Date(),
           status: isReallyOnline ? (coiffeur.connectionStatus?.status || 'offline') : 'offline',
           availability: {
-            isAvailable: isReallyOnline && (coiffeur.connectionStatus?.availability?.isAvailable === true),
+            isAvailable: Boolean(isReallyOnline && coiffeur.connectionStatus?.availability?.isAvailable),
             nextAvailable: coiffeur.connectionStatus?.availability?.nextAvailable,
             workingHours: coiffeur.connectionStatus?.availability?.workingHours || {
               monday: { start: '09:00', end: '18:00', isAvailable: false },
@@ -83,7 +85,7 @@ const CoiffeurCard: React.FC<CoiffeurCardProps> = ({
           }
         });
       } catch (error) {
-        console.error('Erreur mise à jour statut connexion:', error);
+        // Erreur mise à jour statut connexion - gérée silencieusement
       }
     };
 
@@ -107,8 +109,8 @@ const CoiffeurCard: React.FC<CoiffeurCardProps> = ({
       const images: ServiceImage[] = [];
       
       services.forEach(service => {
-        if (service.examplePhotos && service.examplePhotos.length > 0) {
-          service.examplePhotos.forEach((photo: string) => {
+        if (service.images && service.images.length > 0) {
+          service.images.forEach((photo: string) => {
             images.push({
               _id: `${service._id}_${photo}`,
               url: photo,
@@ -123,7 +125,7 @@ const CoiffeurCard: React.FC<CoiffeurCardProps> = ({
       
       setServiceImages(images.slice(0, 4)); // Limiter à 4 images
     } catch (error) {
-      console.error('Error fetching service images:', error);
+      // Erreur lors de la récupération des images de service
     }
   };
 
@@ -175,7 +177,7 @@ const CoiffeurCard: React.FC<CoiffeurCardProps> = ({
       // Appeler la fonction parent si elle existe
       onFavoriteToggle?.(coiffeur._id);
     } catch (error) {
-      console.error('Erreur lors de la gestion des favoris:', error);
+      // Erreur lors de la gestion des favoris
       showNotification({
         type: 'error',
         title: 'Erreur',
@@ -187,16 +189,18 @@ const CoiffeurCard: React.FC<CoiffeurCardProps> = ({
   return (
     <>
       <div 
-        className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden cursor-pointer"
+        className={`bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden cursor-pointer ${
+          viewMode === 'list' ? 'flex' : ''
+        }`}
         onClick={onClick}
       >
         {/* En-tête avec photo et infos principales */}
-        <div className="relative">
+        <div className={`relative ${viewMode === 'list' ? 'w-48 flex-shrink-0' : ''}`}>
           {/* Photo de profil avec fallback */}
           <img
             src={getImageUrl(coiffeur.photo, DEFAULT_COIFFEUR_IMAGE)}
             alt={coiffeur.name}
-            className="w-full h-48 object-cover rounded-t-lg"
+            className={`object-cover ${viewMode === 'list' ? 'w-full h-full' : 'w-full h-48 rounded-t-lg'}`}
             onError={(e) => handleImageError(e, DEFAULT_COIFFEUR_IMAGE)}
           />
           
@@ -224,7 +228,7 @@ const CoiffeurCard: React.FC<CoiffeurCardProps> = ({
         </div>
 
           {/* Infos principales */}
-          <div className="p-4">
+          <div className={`p-4 ${viewMode === 'list' ? 'flex-1' : ''}`}>
             <div className="flex items-start justify-between">
               <div className="flex-1">
                 <h3 className="text-xl font-bold text-gray-800 mb-1">

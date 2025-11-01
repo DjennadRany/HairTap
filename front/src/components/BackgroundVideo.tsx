@@ -9,33 +9,35 @@ const BackgroundVideo: React.FC<BackgroundVideoProps> = ({ className = '' }) => 
   const [videoLoaded, setVideoLoaded] = useState(false);
   const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
 
-  // URLs de vidéos mp4 directes qui fonctionnent
+  // URLs de vidéos qui fonctionnent vraiment
   const luxuryHairVideos = [
-    // Vidéos de haute qualité qui fonctionnent
+    // Vidéo simple qui fonctionne toujours
     'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-    'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
-    'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
-    'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
-    // Vidéo locale (optionnel)
-    '/videos/luxury-hair.mp4',
+    // Vidéos locales (test)
+    '/videos/4178342-hd_1920_1080_30fps.mp4',
+    '/videos/3998516-uhd_4096_2160_25fps.mp4',
   ];
 
   const handleVideoError = () => {
-    console.log(`Erreur de chargement vidéo ${currentVideoIndex + 1}/${luxuryHairVideos.length}: ${luxuryHairVideos[currentVideoIndex]}`);
+    console.error(`❌ ERREUR VIDÉO ${currentVideoIndex + 1}/${luxuryHairVideos.length}`);
+    console.error(`❌ URL: ${luxuryHairVideos[currentVideoIndex]}`);
+    console.error(`❌ Erreur complète:`, arguments);
     
     // Essayer la vidéo suivante
     if (currentVideoIndex < luxuryHairVideos.length - 1) {
-      console.log(`Tentative avec la vidéo suivante...`);
+      console.log(`🔄 Tentative avec la vidéo suivante...`);
       setCurrentVideoIndex(currentVideoIndex + 1);
     } else {
-      console.log('Toutes les vidéos ont échoué, utilisation du fallback gradient');
+      console.log('🚫 Toutes les vidéos ont échoué, utilisation du fallback gradient');
       setVideoError(true);
       setVideoLoaded(false);
     }
   };
 
   const handleVideoLoad = () => {
-    console.log(`Vidéo ${currentVideoIndex + 1} chargée avec succès: ${luxuryHairVideos[currentVideoIndex]}`);
+    console.log(`✅ VIDÉO CHARGÉE AVEC SUCCÈS !`);
+    console.log(`✅ Index: ${currentVideoIndex + 1}/${luxuryHairVideos.length}`);
+    console.log(`✅ URL: ${luxuryHairVideos[currentVideoIndex]}`);
     setVideoLoaded(true);
     setVideoError(false);
   };
@@ -45,7 +47,7 @@ const BackgroundVideo: React.FC<BackgroundVideoProps> = ({ className = '' }) => 
 
   return (
     <div className={`relative w-full h-full overflow-hidden ${className}`}>
-      {/* Fond de remplacement fashion week élégant avec couleurs sombres */}
+      {/* Fond de remplacement élégant */}
       <div 
         className="absolute inset-0 animate-gradient"
         style={{ 
@@ -54,14 +56,14 @@ const BackgroundVideo: React.FC<BackgroundVideoProps> = ({ className = '' }) => 
         }}
       ></div>
 
-      {/* Motif géométrique subtil fashion week */}
+      {/* Motif géométrique subtil */}
       <div className="absolute inset-0 opacity-10">
         <div className="absolute inset-0" style={{
           backgroundImage: `
-            radial-gradient(circle at 20% 20%, #ecf0f1 1px, transparent 1px),
-            radial-gradient(circle at 80% 80%, #ecf0f1 1px, transparent 1px),
-            radial-gradient(circle at 40% 60%, #ecf0f1 1px, transparent 1px),
-            radial-gradient(circle at 60% 40%, #ecf0f1 1px, transparent 1px)
+            radial-gradient(circle at 20% 20%, #ffffff 1px, transparent 1px),
+            radial-gradient(circle at 80% 80%, #ffffff 1px, transparent 1px),
+            radial-gradient(circle at 40% 60%, #ffffff 1px, transparent 1px),
+            radial-gradient(circle at 60% 40%, #ffffff 1px, transparent 1px)
           `,
           backgroundSize: '100px 100px'
         }}></div>
@@ -71,16 +73,19 @@ const BackgroundVideo: React.FC<BackgroundVideoProps> = ({ className = '' }) => 
       <div className="absolute inset-0">
         {!videoError && (
           <video
-            key={currentVideoIndex} // Force le rechargement quand on change de vidéo
+            key={currentVideoIndex}
             className="w-full h-full object-cover"
             autoPlay
             loop
             muted
             playsInline
             onError={handleVideoError}
-            onLoadStart={() => console.log(`Chargement vidéo ${currentVideoIndex + 1}...`)}
+            onLoadStart={() => console.log(`🔄 CHARGEMENT VIDÉO ${currentVideoIndex + 1}...`)}
             onCanPlay={handleVideoLoad}
             onLoadedData={handleVideoLoad}
+            onLoad={() => console.log(`📥 VIDÉO LOADED: ${currentVideoIndex + 1}`)}
+            onPlay={() => console.log(`▶️ VIDÉO EN COURS DE LECTURE: ${currentVideoIndex + 1}`)}
+            onPause={() => console.log(`⏸️ VIDÉO EN PAUSE: ${currentVideoIndex + 1}`)}
             style={{
               position: 'absolute',
               top: 0,
@@ -100,7 +105,7 @@ const BackgroundVideo: React.FC<BackgroundVideoProps> = ({ className = '' }) => 
       {/* Overlay sombre pour améliorer la lisibilité */}
       <div className="absolute inset-0 bg-black/30" style={{ zIndex: 2 }}></div>
 
-      {/* Particules élégantes fashion week */}
+      {/* Particules élégantes */}
       <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 3 }}>
         <div className="absolute top-1/4 left-1/4 w-1 h-1 bg-white/30 rounded-full animate-float"></div>
         <div className="absolute top-3/4 right-1/3 w-0.5 h-0.5 bg-white/40 rounded-full animate-float" style={{ animationDelay: '1s' }}></div>
@@ -115,11 +120,11 @@ const BackgroundVideo: React.FC<BackgroundVideoProps> = ({ className = '' }) => 
         <div className="absolute bottom-0 right-0 w-px h-full bg-gradient-to-b from-transparent via-white/30 to-transparent animate-pulse" style={{ animationDelay: '2s' }}></div>
       </div>
 
-      {/* Indicateur de debug (optionnel) */}
+      {/* Indicateur de debug */}
       {process.env.NODE_ENV === 'development' && (
         <div className="absolute top-4 left-4 z-30">
           <div className="px-3 py-1 bg-black/50 backdrop-blur-sm rounded-full text-white text-xs">
-            {videoError ? 'Gradient' : `Vidéo ${currentVideoIndex + 1}/${luxuryHairVideos.length}`}
+            {videoError ? '🚫 Gradient' : videoLoaded ? `✅ Vidéo ${currentVideoIndex + 1}` : `⏳ Chargement...`}
           </div>
         </div>
       )}
@@ -127,4 +132,4 @@ const BackgroundVideo: React.FC<BackgroundVideoProps> = ({ className = '' }) => 
   );
 };
 
-export default BackgroundVideo; 
+export default BackgroundVideo;

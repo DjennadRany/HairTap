@@ -100,7 +100,7 @@ const ProductModal: React.FC<ProductModalProps> = ({
   ];
 
   return (
-    <Modal open={open} onClose={onClose} title={product ? 'Modifier le produit' : 'Ajouter un produit'}>
+    <Modal isOpen={open} onClose={onClose} title={product ? 'Modifier le produit' : 'Ajouter un produit'}>
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Nom du produit */}
         <div>

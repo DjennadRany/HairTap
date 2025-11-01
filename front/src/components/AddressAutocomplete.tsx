@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { FaMapMarkerAlt, FaSearch } from 'react-icons/fa';
+import { AutoGeolocation } from './AutoGeolocation';
 
 interface AddressSuggestion {
   display_name: string;
@@ -69,7 +70,7 @@ const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
         setShowSuggestions(data.length > 0);
         setSelectedIndex(-1);
       } catch (error) {
-        console.error('Erreur recherche adresse:', error);
+        // Erreur lors de la recherche d'adresse
         setSuggestions([]);
       } finally {
         setIsLoading(false);
@@ -149,6 +150,21 @@ const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
           </div>
         )}
       </div>
+
+      {/* Auto Geolocation Status */}
+      {query && query.length > 5 && (
+        <div className="mt-2">
+          <AutoGeolocation
+            address={query}
+            onCoordinatesFound={(coordinates) => {
+              // Coordonnées trouvées automatiquement
+            }}
+            onError={(error) => {
+              // Erreur géolocalisation automatique
+            }}
+          />
+        </div>
+      )}
 
       {/* Suggestions */}
       {showSuggestions && suggestions.length > 0 && (

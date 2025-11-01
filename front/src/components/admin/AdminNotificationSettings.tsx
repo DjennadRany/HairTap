@@ -14,3 +14,4 @@ export const AdminNotificationSettings: React.FC = () => {
 		</div>
 	);
 };
+

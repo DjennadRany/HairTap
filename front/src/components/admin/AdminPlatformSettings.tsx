@@ -14,3 +14,14 @@ export const AdminPlatformSettings: React.FC = () => {
 		</form>
 	);
 };
+
+
+
+
+
+
+
+
+
+
+

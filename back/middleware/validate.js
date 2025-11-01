@@ -137,14 +137,21 @@ const validateFile = (req, res, next) => {
     return res.status(400).json({ message: 'Aucun fichier fourni' });
   }
 
-  const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
+  const allowedImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+  const allowedVideoTypes = ['video/mp4', 'video/webm', 'video/ogg', 'video/avi', 'video/mov'];
+  const allowedTypes = [...allowedImageTypes, ...allowedVideoTypes];
+  
   if (!allowedTypes.includes(req.file.mimetype)) {
-    return res.status(400).json({ message: 'Type de fichier non autorisé' });
+    return res.status(400).json({ message: 'Type de fichier non autorisé. Utilisez JPEG, PNG, WebP, MP4, WebM, OGG, AVI ou MOV.' });
   }
 
-  const maxSize = 5 * 1024 * 1024; // 5MB
+  // Taille différente selon le type
+  const isVideo = req.file.mimetype.startsWith('video/');
+  const maxSize = isVideo ? 50 * 1024 * 1024 : 5 * 1024 * 1024; // 50MB pour vidéos, 5MB pour images
+  
   if (req.file.size > maxSize) {
-    return res.status(400).json({ message: 'Fichier trop volumineux (max 5MB)' });
+    const maxSizeMB = isVideo ? 50 : 5;
+    return res.status(400).json({ message: `Fichier trop volumineux (max ${maxSizeMB}MB)` });
   }
 
   next();

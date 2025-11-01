@@ -13,3 +13,4 @@ export const AdminCustomReports: React.FC = () => {
 		</div>
 	);
 };
+

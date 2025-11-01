@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Admin TapHair</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        button { padding: 10px 20px; margin: 5px; border: none; border-radius: 5px; cursor: pointer; }
+        .btn-primary { background-color: #007bff; color: white; }
+        .btn-success { background-color: #28a745; color: white; }
+        .btn-danger { background-color: #dc3545; color: white; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test Admin TapHair</h1>
+    
+    <div class="test-section info">
+        <h3>📋 Instructions de test</h3>
+        <p>1. Assurez-vous que le backend est démarré sur le port 5000</p>
+        <p>2. Assurez-vous que le frontend est démarré sur le port 5173</p>
+        <p>3. Testez les endpoints admin ci-dessous</p>
+    </div>
+
+    <div class="test-section">
+        <h3>🔐 Test Connexion Admin</h3>
+        <button class="btn-primary" onclick="testAdminLogin()">Tester Connexion Admin</button>
+        <div id="login-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>👥 Test Récupération Utilisateurs</h3>
+        <button class="btn-success" onclick="testGetUsers()">Récupérer Utilisateurs</button>
+        <div id="users-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>🔗 Test Navigation Admin</h3>
+        <button class="btn-primary" onclick="testAdminNavigation()">Tester Navigation</button>
+        <div id="navigation-result"></div>
+    </div>
+
+    <script>
+        let adminToken = null;
+
+        async function testAdminLogin() {
+            const resultDiv = document.getElementById('login-result');
+            resultDiv.innerHTML = '<p>🔄 Test en cours...</p>';
+            
+            try {
+                const response = await fetch('http://localhost:5000/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: 'admin@taphair.com',
+                        password: 'Admin1234'
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    adminToken = data.token;
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            <p>✅ Connexion admin réussie !</p>
+                            <p><strong>Token:</strong> ${data.token ? 'Présent' : 'Manquant'}</p>
+                            <p><strong>User:</strong> ${data.user ? data.user.name : 'Manquant'}</p>
+                            <p><strong>Rôle:</strong> ${data.user ? data.user.role : 'Manquant'}</p>
+                        </div>
+                    `;
+                } else {
+                    const errorText = await response.text();
+                    resultDiv.innerHTML = `
+                        <div class="error">
+                            <p>❌ Échec de connexion admin</p>
+                            <p><strong>Erreur:</strong> ${errorText}</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <p>❌ Erreur réseau</p>
+                        <p><strong>Détails:</strong> ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        async function testGetUsers() {
+            const resultDiv = document.getElementById('users-result');
+            
+            if (!adminToken) {
+                resultDiv.innerHTML = '<div class="error"><p>❌ Connectez-vous d\'abord en admin</p></div>';
+                return;
+            }
+
+            resultDiv.innerHTML = '<p>🔄 Récupération des utilisateurs...</p>';
+            
+            try {
+                const response = await fetch('http://localhost:5000/api/users', {
+                    headers: {
+                        'Authorization': `Bearer ${adminToken}`
+                    }
+                });
+
+                if (response.ok) {
+                    const users = await response.json();
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            <p>✅ Utilisateurs récupérés avec succès !</p>
+                            <p><strong>Nombre d'utilisateurs:</strong> ${users.length}</p>
+                            <p><strong>Premier utilisateur:</strong> ${users[0] ? users[0].name : 'Aucun'}</p>
+                        </div>
+                    `;
+                } else {
+                    const errorText = await response.text();
+                    resultDiv.innerHTML = `
+                        <div class="error">
+                            <p>❌ Échec de récupération des utilisateurs</p>
+                            <p><strong>Erreur:</strong> ${errorText}</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <p>❌ Erreur réseau</p>
+                        <p><strong>Détails:</strong> ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        function testAdminNavigation() {
+            const resultDiv = document.getElementById('navigation-result');
+            resultDiv.innerHTML = `
+                <div class="info">
+                    <p>🌐 Test de navigation admin</p>
+                    <p><a href="http://localhost:5173/admin" target="_blank">Cliquez ici pour aller sur /admin</a></p>
+                    <p><a href="http://localhost:5173/admin/users" target="_blank">Cliquez ici pour aller sur /admin/users</a></p>
+                    <p><a href="http://localhost:5173/admin/services" target="_blank">Cliquez ici pour aller sur /admin/services</a></p>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>

@@ -1,109 +1,99 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
-import LocalVideoBackground from '../components/LocalVideoBackground';
-import { FaSearch, FaUser, FaArrowRight, FaPlay } from 'react-icons/fa';
+import { useNavigate } from 'react-router-dom';
+import { FaUser, FaCut, FaArrowRight } from 'react-icons/fa';
+import BackgroundVideo from '../components/BackgroundVideo';
 
-function HomePage() {
+const HomePage: React.FC = () => {
+  const navigate = useNavigate();
+
   return (
     <div className="relative min-h-screen overflow-hidden">
-      {/* Vidéo en arrière-plan */}
-      <LocalVideoBackground />
-      
-      {/* Overlay pour la lisibilité */}
-      <div className="absolute inset-0 bg-black/20 z-10"></div>
+      {/* Vidéo de fond */}
+      <BackgroundVideo />
       
       {/* Contenu principal */}
-      <div className="relative z-20 min-h-screen flex flex-col items-center justify-center px-4">
-        {/* Logo et titre */}
-        <div className="text-center mb-12 animate-fade-in">
-          <h1 className="text-6xl md:text-8xl font-elegant font-bold text-white mb-4 tracking-tight drop-shadow-lg">
+      <div className="relative z-10 flex flex-col items-center justify-center min-h-screen px-4 text-center">
+        {/* Logo et titre principal */}
+        <div className="mb-12">
+          <div className="flex items-center justify-center mb-8">
+            <div className="w-24 h-24 bg-gradient-to-r from-pink-500 to-purple-600 rounded-full flex items-center justify-center shadow-2xl">
+              <span className="text-4xl font-bold text-white">TH</span>
+            </div>
+          </div>
+          <h1 className="text-7xl md:text-8xl font-bold bg-gradient-to-r from-pink-400 via-purple-500 to-pink-600 bg-clip-text text-transparent mb-6">
             TapHair
           </h1>
-          <p className="text-xl md:text-2xl text-white font-fashion font-light mb-8 max-w-2xl drop-shadow-md">
-            Découvrez l'excellence de la coiffure. 
-            <br />
-            <span className="text-white font-medium">Votre style, notre passion.</span>
+          <p className="text-2xl md:text-3xl text-white/90 max-w-4xl mx-auto leading-relaxed mb-4">
+            Découvrez les plus belles coupes et trouvez votre coiffeur idéal
+          </p>
+          <p className="text-lg text-white/70 max-w-2xl mx-auto">
+            Rejoignez notre communauté de professionnels et clients passionnés de coiffure
           </p>
         </div>
 
-        {/* Boutons d'action */}
-        <div className="flex flex-col sm:flex-row gap-6 mb-12 animate-slide-up">
-          <Link
-            to="/search"
-            className="group relative px-8 py-4 bg-black text-white rounded-full font-fashion font-medium text-lg hover:bg-gray-800 transition-all duration-300 transform hover:scale-105 shadow-2xl"
-          >
-            <div className="flex items-center gap-3">
-              <FaSearch className="text-xl" />
-              <span>Rechercher un coiffeur</span>
-              <FaArrowRight className="text-lg group-hover:translate-x-1 transition-transform duration-300" />
+        {/* Choix du rôle - Section principale */}
+        <div className="mb-16">
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-8">
+            Comment souhaitez-vous utiliser TapHair ?
+          </h2>
+          <div className="flex flex-col md:flex-row gap-8 justify-center">
+            {/* Carte Client */}
+            <div 
+              className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-8 flex flex-col items-center max-w-sm w-full transform transition-all duration-300 hover:scale-105 hover:shadow-xl cursor-pointer"
+              onClick={() => navigate('/signin/client')}
+            >
+              <div className="w-20 h-20 bg-blue-500 rounded-full flex items-center justify-center mb-6 shadow-lg">
+                <FaUser className="text-white text-3xl" />
+              </div>
+              <h3 className="text-2xl font-semibold text-white mb-3">Je suis un Client</h3>
+              <p className="text-white/80 text-center mb-6">
+                Trouvez votre coiffeur idéal, réservez facilement et découvrez les dernières tendances.
+              </p>
+              <button className="flex items-center px-6 py-3 bg-blue-600 text-white rounded-full font-medium hover:bg-blue-700 transition-colors duration-300">
+                Commencer <FaArrowRight className="ml-2" />
+              </button>
             </div>
-          </Link>
 
-          <Link
-            to="/login"
-            className="group relative px-8 py-4 bg-fashion-light-gray/20 backdrop-blur-md text-white border-2 border-white/50 rounded-full font-fashion font-medium text-lg hover:bg-fashion-light-gray/30 hover:border-white/70 transition-all duration-300 transform hover:scale-105 shadow-2xl"
-          >
-            <div className="flex items-center gap-3">
-              <FaUser className="text-xl" />
-              <span>Se connecter</span>
+            {/* Carte Coiffeur */}
+            <div 
+              className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-8 flex flex-col items-center max-w-sm w-full transform transition-all duration-300 hover:scale-105 hover:shadow-xl cursor-pointer"
+              onClick={() => navigate('/signin/coiffeur')}
+            >
+              <div className="w-20 h-20 bg-gradient-to-r from-pink-500 to-purple-600 rounded-full flex items-center justify-center mb-6 shadow-lg">
+                <FaCut className="text-white text-3xl" />
+              </div>
+              <h3 className="text-2xl font-semibold text-white mb-3">Je suis un Coiffeur</h3>
+              <p className="text-white/80 text-center mb-6">
+                Développez votre clientèle, gérez vos réservations et montrez votre talent.
+              </p>
+              <button className="flex items-center px-6 py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-full font-medium hover:from-pink-600 hover:to-purple-700 transition-colors duration-300">
+                Commencer <FaArrowRight className="ml-2" />
+              </button>
             </div>
-          </Link>
-        </div>
-
-        {/* Boutons d'inscription */}
-        <div className="flex flex-col sm:flex-row gap-4 mb-8 animate-slide-up" style={{ animationDelay: '0.2s' }}>
-          <Link
-            to="/signin/client"
-            className="group relative px-6 py-3 bg-blue-600 text-white rounded-full font-fashion font-medium text-base hover:bg-blue-700 transition-all duration-300 transform hover:scale-105 shadow-xl"
-          >
-            <div className="flex items-center gap-2">
-              <FaUser className="text-sm" />
-              <span>Devenir client</span>
-            </div>
-          </Link>
-
-          <Link
-            to="/signin/coiffeur"
-            className="group relative px-6 py-3 bg-purple-600 text-white rounded-full font-fashion font-medium text-base hover:bg-purple-700 transition-all duration-300 transform hover:scale-105 shadow-xl"
-          >
-            <div className="flex items-center gap-2">
-              <FaUser className="text-sm" />
-              <span>Devenir coiffeur</span>
-            </div>
-          </Link>
-        </div>
-
-
-
-        {/* Statistiques */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl w-full animate-fade-in" style={{ animationDelay: '0.4s' }}>
-          <div className="text-center">
-            <div className="text-3xl md:text-4xl font-bold text-white mb-2 drop-shadow-lg">500+</div>
-            <div className="text-white font-fashion drop-shadow-md">Coiffeurs experts</div>
-          </div>
-          <div className="text-center">
-            <div className="text-3xl md:text-4xl font-bold text-white mb-2 drop-shadow-lg">10k+</div>
-            <div className="text-white font-fashion drop-shadow-md">Clients satisfaits</div>
-          </div>
-          <div className="text-center">
-            <div className="text-3xl md:text-4xl font-bold text-white mb-2 drop-shadow-lg">50+</div>
-            <div className="text-white font-fashion drop-shadow-md">Villes couvertes</div>
           </div>
         </div>
 
-        {/* Call-to-action secondaire */}
-        <div className="mt-16 text-center animate-fade-in" style={{ animationDelay: '0.8s' }}>
-          <p className="text-white font-fashion text-lg mb-4 drop-shadow-md">
-            Prêt à transformer votre style ?
-          </p>
-          <button className="inline-flex items-center gap-2 text-white hover:text-gray-200 transition-colors duration-300">
-            <FaPlay className="text-sm" />
-            <span className="font-fashion">Découvrir nos services</span>
+        {/* Section Découverte sans inscription */}
+        <div className="text-white/70 text-lg mb-8">
+          Vous n'êtes pas encore prêt à vous inscrire ?
+        </div>
+        <div className="flex flex-col sm:flex-row gap-4">
+          <button
+            onClick={() => navigate('/hub?tab=gallery')}
+            className="group flex items-center justify-center px-8 py-4 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-white font-semibold text-lg hover:bg-white/20 transition-all duration-300 hover:scale-105"
+          >
+            Explorer la galerie <FaArrowRight className="ml-3 group-hover:translate-x-1 transition-transform" />
+          </button>
+          <button
+            onClick={() => navigate('/hub?tab=coiffeurs')}
+            className="group flex items-center justify-center px-8 py-4 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-white font-semibold text-lg hover:bg-white/20 transition-all duration-300 hover:scale-105"
+          >
+            Rechercher un coiffeur <FaArrowRight className="ml-3 group-hover:translate-x-1 transition-transform" />
           </button>
         </div>
       </div>
     </div>
   );
-}
+};
 
-export default HomePage; 
+export default HomePage;

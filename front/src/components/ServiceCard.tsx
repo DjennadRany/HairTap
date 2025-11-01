@@ -12,6 +12,7 @@ interface ServiceCardProps {
     category: string;
     keywords?: string[];
     examplePhotos?: string[];
+    images?: string[];
     likes?: number;
     isLiked?: boolean;
   };
@@ -19,7 +20,7 @@ interface ServiceCardProps {
   showBookButton?: boolean;
   onEdit?: (serviceId: string) => void;
   onDelete?: (serviceId: string) => void;
-  onBook?: (serviceId: string) => void;
+  onBook?: (service: any) => void; // Changé pour passer l'objet service complet
   onLike?: (serviceId: string) => void;
 }
 
@@ -92,10 +93,10 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
       )}
 
       {/* Photos d'exemple */}
-      {service.examplePhotos && service.examplePhotos.length > 0 && (
+      {service.images && service.images.length > 0 && (
         <div className="mb-3">
           <div className="flex gap-2">
-            {service.examplePhotos.slice(0, 2).map((photo, index) => (
+            {service.images.slice(0, 2).map((photo, index) => (
               <img
                 key={index}
                 src={getImageUrl(photo, DEFAULT_SERVICE_IMAGE)}
@@ -133,7 +134,7 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
             {/* Bouton Réserver pour les clients */}
             {onBook && showBookButton && (
               <button
-                onClick={() => onBook(service._id)}
+                onClick={() => onBook(service)}
                 className="w-full bg-gray-600 text-white px-4 py-2 rounded hover:bg-black transition-colors flex items-center justify-center gap-2"
               >
                 <FaCalendarAlt />

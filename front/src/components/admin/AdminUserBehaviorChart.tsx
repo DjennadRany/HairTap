@@ -7,3 +7,4 @@ export const AdminUserBehaviorChart: React.FC = () => {
 		</div>
 	);
 };
+

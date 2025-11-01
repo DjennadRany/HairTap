@@ -7,3 +7,4 @@ export const AdminRevenueAnalytics: React.FC = () => {
 		</div>
 	);
 };
+

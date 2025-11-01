@@ -8,13 +8,17 @@ const router = express.Router();
 // Récupérer les messages non lus
 router.get('/unread', auth, async (req, res) => {
   try {
+    console.log('🔍 [CHAT] GET /unread - User ID:', req.user._id);
+    
     const count = await Message.countDocuments({
       to: req.user._id,
       read: false
     });
+    
+    console.log('✅ [CHAT] Unread count:', count);
     res.json({ count });
   } catch (error) {
-    console.error('Error getting unread count:', error);
+    console.error('❌ [CHAT] Error getting unread count:', error);
     res.status(500).json({ message: 'Erreur serveur' });
   }
 });
@@ -22,12 +26,16 @@ router.get('/unread', auth, async (req, res) => {
 // Récupérer les conversations
 router.get('/conversations', auth, async (req, res) => {
   try {
+    console.log('🔍 [CHAT] GET /conversations - User ID:', req.user._id);
+    
     const messages = await Message.find({
       $or: [
         { from: req.user._id },
         { to: req.user._id }
       ]
     }).sort({ date: -1 });
+    
+    console.log('✅ [CHAT] Found messages:', messages.length);
 
     // Grouper les messages par conversation (UNIQUE par userId)
     const conversations = messages.reduce((acc, msg) => {
@@ -80,15 +88,19 @@ router.get('/conversations', auth, async (req, res) => {
 // Récupérer les messages avec un utilisateur
 router.get('/messages/:userId', auth, async (req, res) => {
   try {
+    console.log('🔍 [CHAT] GET /messages/:userId - User ID:', req.user._id, 'Other User ID:', req.params.userId);
+    
     const messages = await Message.find({
       $or: [
         { from: req.user._id, to: req.params.userId },
         { from: req.params.userId, to: req.user._id }
       ]
     }).sort({ date: 1 });
+    
+    console.log('✅ [CHAT] Found messages:', messages.length);
     res.json(messages);
   } catch (error) {
-    console.error('Error getting messages:', error);
+    console.error('❌ [CHAT] Error getting messages:', error);
     res.status(500).json({ message: 'Erreur serveur' });
   }
 });

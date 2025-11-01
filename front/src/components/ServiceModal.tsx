@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { FaTimes, FaImage, FaTags, FaPlus, FaTrash } from 'react-icons/fa';
 import { getImageUrl, handleImageError, DEFAULT_SERVICE_IMAGE } from '../utils/imageUtils';
 import { coiffeurService } from '../services/api/coiffeurs';
+import { useIsMobile } from '../hooks/useIsMobile';
+import MobileMediaUpload from './MobileMediaUpload';
 
 interface ServiceModalProps {
   isOpen: boolean;
@@ -37,6 +39,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
   service,
   isLoading = false
 }) => {
+  const isMobile = useIsMobile();
   
   const [formData, setFormData] = useState<ServiceFormData>({
     name: '',
@@ -143,13 +146,13 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
     });
   };
 
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleMediaUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
-      const newPhotos: File[] = Array.from(files);
+      const newMedia: File[] = Array.from(files);
       setFormData({
         ...formData,
-        examplePhotos: [...formData.examplePhotos, ...newPhotos]
+        examplePhotos: [...formData.examplePhotos, ...newMedia]
       });
     }
   };
@@ -324,65 +327,116 @@ const ServiceModal: React.FC<ServiceModalProps> = ({
           {/* Photos d'exemple */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Photos d'exemple
+              Médias d'exemple (Photos et Vidéos)
             </label>
-            <input
-              type="file"
-              multiple
-              accept="image/*"
-              onChange={handlePhotoUpload}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
-            />
             
-            {/* Photos existantes */}
-            {existingPhotos.length > 0 && (
+            {isMobile ? (
+              <MobileMediaUpload
+                onMediaSelect={(files) => {
+                  setFormData({
+                    ...formData,
+                    examplePhotos: [...formData.examplePhotos, ...files]
+                  });
+                }}
+                existingMedia={existingPhotos}
+                onRemoveExisting={handleRemoveExistingPhoto}
+                maxFiles={10}
+              />
+            ) : (
+              <>
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*,video/*"
+                  onChange={handleMediaUpload}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Formats acceptés : JPEG, PNG, WebP, MP4, WebM, OGG, AVI, MOV (Max: 5MB pour images, 50MB pour vidéos)
+                </p>
+              </>
+            )}
+            
+            {/* Médias existants - Desktop uniquement */}
+            {!isMobile && existingPhotos.length > 0 && (
               <div className="mt-4">
-                <h4 className="text-sm font-medium text-gray-700 mb-2">Photos existantes :</h4>
+                <h4 className="text-sm font-medium text-gray-700 mb-2">Médias existants :</h4>
                 <div className="grid grid-cols-4 gap-2">
-                  {existingPhotos.map((photo, index) => (
-                    <div key={index} className="relative">
-                      <img
-                        src={getImageUrl(photo, DEFAULT_SERVICE_IMAGE)}
-                        alt={`Exemple ${index + 1}`}
-                        className="w-full h-20 object-cover rounded-lg"
-                        onError={(e) => handleImageError(e, DEFAULT_SERVICE_IMAGE)}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveExistingPhoto(index)}
-                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
-                      >
-                        <FaTrash className="text-xs" />
-                      </button>
-                    </div>
-                  ))}
+                  {existingPhotos.map((media, index) => {
+                    const isVideo = media.includes('.mp4') || media.includes('.webm') || media.includes('.ogg') || media.includes('.avi') || media.includes('.mov');
+                    return (
+                      <div key={index} className="relative">
+                        {isVideo ? (
+                          <video
+                            src={getImageUrl(media, DEFAULT_SERVICE_IMAGE)}
+                            className="w-full h-20 object-cover rounded-lg"
+                            controls={false}
+                            muted
+                          />
+                        ) : (
+                          <img
+                            src={getImageUrl(media, DEFAULT_SERVICE_IMAGE)}
+                            alt={`Exemple ${index + 1}`}
+                            className="w-full h-20 object-cover rounded-lg"
+                            onError={(e) => handleImageError(e, DEFAULT_SERVICE_IMAGE)}
+                          />
+                        )}
+                        <div className="absolute top-1 left-1 bg-black bg-opacity-50 text-white text-xs px-1 rounded">
+                          {isVideo ? '🎥' : '📷'}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveExistingPhoto(index)}
+                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                        >
+                          <FaTrash className="text-xs" />
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
 
-            {/* Nouvelles photos */}
+            {/* Nouveaux médias */}
             {formData.examplePhotos.length > 0 && (
               <div className="mt-4">
-                <h4 className="text-sm font-medium text-gray-700 mb-2">Nouvelles photos :</h4>
+                <h4 className="text-sm font-medium text-gray-700 mb-2">Nouveaux médias :</h4>
                 <div className="grid grid-cols-4 gap-2">
                   {formData.examplePhotos
-                    .filter(photo => photo instanceof File)
-                    .map((photo, index) => (
-                    <div key={index} className="relative">
-                      <img
-                        src={URL.createObjectURL(photo as File)}
-                        alt={`Nouvelle photo ${index + 1}`}
-                        className="w-full h-20 object-cover rounded-lg"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleRemovePhoto(index)}
-                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
-                      >
-                        <FaTrash className="text-xs" />
-                      </button>
-                    </div>
-                  ))}
+                    .filter(media => media instanceof File)
+                    .map((media, index) => {
+                      const file = media as File;
+                      const isVideo = file.type.startsWith('video/');
+                      return (
+                        <div key={index} className="relative">
+                          {isVideo ? (
+                            <video
+                              src={URL.createObjectURL(file)}
+                              className="w-full h-20 object-cover rounded-lg"
+                              controls={false}
+                              muted
+                            />
+                          ) : (
+                            <img
+                              src={URL.createObjectURL(file)}
+                              alt={`Nouveau média ${index + 1}`}
+                              className="w-full h-20 object-cover rounded-lg"
+                            />
+                          )}
+                          <div className="absolute top-1 left-1 bg-black bg-opacity-50 text-white text-xs px-1 rounded">
+                            {isVideo ? '🎥' : '📷'}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemovePhoto(index)}
+                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 transition-colors"
+                          >
+                            <FaTrash className="text-xs" />
+                          </button>
+                        </div>
+                      );
+                    })}
                 </div>
               </div>
             )}

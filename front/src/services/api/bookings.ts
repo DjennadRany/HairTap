@@ -2,92 +2,179 @@ import api from './axios';
 
 export interface Booking {
   _id: string;
-  client: string;
-  coiffeur: string;
+  client: string | any; // Peut être ObjectId ou objet User
+  coiffeur: string | any; // Peut être ObjectId ou objet User
   service: string;
+  serviceId?: string;
+  coiffeurId?: string;
+  clientId?: string;
   date: string;
+  time?: string;
   duration: number;
-  status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
-  paymentStatus: 'pending' | 'paid' | 'refunded';
+  status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
+  paymentStatus?: 'pending' | 'paid' | 'refunded';
   price: number;
   mode: 'salon' | 'domicile';
+  notes?: string;
   address?: {
     street: string;
+    streetNumber?: string;
     city: string;
     postalCode: string;
+    country?: string;
+    coordinates?: {
+      lat: number;
+      lng: number;
+    };
   };
-  notes?: string;
-  cancellationReason?: string;
+  // Informations Stripe
+  stripePaymentIntentId?: string;
+  stripeCustomerId?: string;
+  platformFee?: number;
+  coiffeurAmount?: number;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface CreateBookingData {
-  coiffeur: string;
-  service: string;
+  serviceId: string;
+  coiffeurId: string;
   date: string;
-  mode: 'salon' | 'domicile';
+  time: string;
+  notes?: string;
   address?: {
     street: string;
+    streetNumber?: string;
     city: string;
     postalCode: string;
+    country: string;
+    coordinates?: {
+      lat: number;
+      lng: number;
+    };
   };
-  notes?: string;
 }
 
-export interface UpdateBookingData {
-  status?: 'pending' | 'confirmed' | 'completed' | 'cancelled';
-  paymentStatus?: 'pending' | 'paid' | 'refunded';
-  notes?: string;
-  cancellationReason?: string;
+export interface BookingResponse {
+  success: boolean;
+  data?: Booking;
+  message?: string;
 }
 
-export const bookingService = {
+class BookingService {
+  // Créer une réservation
+  async createBooking(bookingData: CreateBookingData): Promise<BookingResponse> {
+    try {
+      const response = await api.post('/bookings', bookingData);
+      return response.data;
+    } catch (error: any) {
+      console.error('Erreur lors de la création de la réservation:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Erreur lors de la création de la réservation'
+      };
+    }
+  }
+
+  // Récupérer les réservations d'un utilisateur
+  async getUserBookings(userId: string): Promise<Booking[]> {
+    try {
+      const response = await api.get(`/bookings/user/${userId}`);
+      return response.data;
+    } catch (error: any) {
+      console.error('Erreur lors de la récupération des réservations:', error);
+      return [];
+    }
+  }
+
   // Récupérer les réservations du client connecté
-  getClientBookings: async () => {
-    const response = await api.get('/bookings/client');
-    return response.data;
-  },
+  async getClientBookings(): Promise<Booking[]> {
+    try {
+      const response = await api.get('/bookings/client');
+      return response.data;
+    } catch (error: any) {
+      console.error('Erreur lors de la récupération des réservations du client:', error);
+      return [];
+    }
+  }
 
   // Récupérer les réservations d'un coiffeur
-  getCoiffeurBookings: async (coiffeurId: string) => {
-    const response = await api.get(`/bookings/coiffeur/${coiffeurId}`);
-    return response.data;
-  },
-
-  // Créer une nouvelle réservation - AVEC VALIDATION
-  createBooking: async (bookingData: any): Promise<{ success: boolean; data: any; message: string }> => {
-    const response = await api.post('/bookings', bookingData);
-    return response.data;
-  },
-
-  // Mettre à jour une réservation
-  updateBooking: async (bookingId: string, bookingData: any) => {
-    const response = await api.put(`/bookings/${bookingId}`, bookingData);
-    return response.data;
-  },
+  async getCoiffeurBookings(coiffeurId: string): Promise<Booking[]> {
+    try {
+      const response = await api.get(`/bookings/coiffeur/${coiffeurId}`);
+      return response.data;
+    } catch (error: any) {
+      console.error('Erreur lors de la récupération des réservations du coiffeur:', error);
+      return [];
+    }
+  }
 
   // Annuler une réservation
-  cancelBooking: async (bookingId: string, reason: string) => {
-    const response = await api.post(`/bookings/${bookingId}/cancel`, { reason });
-    return response.data;
-  },
+  async cancelBooking(bookingId: string, reason?: string): Promise<BookingResponse> {
+    try {
+      const response = await api.post(`/bookings/${bookingId}/cancel`, { reason });
+      return response.data;
+    } catch (error: any) {
+      console.error('Erreur lors de l\'annulation de la réservation:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Erreur lors de l\'annulation de la réservation'
+      };
+    }
+  }
 
   // Confirmer une réservation
-  confirmBooking: async (bookingId: string) => {
-    const response = await api.post(`/bookings/${bookingId}/confirm`);
-    return response.data;
-  },
-
-  // Terminer une réservation
-  completeBooking: async (bookingId: string) => {
-    const response = await api.post(`/bookings/${bookingId}/complete`);
-    return response.data;
-  },
-
-  // Supprimer une réservation
-  deleteBooking: async (bookingId: string) => {
-    const response = await api.delete(`/bookings/${bookingId}`);
-    return response.data;
+  async confirmBooking(bookingId: string): Promise<BookingResponse> {
+    try {
+      const response = await api.put(`/bookings/${bookingId}/confirm`);
+      return response.data;
+    } catch (error: any) {
+      console.error('Erreur lors de la confirmation de la réservation:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Erreur lors de la confirmation de la réservation'
+      };
+    }
   }
-}; 
+
+  // Marquer une réservation comme terminée
+  async completeBooking(bookingId: string): Promise<BookingResponse> {
+    try {
+      const response = await api.put(`/bookings/${bookingId}/complete`);
+      return response.data;
+    } catch (error: any) {
+      console.error('Erreur lors de la finalisation de la réservation:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Erreur lors de la finalisation de la réservation'
+      };
+    }
+  }
+
+  // Récupérer une réservation par ID
+  async getBookingById(bookingId: string): Promise<Booking | null> {
+    try {
+      const response = await api.get(`/bookings/${bookingId}`);
+      return response.data;
+    } catch (error: any) {
+      console.error('Erreur lors de la récupération de la réservation:', error);
+      return null;
+    }
+  }
+
+  // Mettre à jour une réservation
+  async updateBooking(bookingId: string, updateData: Partial<CreateBookingData> & { status?: Booking['status'] }): Promise<BookingResponse> {
+    try {
+      const response = await api.put(`/bookings/${bookingId}`, updateData);
+      return response.data;
+    } catch (error: any) {
+      console.error('Erreur lors de la mise à jour de la réservation:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Erreur lors de la mise à jour de la réservation'
+      };
+    }
+  }
+}
+
+export const bookingService = new BookingService();

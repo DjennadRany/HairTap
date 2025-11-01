@@ -162,16 +162,25 @@ export const coiffeurService = {
     await api.delete(`/coiffeurs/${coiffeurId}/services/${serviceId}`);
   },
 
-  // Upload d'image de service
-  async uploadServicePhoto(serviceId: string, photo: File): Promise<{ success: boolean; photo: { url: string } }> {
+  // Upload de média (photo ou vidéo) de service
+  async uploadServiceMedia(serviceId: string, media: File): Promise<{ success: boolean; media: { url: string; type: string } }> {
     const formData = new FormData();
-    formData.append('photo', photo);
-    const response = await api.post<{ success: boolean; photo: { url: string } }>(`/services/${serviceId}/photo`, formData, {
+    formData.append('media', media);
+    const response = await api.post<{ success: boolean; media: { url: string; type: string } }>(`/services/${serviceId}/media`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
     });
     return response.data;
+  },
+
+  // Upload d'image de service (compatibilité)
+  async uploadServicePhoto(serviceId: string, photo: File): Promise<{ success: boolean; photo: { url: string } }> {
+    const result = await this.uploadServiceMedia(serviceId, photo);
+    return {
+      success: result.success,
+      photo: { url: result.media.url }
+    };
   },
 
   // Synchroniser la galerie avec les services
@@ -189,6 +198,12 @@ export const coiffeurService = {
   // Toggle like sur un service
   async toggleServiceLike(coiffeurId: string, serviceId: string): Promise<any> {
     const response = await api.post(`/coiffeurs/${coiffeurId}/services/${serviceId}/like`);
+    return response.data;
+  },
+
+  // Récupérer les services likés par l'utilisateur
+  async getUserLikedServices(): Promise<any> {
+    const response = await api.get('/services/user/liked');
     return response.data;
   }
 }; 

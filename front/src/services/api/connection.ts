@@ -52,7 +52,18 @@ class ConnectionService {
         isOnline: false,
         status: 'offline',
         lastSeen: new Date(),
-        availability: { isAvailable: false }
+        availability: { 
+          isAvailable: false,
+          workingHours: {
+            monday: { start: '09:00', end: '18:00', isAvailable: false },
+            tuesday: { start: '09:00', end: '18:00', isAvailable: false },
+            wednesday: { start: '09:00', end: '18:00', isAvailable: false },
+            thursday: { start: '09:00', end: '18:00', isAvailable: false },
+            friday: { start: '09:00', end: '18:00', isAvailable: false },
+            saturday: { start: '09:00', end: '18:00', isAvailable: false },
+            sunday: { start: '09:00', end: '18:00', isAvailable: false }
+          }
+        }
       };
     }
   }

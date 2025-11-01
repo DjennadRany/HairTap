@@ -117,8 +117,7 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({
     }
   };
 
-  const handleServiceBook = (serviceId: string) => {
-    const service = services.find(s => s._id === serviceId);
+  const handleServiceBook = (service: any) => {
     if (service && onServiceBook) {
       onServiceBook(service);
     }

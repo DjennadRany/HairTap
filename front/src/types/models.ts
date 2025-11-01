@@ -179,6 +179,11 @@ export interface Booking {
   };
   notes?: string;
   cancellationReason?: string;
+  // Informations Stripe
+  stripePaymentIntentId?: string;
+  stripeCustomerId?: string;
+  platformFee?: number;
+  coiffeurAmount?: number;
   createdAt: string;
   updatedAt: string;
 }

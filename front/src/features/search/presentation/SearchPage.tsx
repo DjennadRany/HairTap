@@ -14,15 +14,20 @@ import { Map } from '../../../components/Map';
 import { useGeolocation } from '../../../hooks/useGeolocation';
 import { GalleryHub } from '../../../components/GalleryHub';
 import { FaImages, FaUserTie } from 'react-icons/fa';
+import ListCardToggle from '../../../components/ListCardToggle';
+import { useIsMobile } from '../../../hooks/useIsMobile';
+import { useGallery } from '../../../contexts/GalleryContext';
 
 type SearchTab = 'gallery' | 'coiffeurs';
 
 export const SearchPage: React.FC = () => {
   const navigate = useNavigate();
   const { location, error: locationError } = useGeolocation();
-  const [activeTab, setActiveTab] = useState<SearchTab>('gallery');
+  const isMobile = useIsMobile();
+  const { activeTab, setActiveTab } = useGallery();
   const [showMap, setShowMap] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [selectedResults, setSelectedResults] = useState<User[]>([]);
   const [results, setResults] = useState<User[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
@@ -135,34 +140,36 @@ export const SearchPage: React.FC = () => {
   const componentFactory = getSearchComponentFactory();
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      {/* Onglets de navigation */}
-      <div className="flex justify-center mb-8">
-        <div className="flex space-x-1 bg-gray-100 p-1 rounded-xl">
-          <button
-            onClick={() => setActiveTab('gallery')}
-            className={`flex items-center space-x-2 px-6 py-3 rounded-lg font-medium transition-all duration-200 ${
-              activeTab === 'gallery'
-                ? 'bg-white text-pink-600 shadow-md'
-                : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
-            }`}
-          >
-            <FaImages className="w-5 h-5" />
-            <span>Galerie des Services</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('coiffeurs')}
-            className={`flex items-center space-x-2 px-6 py-3 rounded-lg font-medium transition-all duration-200 ${
-              activeTab === 'coiffeurs'
-                ? 'bg-white text-pink-600 shadow-md'
-                : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
-            }`}
-          >
-            <FaUserTie className="w-5 h-5" />
-            <span>Rechercher des Coiffeurs</span>
-          </button>
+    <div className={`container mx-auto py-8 ${activeTab === 'gallery' && isMobile ? 'px-0' : 'px-4'}`}>
+      {/* Onglets de navigation - Desktop uniquement */}
+      {!isMobile && (
+        <div className="flex justify-center mb-8">
+          <div className="flex space-x-1 bg-gray-100 p-1 rounded-xl">
+            <button
+              onClick={() => setActiveTab('gallery')}
+              className={`flex items-center space-x-2 px-6 py-3 rounded-lg font-medium transition-all duration-200 ${
+                activeTab === 'gallery'
+                  ? 'bg-white text-pink-600 shadow-md'
+                  : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+              }`}
+            >
+              <FaImages className="w-5 h-5" />
+              <span>Galerie des Services</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('coiffeurs')}
+              className={`flex items-center space-x-2 px-6 py-3 rounded-lg font-medium transition-all duration-200 ${
+                activeTab === 'coiffeurs'
+                  ? 'bg-white text-pink-600 shadow-md'
+                  : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+              }`}
+            >
+              <FaUserTie className="w-5 h-5" />
+              <span>Rechercher des Coiffeurs</span>
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Contenu basé sur l'onglet actif */}
       {activeTab === 'gallery' ? (
@@ -189,13 +196,21 @@ export const SearchPage: React.FC = () => {
               <h2 className="text-2xl font-bold">
                 {results.length} coiffeurs trouvés
               </h2>
+              <ListCardToggle 
+                view={viewMode} 
+                onChange={setViewMode}
+                className="ml-4"
+              />
             </div>
 
             {results.length === 0 && !loading && (
               <div className="text-center text-gray-500">Aucun coiffeur trouvé.</div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className={viewMode === 'grid' 
+              ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" 
+              : "space-y-4"
+            }>
               {results.map(coiffeur => (
                 <CoiffeurCard
                   key={coiffeur._id}
@@ -204,6 +219,7 @@ export const SearchPage: React.FC = () => {
                   userLocation={location || undefined}
                   onFavoriteToggle={handleFavoriteToggle}
                   isFavorite={favorites.includes(coiffeur._id)}
+                  viewMode={viewMode}
                 />
               ))}
             </div>

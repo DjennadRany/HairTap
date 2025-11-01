@@ -7,3 +7,4 @@ export const AdminConversionFunnel: React.FC = () => {
 		</div>
 	);
 };
+

@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { FaHeart, FaShare, FaEye, FaSearch, FaStar, FaSpinner } from 'react-icons/fa';
+import { FaHeart, FaShare, FaEye, FaSearch, FaStar, FaSpinner, FaComment } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { coiffeurService } from '../services/api/coiffeurs';
 import { getImageUrl, handleImageError, DEFAULT_SERVICE_IMAGE } from '../utils/imageUtils';
+import { useIsMobile } from '../hooks/useIsMobile';
+import InstagramGallery from './InstagramGallery'; // Instagram-like gallery
+import InstagramComments from './InstagramComments'; // Commentaires Instagram
 import '../styles/gallery.css';
 
 interface Service {
@@ -29,7 +32,8 @@ interface Service {
   };
   examplePhotos: string[];
   gallery: Array<{
-    photoUrl: string;
+    mediaUrl: string;
+    mediaType: 'image' | 'video';
     caption: string;
     tags: string[];
     likes: number;
@@ -48,20 +52,96 @@ interface GalleryHubProps {
 
 export const GalleryHub: React.FC<GalleryHubProps> = ({ className = "" }) => {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [sortBy, setSortBy] = useState<'popularityScore' | 'likes' | 'recent'>('popularityScore');
+  const [likedServices, setLikedServices] = useState<string[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [showComments, setShowComments] = useState<{ [serviceId: string]: boolean }>({});
+
+  // Gérer la touche Échap pour fermer les commentaires
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setShowComments({});
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Récupérer les vrais services de la base de données
   useEffect(() => {
     fetchServices();
+    loadUserLikes();
   }, []);
 
-  const fetchServices = async () => {
+  // Charger les likes de l'utilisateur connecté
+  const loadUserLikes = async () => {
     try {
-      setLoading(true);
+      // Récupérer les services likés par l'utilisateur
+      const response = await coiffeurService.getUserLikedServices();
+      if (response && response.data) {
+        const likedServiceIds = response.data.map(service => service._id);
+        setLikedServices(likedServiceIds);
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement des likes:', error);
+    }
+  };
+
+  // Recharger les services quand la page devient visible (pour capturer les nouveaux services)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        fetchServices();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
+
+  // Re-trier les services quand ils changent (pour les nouveaux services)
+  useEffect(() => {
+    if (services.length > 0) {
+      const sortedServices = [...services].sort((a, b) => {
+        // Priorité 1: Services avec plus de likes
+        if (a.likes !== b.likes) {
+          return b.likes - a.likes;
+        }
+        // Priorité 2: Services avec plus de vues
+        if (a.views !== b.views) {
+          return b.views - a.views;
+        }
+        // Priorité 3: Score de popularité
+        return (b.popularityScore || 0) - (a.popularityScore || 0);
+      });
+      
+      // Mettre à jour seulement si l'ordre a changé
+      const hasChanged = sortedServices.some((service, index) => 
+        service._id !== services[index]?._id
+      );
+      
+      if (hasChanged) {
+        setServices(sortedServices);
+      }
+    }
+  }, [services.length]); // Se déclenche quand le nombre de services change
+
+  const fetchServices = async (page = 1, append = false) => {
+    try {
+      if (page === 1) {
+        setLoading(true);
+      } else {
+        setLoadingMore(true);
+      }
       
       // Récupérer tous les coiffeurs d'abord
       const coiffeurs = await coiffeurService.searchCoiffeurs({});
@@ -78,7 +158,7 @@ export const GalleryHub: React.FC<GalleryHubProps> = ({ className = "" }) => {
               _id: coiffeur._id,
               name: coiffeur.name,
               rating: coiffeur.rating || 0,
-              address: coiffeur.address
+              address: coiffeur.address || { city: 'Ville' }
             }
           }));
           allServices.push(...servicesWithCoiffeur);
@@ -88,12 +168,44 @@ export const GalleryHub: React.FC<GalleryHubProps> = ({ className = "" }) => {
       }
       
       console.log('Services récupérés:', allServices);
-      setServices(allServices);
+      
+      // Debug: Vérifier la structure des galeries
+      allServices.forEach(service => {
+        if (service.gallery && service.gallery.length > 0) {
+          console.log(`🔍 Service ${service.name} - Gallery:`, service.gallery);
+          service.gallery.forEach((item, index) => {
+            console.log(`  📁 Item ${index}:`, {
+              mediaUrl: item.mediaUrl,
+              mediaType: item.mediaType,
+              photoUrl: item.photoUrl // Ancienne propriété
+            });
+          });
+        }
+      });
+      
+      if (append) {
+        setServices(prev => [...prev, ...allServices]);
+      } else {
+        setServices(allServices);
+      }
+      
+      // Simuler la fin des données après quelques pages
+      setHasMore(page < 3); // Limiter à 3 pages pour la démo
+      setCurrentPage(page);
     } catch (error) {
       console.error('Erreur lors de la récupération des services:', error);
-      setServices([]);
+      if (!append) {
+        setServices([]);
+      }
     } finally {
       setLoading(false);
+      setLoadingMore(false);
+    }
+  };
+
+  const handleLoadMore = () => {
+    if (!loadingMore && hasMore) {
+      fetchServices(currentPage + 1, true);
     }
   };
 
@@ -114,6 +226,43 @@ export const GalleryHub: React.FC<GalleryHubProps> = ({ className = "" }) => {
     // Naviguer vers le profil du coiffeur avec la modal de réservation ouverte
     if (service.coiffeur?._id) {
       navigate(`/coiffeur/${service.coiffeur._id}?booking=true&service=${service._id}`);
+    }
+  };
+
+  const handleLikeService = async (serviceId: string) => {
+    try {
+      // Trouver le service pour obtenir le coiffeurId
+      const service = services.find(s => s._id === serviceId);
+      if (!service || !service.coiffeur) {
+        console.error('Service ou coiffeur introuvable');
+        return;
+      }
+
+      const coiffeurId = typeof service.coiffeur === 'string' ? service.coiffeur : service.coiffeur._id;
+      
+      // Appeler l'API pour liker/unliker
+      const response = await coiffeurService.toggleServiceLike(coiffeurId, serviceId);
+      
+      // Utiliser la nouvelle structure de réponse
+      const likes = response.data?.likes || response.likes || 0;
+      const isLiked = response.data?.isLiked || response.isLiked || false;
+      
+      // Mettre à jour l'état local
+      setServices(prev => prev.map(s => 
+        s._id === serviceId 
+          ? { ...s, likes: likes }
+          : s
+      ));
+
+      // Mettre à jour les likes locaux
+      if (isLiked) {
+        setLikedServices(prev => [...prev, serviceId]);
+      } else {
+        setLikedServices(prev => prev.filter(id => id !== serviceId));
+      }
+      
+    } catch (error) {
+      console.error('Erreur lors de la gestion du like:', error);
     }
   };
 
@@ -141,15 +290,18 @@ export const GalleryHub: React.FC<GalleryHubProps> = ({ className = "" }) => {
     }
   });
 
-  // Obtenir la première image disponible (examplePhotos ou gallery)
+  // Obtenir le premier média disponible (examplePhotos ou gallery)
   const getServiceImage = (service: Service) => {
     if (service.gallery && service.gallery.length > 0) {
-      return getImageUrl(service.gallery[0].photoUrl, DEFAULT_SERVICE_IMAGE);
+      const firstItem = service.gallery[0];
+      // Support de la nouvelle structure (mediaUrl) et de l'ancienne (photoUrl)
+      const mediaUrl = firstItem.mediaUrl || firstItem.photoUrl;
+      return getImageUrl(mediaUrl, DEFAULT_SERVICE_IMAGE);
     }
-    if (service.examplePhotos && service.examplePhotos.length > 0) {
-      return getImageUrl(service.examplePhotos[0], DEFAULT_SERVICE_IMAGE);
+    if (service.images && service.images.length > 0) {
+      return getImageUrl(service.images[0], DEFAULT_SERVICE_IMAGE);
     }
-    // Image par défaut si aucune image n'est disponible
+    // Image par défaut si aucun média n'est disponible
     return DEFAULT_SERVICE_IMAGE;
   };
 
@@ -170,6 +322,14 @@ export const GalleryHub: React.FC<GalleryHubProps> = ({ className = "" }) => {
         <span className="ml-3 text-lg text-gray-600">Chargement des services...</span>
       </div>
     );
+  }
+
+  // Afficher la version mobile si on est sur mobile
+  if (isMobile) {
+    return <InstagramGallery 
+      services={services} 
+      loading={loading} 
+    />; // Instagram-like gallery
   }
 
   return (
@@ -229,16 +389,32 @@ export const GalleryHub: React.FC<GalleryHubProps> = ({ className = "" }) => {
               className="gallery-item relative cursor-pointer group"
               onClick={() => handleServiceClick(service)}
             >
-              {/* Image du service */}
-              <img
-                src={getServiceImage(service)}
-                alt={service.name}
-                className="w-full h-full object-cover"
-                onError={(e) => handleImageError(e, DEFAULT_SERVICE_IMAGE)}
-              />
+              {/* Média du service (image ou vidéo) */}
+              {(() => {
+                const isVideo = service.gallery && service.gallery.length > 0 && service.gallery[0].mediaType === 'video';
+                const url = getServiceImage(service);
+                const isVideoByUrl = url.includes('.mp4') || url.includes('.webm') || url.includes('.ogg') || url.includes('.avi') || url.includes('.mov');
+                return isVideo || isVideoByUrl;
+              })() ? (
+                <video
+                  src={getServiceImage(service)}
+                  className="w-full h-full object-cover"
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                />
+              ) : (
+                <img
+                  src={getServiceImage(service)}
+                  alt={service.name}
+                  className="w-full h-full object-cover"
+                  onError={(e) => handleImageError(e, DEFAULT_SERVICE_IMAGE)}
+                />
+              )}
 
               {/* Overlay au survol */}
-              <div className="gallery-overlay">
+              <div className={`gallery-overlay ${showComments[service._id] ? 'gallery-overlay-visible' : ''}`}>
                 <div className="gallery-overlay-content">
                   <div className="space-y-3">
                     {/* Titre et description */}
@@ -310,12 +486,31 @@ export const GalleryHub: React.FC<GalleryHubProps> = ({ className = "" }) => {
                       <button 
                         onClick={(e) => {
                           e.stopPropagation();
-                          // TODO: Implémenter la logique des likes
-                          console.log('Like clicked for service:', service._id);
+                          handleLikeService(service._id);
                         }}
-                        className="bg-white bg-opacity-20 hover:bg-opacity-30 text-white p-2 rounded-lg transition-colors"
+                        className={`p-2 rounded-lg transition-colors ${
+                          likedServices.includes(service._id)
+                            ? 'bg-red-500 text-white'
+                            : 'bg-white bg-opacity-20 hover:bg-opacity-30 text-white'
+                        }`}
                       >
                         <FaHeart className="w-4 h-4" />
+                      </button>
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowComments(prev => ({
+                            ...prev,
+                            [service._id]: !prev[service._id]
+                          }));
+                        }}
+                        className={`p-2 rounded-lg transition-colors ${
+                          showComments[service._id]
+                            ? 'bg-pink-500 text-white'
+                            : 'bg-white bg-opacity-20 hover:bg-opacity-30 text-white'
+                        }`}
+                      >
+                        <FaComment className="w-4 h-4" />
                       </button>
                       <button className="bg-white bg-opacity-20 hover:bg-opacity-30 text-white p-2 rounded-lg transition-colors">
                         <FaShare className="w-4 h-4" />
@@ -324,6 +519,25 @@ export const GalleryHub: React.FC<GalleryHubProps> = ({ className = "" }) => {
                   </div>
                 </div>
               </div>
+              
+              {/* Section des commentaires - Style Instagram */}
+              {showComments[service._id] && !isMobile && (
+                <div 
+                  className="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <InstagramComments
+                    serviceId={service._id}
+                    coiffeurId={service.coiffeur._id}
+                    maxComments={3}
+                    showAll={false}
+                    onClose={() => setShowComments(prev => ({
+                      ...prev,
+                      [service._id]: false
+                    }))}
+                  />
+                </div>
+              )}
             </div>
           ))}
         </div>

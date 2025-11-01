@@ -87,6 +87,29 @@ const bookingSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  cancellationFee: {
+    type: Number,
+    min: 0
+  },
+  // Informations Stripe
+  stripePaymentIntentId: {
+    type: String
+  },
+  stripeCustomerId: {
+    type: String
+  },
+  // Commission TapHair (10%)
+  platformFee: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  // Montant net pour le coiffeur (90%)
+  coiffeurAmount: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
   createdAt: {
     type: Date,
     default: Date.now
@@ -112,14 +135,31 @@ bookingSchema.methods.canBeCancelled = function() {
   const bookingDate = new Date(this.date);
   const hoursUntilBooking = (bookingDate - now) / (1000 * 60 * 60);
   
-  // On peut annuler jusqu'à 24h avant
-  return hoursUntilBooking >= 24;
+  // On peut annuler jusqu'à 48h avant (au lieu de 24h)
+  return hoursUntilBooking >= 48;
 };
 
-// Méthode pour annuler une réservation
-bookingSchema.methods.cancel = function(reason) {
+// Méthode pour calculer les frais d'annulation
+bookingSchema.methods.getCancellationFee = function() {
+  const now = new Date();
+  const bookingDate = new Date(this.date);
+  const hoursUntilBooking = (bookingDate - now) / (1000 * 60 * 60);
+  
+  if (hoursUntilBooking >= 48) {
+    return 0; // Annulation gratuite
+  } else if (hoursUntilBooking >= 24) {
+    return this.price * 0.25; // 25% du prix (75% remboursé)
+  } else {
+    return this.price * 0.75; // 75% du prix (25% remboursé)
+  }
+};
+
+// Méthode pour annuler une réservation avec calcul des frais
+bookingSchema.methods.cancelWithFee = function(reason) {
+  const fee = this.getCancellationFee();
   this.status = 'cancelled';
   this.cancellationReason = reason;
+  this.cancellationFee = fee;
   this.updatedAt = new Date();
   return this.save();
 };

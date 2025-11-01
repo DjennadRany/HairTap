@@ -64,9 +64,5 @@ export const serviceService = {
     return response.data;
   },
 
-  // Toggle like sur un service - STANDARDISÉ
-  async toggleServiceLike(serviceId: string): Promise<{ success: boolean; data: { likes: number; isLiked: boolean }; message: string }> {
-    const response = await api.post(`/services/${serviceId}/like`);
-    return response.data;
-  }
+  // Toggle like supprimé - Utiliser likeService.toggleServiceLike() à la place
 }; 

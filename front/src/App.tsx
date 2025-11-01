@@ -5,8 +5,10 @@ import { ClientDashboardLayout } from './layouts/ClientDashboardLayout';
 import { CoiffeurDashboardLayout } from './layouts/CoiffeurDashboardLayout';
 import { AdminDashboardLayout } from './layouts/AdminDashboardLayout'; // ✅ AJOUT LAYOUT ADMIN
 import NotificationManager from './components/ui/NotificationManager';
+import { GalleryProvider } from './contexts/GalleryContext';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
+import HubPage from './pages/HubPage';
 import SignInClientPage from './pages/SignInClientPage';
 import SignInCoiffeurPage from './pages/SignInCoiffeurPage';
 import PhotoSetupPage from './pages/PhotoSetupPage';
@@ -41,7 +43,8 @@ import AdminSettingsPage from './pages/AdminSettingsPage';
 function App() {
   return (
     <NotificationManager>
-      <Routes>
+      <GalleryProvider>
+        <Routes>
         {/* ✅ ROUTES ADMIN - DOIT ÊTRE EN PREMIER ET AVANT TOUT */}
         <Route
           path="/admin/*"
@@ -61,6 +64,7 @@ function App() {
         {/* Routes publiques */}
         <Route element={<PublicLayout />}>
           <Route path="/" element={<HomePage />} />
+          <Route path="/hub" element={<HubPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signin/client" element={<SignInClientPage />} />
           <Route path="/signin/coiffeur" element={<SignInCoiffeurPage />} />
@@ -108,7 +112,8 @@ function App() {
 
         {/* Route 404 - DOIT ÊTRE EN DERNIER */}
         <Route path="*" element={<NotFoundPage />} />
-      </Routes>
+        </Routes>
+      </GalleryProvider>
     </NotificationManager>
   );
 }

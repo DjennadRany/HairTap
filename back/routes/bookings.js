@@ -234,15 +234,24 @@ router.post('/:id/cancel', auth, async (req, res) => {
       return res.status(403).json({ message: 'Non autorisé' });
     }
 
-    booking.status = 'cancelled';
-    booking.cancellationReason = req.body.reason || 'Annulé par l\'utilisateur';
-    booking.updatedAt = new Date();
-    await booking.save();
+    // Calculer les frais d'annulation
+    const cancellationFee = booking.getCancellationFee();
+    const hoursUntilBooking = (new Date(booking.date) - new Date()) / (1000 * 60 * 60);
+    
+    // Utiliser la nouvelle méthode avec calcul des frais
+    await booking.cancelWithFee(req.body.reason || 'Annulé par l\'utilisateur');
 
-    res.json(booking);
+    res.json({
+      ...booking.toObject(),
+      cancellationFee,
+      hoursUntilBooking: Math.round(hoursUntilBooking),
+      message: cancellationFee > 0 
+        ? `Annulation avec frais de ${cancellationFee}€ (${cancellationFee/booking.price*100}% du prix total)`
+        : 'Annulation gratuite (plus de 48h avant)'
+    });
   } catch (error) {
     console.error('Cancel booking error:', error);
-    res.status(500).json({ message: 'Erreur lors de l\'annulation de la réservation' });
+    res.status(500).json({ message: 'Erreur lors de l\'annulation de la réservation', error: error.message });
   }
 });
 
