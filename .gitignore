@@ -27,6 +27,7 @@ logs/*.log
 
 # Large video files
 front/public/videos/*.mp4
+front/src/assets/videos/*.mp4
 back/uploads/**/*.mp4
 
 # Large uploads
