@@ -1,3 +1,5 @@
+import nodemailer from 'nodemailer';
+
 const {
   EMAIL_HOST,
   EMAIL_PORT,
@@ -28,6 +30,8 @@ const loadNodemailer = () => {
 };
 
 const createTransporter = async () => {
+
+const createTransporter = () => {
   if (transporter) {
     return transporter;
   }
@@ -75,12 +79,32 @@ const createTransporter = async () => {
       };
     }
   };
+  if (EMAIL_SMTP_URL) {
+    transporter = nodemailer.createTransport(EMAIL_SMTP_URL);
+    return transporter;
+  }
+
+  if (EMAIL_HOST && EMAIL_PORT) {
+    const port = Number(EMAIL_PORT);
+    transporter = nodemailer.createTransport({
+      host: EMAIL_HOST,
+      port,
+      secure: EMAIL_SECURE ? EMAIL_SECURE === 'true' : port === 465,
+      auth: EMAIL_USER && EMAIL_PASS ? { user: EMAIL_USER, pass: EMAIL_PASS } : undefined
+    });
+    return transporter;
+  }
+
+  transporter = nodemailer.createTransport({
+    jsonTransport: true
+  });
 
   return transporter;
 };
 
 export const sendEmail = async ({ to, subject, text, html }) => {
   const activeTransporter = await createTransporter();
+  const activeTransporter = createTransporter();
   const info = await activeTransporter.sendMail({
     from: EMAIL_FROM || 'TapHair <no-reply@taphair.com>',
     to,
@@ -92,6 +116,8 @@ export const sendEmail = async ({ to, subject, text, html }) => {
   if (activeTransporter.options?.jsonTransport) {
     console.info('📧 Email simulé (mode jsonTransport):', info.message ?? info);
     console.info('ℹ️  Pour activer l\'envoi réel, installez et configurez Nodemailer ("npm install" dans back, puis variables SMTP).');
+  if ('jsonTransport' in activeTransporter.options && activeTransporter.options.jsonTransport) {
+    console.info('📧 Email simulé (mode jsonTransport):', info.message);
   }
 
   return info;

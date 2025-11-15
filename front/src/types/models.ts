@@ -177,6 +177,9 @@ export interface Booking {
     buildingCode?: string;
     additionalInfo?: string;
   };
+  acceptedTermsAt?: string;
+  acceptedCancellationPolicyAt?: string;
+  acceptedPaymentConsentAt?: string;
   notes?: string;
   cancellationReason?: string;
   // Informations Stripe
