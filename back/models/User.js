@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 
 const userSchema = new mongoose.Schema({
   // Informations de base
@@ -244,6 +245,15 @@ const userSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   }],
+
+  passwordResetToken: {
+    type: String,
+    select: false
+  },
+  passwordResetExpires: {
+    type: Date,
+    select: false
+  },
   
   // Timestamps
   createdAt: {
@@ -301,6 +311,13 @@ userSchema.methods.unblockUser = async function(userId) {
 // Méthode pour vérifier si un utilisateur est bloqué
 userSchema.methods.isUserBlocked = function(userId) {
   return this.blockedUsers.some(id => id.toString() === userId.toString());
+};
+
+userSchema.methods.createPasswordResetToken = function() {
+  const resetToken = crypto.randomBytes(32).toString('hex');
+  this.passwordResetToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+  this.passwordResetExpires = Date.now() + 60 * 60 * 1000; // 1 heure
+  return resetToken;
 };
 
 // Méthode pour ajouter une image à la galerie
