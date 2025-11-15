@@ -55,7 +55,7 @@ const handlePaymentSuccess = async (paymentIntent) => {
     // Mettre à jour la réservation
     const booking = await Booking.findById(bookingId);
     if (booking) {
-      booking.paymentStatus = 'paid';
+      booking.paymentStatus = 'confirmed';
       booking.stripePaymentIntentId = paymentIntent.id;
       booking.platformFee = parseFloat(paymentIntent.metadata.platformFee || 0);
       booking.coiffeurAmount = parseFloat(paymentIntent.metadata.coiffeurAmount || 0);
@@ -86,6 +86,11 @@ const handlePaymentFailed = async (paymentIntent) => {
   try {
     const bookingId = paymentIntent.metadata.bookingId;
     if (bookingId) {
+      const booking = await Booking.findById(bookingId);
+      if (booking) {
+        booking.paymentStatus = 'cancelled';
+        await booking.save();
+      }
       await Payment.findOneAndUpdate(
         { booking: bookingId },
         { $set: { status: 'failed', updatedAt: new Date() } },
@@ -243,7 +248,7 @@ router.post('/confirm-payment', auth, async (req, res) => {
       if (payment) {
         const booking = await Booking.findById(payment.booking);
         if (booking) {
-          booking.paymentStatus = 'paid';
+          booking.paymentStatus = 'confirmed';
           await booking.save();
         }
         payment.status = 'succeeded';
@@ -258,6 +263,17 @@ router.post('/confirm-payment', auth, async (req, res) => {
         coiffeurAmount: paymentData.coiffeurAmount
       });
     } else {
+      const payment = await Payment.findOne({ stripePaymentIntentId: paymentIntentId });
+      if (payment) {
+        const booking = await Booking.findById(payment.booking);
+        if (booking) {
+          booking.paymentStatus = paymentData.status === 'processing' ? 'pending' : 'cancelled';
+          await booking.save();
+        }
+        payment.status = paymentData.status || 'failed';
+        await payment.save();
+      }
+
       res.status(400).json({
         success: false,
         status: paymentData.status,

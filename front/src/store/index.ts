@@ -5,6 +5,7 @@ import authReducer from './slices/authSlice';
 import bookingReducer from './slices/bookingSlice';
 import profileReducer, { loadProfileFromLocalStorage } from './slices/profileSlice';
 import redirectReducer from './slices/redirectSlice';
+import paymentReducer from './slices/paymentSlice';
 
 const authPersistConfig = {
   key: 'auth',
@@ -29,6 +30,7 @@ export const store = configureStore({
     redirect: persistedRedirectReducer,
     booking: bookingReducer,
     profile: profileReducer,
+    payment: paymentReducer,
   },
   preloadedState: {
     profile: {

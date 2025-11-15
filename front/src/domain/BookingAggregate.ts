@@ -14,7 +14,7 @@ interface Booking {
     city: string;
     postalCode: string;
   };
-  paymentStatus: 'pending' | 'paid' | 'refunded';
+  paymentStatus: 'initiated' | 'pending' | 'confirmed' | 'cancelled' | 'refunded';
   notes?: string;
   cancellationReason?: string;
   cancellationDeadline?: string;

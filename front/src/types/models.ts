@@ -164,7 +164,7 @@ export interface Booking {
   date: string;
   duration: number;
   status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
-  paymentStatus: 'pending' | 'paid' | 'refunded';
+  paymentStatus: 'initiated' | 'pending' | 'confirmed' | 'cancelled' | 'refunded';
   price: number;
   mode: 'salon' | 'domicile';
   address?: {

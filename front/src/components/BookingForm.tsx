@@ -1,19 +1,28 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { selectCurrentUser } from '../store/slices/authSlice';
 import { Card } from './ui/card';
 import { Button } from './ui/Button';
 import { format, addDays } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { FaCalendarAlt, FaMapMarkerAlt, FaClock, FaEuroSign, FaUser } from 'react-icons/fa';
+import {
+  FaCalendarAlt,
+  FaMapMarkerAlt,
+  FaClock,
+  FaEuroSign,
+  FaUser,
+  FaExclamationTriangle,
+  FaRedo
+} from 'react-icons/fa';
 import { bookingService, type CreateBookingData } from '../services/api/bookings';
 import { userService } from '../services/api/users';
 import { coiffeurService, type CoiffeurSlotDTO } from '../services/api/coiffeurs';
 import StripePaymentModal from './modals/StripePaymentModal';
 import type { User } from '../types/models';
-import { useAppSelector } from '../store/hooks';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { useBookingValidation } from '../hooks/useBookingValidation';
+import { setPaymentStatus as setGlobalPaymentStatus, type PaymentStatus } from '../store/slices/paymentSlice';
 
 // Type étendu pour les adresses
 interface UserWithAddresses extends User {
@@ -63,6 +72,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
 }) => {
   const navigate = useNavigate();
   const user = useAppSelector(selectCurrentUser) as UserWithAddresses;
+  const dispatch = useAppDispatch();
   
   // Debug: Vérifier les données reçues
   console.log('🔍 [BookingForm] Données reçues:', {
@@ -76,6 +86,8 @@ const BookingForm: React.FC<BookingFormProps> = ({
   const [bookingMode, setBookingMode] = useState<'salon' | 'domicile'>('salon');
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [createdBooking, setCreatedBooking] = useState<any>(null);
+  const [paymentStatus, setLocalPaymentStatus] = useState<PaymentStatus>('initiated');
+  const [showRecoveryScreen, setShowRecoveryScreen] = useState(false);
   const [addressType, setAddressType] = useState<'home' | 'office' | 'other'>('home');
   const [clientAddress, setClientAddress] = useState<{
     street: string;
@@ -203,6 +215,38 @@ const BookingForm: React.FC<BookingFormProps> = ({
   const [slotsLoading, setSlotsLoading] = useState(true);
   const [slotsError, setSlotsError] = useState<string | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<CoiffeurSlotDTO | null>(null);
+
+  useEffect(() => {
+    if (!createdBooking) {
+      setShowRecoveryScreen(false);
+      return;
+    }
+
+    if (showPaymentModal) {
+      setShowRecoveryScreen(false);
+      return;
+    }
+
+    setShowRecoveryScreen(paymentStatus === 'cancelled' || paymentStatus === 'pending');
+  }, [createdBooking, paymentStatus, showPaymentModal]);
+
+  const resolveCreatedBookingId = useCallback(() => {
+    if (!createdBooking) {
+      return undefined;
+    }
+    return createdBooking._id || createdBooking?.data?._id || createdBooking?.bookingId;
+  }, [createdBooking]);
+
+  const handlePaymentStatusChange = useCallback(
+    async (status: PaymentStatus) => {
+      setLocalPaymentStatus(status);
+      const bookingId = resolveCreatedBookingId();
+      if (bookingId) {
+        dispatch(setGlobalPaymentStatus({ bookingId, status }));
+      }
+    },
+    [dispatch, resolveCreatedBookingId]
+  );
 
   // Modes de travail du coiffeur - CORRIGÉ
   const coiffeurModes = coiffeur.workingMode && coiffeur.workingMode.length > 0
@@ -376,11 +420,14 @@ const BookingForm: React.FC<BookingFormProps> = ({
       if (booking && (booking.success || booking.data || booking._id)) {
         const bookingData = booking.data || booking;
         const bookingId = bookingData._id || booking._id;
-        
+
         console.log('✅ [BookingForm] Réservation créée avec succès:', bookingId);
-        
+
         // Afficher le modal de paiement Stripe
         setCreatedBooking(bookingData);
+        setLocalPaymentStatus('initiated');
+        dispatch(setGlobalPaymentStatus({ bookingId, status: 'initiated' }));
+        setShowRecoveryScreen(false);
         setShowPaymentModal(true);
       } else {
         // Si pas de paiement requis ou erreur, rediriger normalement
@@ -403,9 +450,11 @@ const BookingForm: React.FC<BookingFormProps> = ({
     }
   };
 
-  const handlePaymentSuccess = () => {
+  const handlePaymentSuccess = async () => {
     console.log('✅ [BookingForm] Paiement réussi');
+    await handlePaymentStatusChange('confirmed');
     setShowPaymentModal(false);
+    setShowRecoveryScreen(false);
     if (onSuccess) {
       onSuccess();
     } else {
@@ -415,26 +464,90 @@ const BookingForm: React.FC<BookingFormProps> = ({
 
   const handlePaymentClose = () => {
     setShowPaymentModal(false);
-    // Rediriger quand même vers les réservations (l'utilisateur peut payer plus tard)
-    if (onSuccess) {
-      onSuccess();
+    if (paymentStatus === 'confirmed') {
+      if (onSuccess) {
+        onSuccess();
+      } else {
+        navigate('/client/bookings');
+      }
+    } else if (onCancel) {
+      onCancel();
+    }
+  };
+
+  const handleResumePayment = async () => {
+    if (!createdBooking) {
+      return;
+    }
+    await handlePaymentStatusChange('initiated');
+    setShowRecoveryScreen(false);
+    setShowPaymentModal(true);
+  };
+
+  const handleDeferPayment = () => {
+    if (onCancel) {
+      onCancel();
     } else {
       navigate('/client/bookings');
     }
   };
 
+  const isPaymentPending = paymentStatus === 'pending';
+  const bookingIdentifier = resolveCreatedBookingId();
+
   return (
     <div className="max-w-4xl mx-auto">
       {/* Modal de paiement Stripe */}
-      {showPaymentModal && createdBooking && selectedService && (
+      {showPaymentModal && createdBooking && selectedService && bookingIdentifier && (
         <StripePaymentModal
           isOpen={showPaymentModal}
           onClose={handlePaymentClose}
           onSuccess={handlePaymentSuccess}
-          bookingId={createdBooking._id || createdBooking.data?._id}
+          onStatusChange={handlePaymentStatusChange}
+          paymentStatus={paymentStatus}
+          bookingId={bookingIdentifier}
           amount={selectedService.price}
           serviceName={selectedService.name}
         />
+      )}
+
+      {showRecoveryScreen && createdBooking && !showPaymentModal && (
+        <div className="mb-6">
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 shadow-sm">
+            <div className="flex items-start gap-3">
+              <FaExclamationTriangle className="mt-1 text-amber-500 text-xl" />
+              <div>
+                <h3 className="text-base font-semibold text-amber-900">
+                  {isPaymentPending ? 'Paiement en cours de validation' : 'Paiement à finaliser'}
+                </h3>
+                <p className="text-sm text-amber-800 mt-1">
+                  {isPaymentPending
+                    ? 'Nous avons bien enregistré votre réservation. Le paiement est toujours en attente de validation par votre banque.'
+                    : 'Nous avons bien enregistré votre réservation mais le paiement n’a pas été finalisé.'}
+                </p>
+                <p className="text-xs text-amber-700 mt-2">
+                  Vous pouvez reprendre le paiement immédiatement ou depuis l’historique de vos réservations.
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-3 mt-4">
+              <button
+                type="button"
+                onClick={handleResumePayment}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-900 transition-colors"
+              >
+                <FaRedo /> Reprendre le paiement
+              </button>
+              <button
+                type="button"
+                onClick={handleDeferPayment}
+                className="inline-flex items-center gap-2 px-4 py-2 border border-amber-400 text-amber-700 rounded-lg hover:bg-amber-100 transition-colors"
+              >
+                Continuer plus tard
+              </button>
+            </div>
+          </div>
+        </div>
       )}
       {/* En-tête avec informations du coiffeur */}
       <div className="mb-8">

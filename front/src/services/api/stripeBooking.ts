@@ -26,6 +26,7 @@ export interface ConfirmPaymentResponse {
   platformFee?: number;
   coiffeurAmount?: number;
   message?: string;
+  status?: string;
 }
 
 export interface CreateRefundRequest {
@@ -85,7 +86,8 @@ class StripeBookingService {
       console.error('❌ Erreur confirmation paiement:', error);
       return {
         success: false,
-        message: error.response?.data?.message || 'Erreur lors de la confirmation du paiement'
+        message: error.response?.data?.message || 'Erreur lors de la confirmation du paiement',
+        status: error.response?.data?.status
       };
     }
   }

@@ -61,7 +61,7 @@ export const validateBookingStatus = (status) => {
 
 // Validation de statut de paiement
 export const validatePaymentStatus = (status) => {
-  const validStatuses = ['pending', 'paid', 'refunded'];
+  const validStatuses = ['initiated', 'pending', 'confirmed', 'cancelled', 'refunded'];
   return validStatuses.includes(status);
 };
 
