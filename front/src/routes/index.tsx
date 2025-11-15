@@ -159,6 +159,33 @@ const AppRoutes = () => (
       {renderNestedRoutes(adminRoutes)}
     </Route>
 
+
+const publicRoutes: NestedRoute[] = [
+  { path: '/', element: <HomePage /> },
+  { path: '/hub', element: <HubPage /> },
+  { path: '/search', element: <SearchPage /> },
+  { path: '/coiffeur/:id', element: <CoiffeurProfilePage /> },
+  { path: '/coiffeur/:coiffeurId/services', element: <ClientServicesPage /> },
+  { path: '/about', element: <AboutPage /> },
+  { path: '/contact', element: <ContactPage /> },
+  { path: '/privacy', element: <PrivacyPage /> },
+  { path: '/terms', element: <TermsPage /> },
+  { path: '/cookies', element: <CookiesPage /> }
+];
+
+const AppRoutes = () => (
+  <Routes>
+    <Route
+      path="/admin/*"
+      element={
+        <ProtectedRoute requiredRole="admin">
+          <AdminDashboardLayout />
+        </ProtectedRoute>
+      }
+    >
+      {renderNestedRoutes(adminRoutes)}
+    </Route>
+
     <Route
       path="/coiffeur/*"
       element={
