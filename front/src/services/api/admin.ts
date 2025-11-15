@@ -1,4 +1,17 @@
-import api from './axios';
+import api from '../../api/httpClient';
+
+const ADMIN_BASE_PATH = '/api/admin';
+
+const buildAdminEndpoint = (path: string) => {
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  const endpoint = `${ADMIN_BASE_PATH}${normalizedPath}`;
+
+  if (!endpoint.startsWith(ADMIN_BASE_PATH)) {
+    throw new Error(`Tentative d'accès à une route admin non autorisée: ${endpoint}`);
+  }
+
+  return endpoint;
+};
 
 export interface AdminStats {
   totalUsers: number;
@@ -71,7 +84,7 @@ class AdminServiceClass {
   // Récupérer les statistiques du dashboard
   async getDashboardStats(): Promise<AdminStats> {
     try {
-      const response = await api.get('/admin/dashboard/stats');
+      const response = await api.get(buildAdminEndpoint('/dashboard/stats'));
       return response.data;
     } catch (error) {
       console.error('Erreur lors de la récupération des stats admin:', error);
@@ -90,7 +103,7 @@ class AdminServiceClass {
   // Récupérer tous les utilisateurs
   async getUsers(): Promise<AdminUser[]> {
     try {
-      const response = await api.get('/admin/users');
+      const response = await api.get(buildAdminEndpoint('/users'));
       return response.data;
     } catch (error) {
       console.error('Erreur lors de la récupération des utilisateurs:', error);
@@ -101,7 +114,7 @@ class AdminServiceClass {
   // Récupérer tous les services
   async getServices(): Promise<AdminService[]> {
     try {
-      const response = await api.get('/admin/services');
+      const response = await api.get(buildAdminEndpoint('/services'));
       return response.data;
     } catch (error) {
       console.error('Erreur lors de la récupération des services:', error);
@@ -112,7 +125,7 @@ class AdminServiceClass {
   // Récupérer les coordonnées géographiques des utilisateurs
   async getUsersGeographic(): Promise<AdminUserLocation[]> {
     try {
-      const response = await api.get('/admin/users/geographic');
+      const response = await api.get(buildAdminEndpoint('/users/geographic'));
       return response.data;
     } catch (error) {
       console.error('Erreur lors de la récupération des coordonnées géographiques:', error);
@@ -123,7 +136,7 @@ class AdminServiceClass {
   // Récupérer toutes les réservations
   async getBookings(): Promise<AdminBooking[]> {
     try {
-      const response = await api.get('/admin/bookings');
+      const response = await api.get(buildAdminEndpoint('/bookings'));
       return response.data;
     } catch (error) {
       console.error('Erreur lors de la récupération des réservations:', error);
@@ -134,7 +147,7 @@ class AdminServiceClass {
   // Modifier le statut d'un utilisateur
   async updateUserStatus(userId: string, status: 'active' | 'blocked'): Promise<boolean> {
     try {
-      await api.patch(`/users/${userId}`, { status });
+      await api.patch(buildAdminEndpoint(`/users/${userId}/status`), { status });
       return true;
     } catch (error) {
       console.error('Erreur lors de la modification du statut:', error);
@@ -145,7 +158,7 @@ class AdminServiceClass {
   // Modifier le statut d'un service
   async updateServiceStatus(serviceId: string, status: 'active' | 'rejected'): Promise<boolean> {
     try {
-      await api.patch(`/services/${serviceId}`, { status });
+      await api.patch(buildAdminEndpoint(`/services/${serviceId}/status`), { status });
       return true;
     } catch (error) {
       console.error('Erreur lors de la modification du statut du service:', error);
@@ -156,7 +169,7 @@ class AdminServiceClass {
   // Supprimer un utilisateur
   async deleteUser(userId: string): Promise<boolean> {
     try {
-      await api.delete(`/users/${userId}`);
+      await api.delete(buildAdminEndpoint(`/users/${userId}`));
       return true;
     } catch (error) {
       console.error('Erreur lors de la suppression de l\'utilisateur:', error);
@@ -167,7 +180,7 @@ class AdminServiceClass {
   // Supprimer un service
   async deleteService(serviceId: string): Promise<boolean> {
     try {
-      await api.delete(`/services/${serviceId}`);
+      await api.delete(buildAdminEndpoint(`/services/${serviceId}`));
       return true;
     } catch (error) {
       console.error('Erreur lors de la suppression du service:', error);

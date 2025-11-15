@@ -1,3 +1,5 @@
+import { APP_BASE_URL } from '../config/api';
+
 // Utilitaires pour la gestion des images
 
 export const DEFAULT_COIFFEUR_IMAGE = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxjaXJjbGUgY3g9IjEwMCIgY3k9IjgwIiByPSIzMCIgZmlsbD0iI0QxRDVEMyIvPgo8cGF0aCBkPSJNNDAgMTQwQzQwIDEyMCA2MCAxMDAgMTAwIDEwMEMxNDAgMTAwIDE2MCAxMjAgMTYwIDE0MFYxNjBINDBWMTQwWiIgZmlsbD0iI0QxRDVEMyIvPgo8dGV4dCB4PSIxMDAiIHk9IjE4MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzk0QTNBRiIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjEyIj5Db2lmZmV1cjwvdGV4dD4KPC9zdmc+';
@@ -34,18 +36,18 @@ export const getImageUrl = (imageUrl: string | null | undefined, defaultUrl?: st
   
   // Si c'est une URL relative qui commence par /uploads/, la rendre absolue
   if (imageUrl.startsWith('/uploads/')) {
-    return `http://localhost:5000${imageUrl}`;
+    return `${APP_BASE_URL}${imageUrl}`;
   }
-  
+
   // Si c'est une URL relative qui commence par /, la rendre absolue
   if (imageUrl.startsWith('/')) {
-    return `http://localhost:5000${imageUrl}`;
+    return `${APP_BASE_URL}${imageUrl}`;
   }
   
   // Si c'est un nom de fichier simple (comme pexels-pixabay-247322.jpg)
   // On suppose qu'il est dans le dossier uploads/services/
   if (imageUrl.includes('.jpg') || imageUrl.includes('.png') || imageUrl.includes('.jpeg') || imageUrl.includes('.webp') || imageUrl.includes('.svg')) {
-    return `http://localhost:5000/uploads/services/${imageUrl}`;
+    return `${APP_BASE_URL}/uploads/services/${imageUrl}`;
   }
   
   return defaultAvatar;

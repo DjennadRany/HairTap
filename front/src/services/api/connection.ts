@@ -1,4 +1,4 @@
-import axios from './axios';
+import api from '../../api/httpClient';
 
 export interface ConnectionStatus {
   isOnline: boolean;
@@ -33,7 +33,7 @@ class ConnectionService {
 
     try {
       // Essayer d'abord avec le service de connexion
-      const response = await axios.get(`/connections/status/${userId}`);
+      const response = await api.get(`/connections/status/${userId}`);
       const status = this.normalizeStatus(response.data);
       
       // Mettre en cache
@@ -71,7 +71,7 @@ class ConnectionService {
   // Mettre à jour le statut de l'utilisateur connecté
   async updateMyStatus(status: string, isAvailable?: boolean): Promise<ConnectionStatus> {
     try {
-      const response = await axios.post('/connections/status', { status, isAvailable });
+      const response = await api.post('/connections/status', { status, isAvailable });
       const updatedStatus = this.normalizeStatus(response.data);
       
       // Mettre à jour le cache
