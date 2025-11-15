@@ -1,5 +1,3 @@
-import nodemailer from 'nodemailer';
-
 const {
   EMAIL_HOST,
   EMAIL_PORT,
@@ -7,21 +5,57 @@ const {
   EMAIL_PASS,
   EMAIL_FROM,
   EMAIL_SMTP_URL,
-  EMAIL_SECURE
+  EMAIL_SECURE,
+  EMAIL_ENABLED
 } = process.env;
 
-let transporter;
+let transporterPromise;
 let nodemailerModulePromise;
 
-const loadNodemailer = () => {
+const createJsonTransporter = (reason) => ({
+  options: { jsonTransport: true, reason },
+  async sendMail(message) {
+    console.info('📧 Email simulé (service email désactivé):', {
+      to: message.to,
+      subject: message.subject,
+      reason
+    });
+
+    return {
+      accepted: message.to ? (Array.isArray(message.to) ? message.to : [message.to]) : [],
+      rejected: [],
+      response: `Email service disabled (${reason})`,
+      messageId: 'simulated-message-id'
+    };
+  }
+});
+
+const shouldUseRealTransport = () => {
+  if (typeof EMAIL_ENABLED === 'string') {
+    const normalized = EMAIL_ENABLED.trim().toLowerCase();
+
+    if (['false', '0', 'off', 'disable', 'disabled', 'no'].includes(normalized)) {
+      return false;
+    }
+
+    if (['true', '1', 'on', 'enable', 'enabled', 'yes'].includes(normalized)) {
+      return true;
+    }
+  }
+
+  return Boolean(EMAIL_SMTP_URL || (EMAIL_HOST && EMAIL_PORT));
+};
+
+const loadNodemailer = async () => {
   if (!nodemailerModulePromise) {
     nodemailerModulePromise = import('nodemailer')
       .then((module) => module.default ?? module)
       .catch((error) => {
         console.warn(
-          'Nodemailer non disponible, bascule vers un transport simulé. Installez la dépendance via "npm install" dans le dossier back pour activer l\'envoi réel.',
+          'Nodemailer non disponible. Installez la dépendance via "npm install" dans le dossier back pour activer l\'envoi réel.',
           error
         );
+
         return null;
       });
   }
@@ -30,81 +64,43 @@ const loadNodemailer = () => {
 };
 
 const createTransporter = async () => {
+  if (!transporterPromise) {
+    transporterPromise = (async () => {
+      if (!shouldUseRealTransport()) {
+        return createJsonTransporter('disabled');
+      }
 
-const createTransporter = () => {
-  if (transporter) {
-    return transporter;
+      const nodemailer = await loadNodemailer();
+
+      if (!nodemailer) {
+        return createJsonTransporter('nodemailer-unavailable');
+      }
+
+      if (EMAIL_SMTP_URL) {
+        return nodemailer.createTransport(EMAIL_SMTP_URL);
+      }
+
+      if (EMAIL_HOST && EMAIL_PORT) {
+        const port = Number(EMAIL_PORT);
+
+        return nodemailer.createTransport({
+          host: EMAIL_HOST,
+          port,
+          secure: EMAIL_SECURE ? EMAIL_SECURE === 'true' || EMAIL_SECURE === '1' : port === 465,
+          auth: EMAIL_USER && EMAIL_PASS ? { user: EMAIL_USER, pass: EMAIL_PASS } : undefined
+        });
+      }
+
+      return createJsonTransporter('missing-configuration');
+    })();
   }
 
-  const nodemailer = await loadNodemailer();
-
-  if (nodemailer) {
-    if (EMAIL_SMTP_URL) {
-      transporter = nodemailer.createTransport(EMAIL_SMTP_URL);
-      return transporter;
-    }
-
-    if (EMAIL_HOST && EMAIL_PORT) {
-      const port = Number(EMAIL_PORT);
-      transporter = nodemailer.createTransport({
-        host: EMAIL_HOST,
-        port,
-        secure: EMAIL_SECURE ? EMAIL_SECURE === 'true' : port === 465,
-        auth: EMAIL_USER && EMAIL_PASS ? { user: EMAIL_USER, pass: EMAIL_PASS } : undefined
-      });
-      return transporter;
-    }
-
-    transporter = nodemailer.createTransport({
-      jsonTransport: true
-    });
-
-    return transporter;
-  }
-
-  transporter = {
-    options: { jsonTransport: true, reason: 'nodemailer-unavailable' },
-    // Mimic nodemailer API to keep the rest of the app untouched
-    async sendMail(message) {
-      console.info('📧 Email simulé (nodemailer manquant) :', {
-        to: message.to,
-        subject: message.subject
-      });
-
-      return {
-        accepted: [message.to],
-        rejected: [],
-        response: 'Simulated email because nodemailer is unavailable',
-        messageId: 'simulated-message-id'
-      };
-    }
-  };
-  if (EMAIL_SMTP_URL) {
-    transporter = nodemailer.createTransport(EMAIL_SMTP_URL);
-    return transporter;
-  }
-
-  if (EMAIL_HOST && EMAIL_PORT) {
-    const port = Number(EMAIL_PORT);
-    transporter = nodemailer.createTransport({
-      host: EMAIL_HOST,
-      port,
-      secure: EMAIL_SECURE ? EMAIL_SECURE === 'true' : port === 465,
-      auth: EMAIL_USER && EMAIL_PASS ? { user: EMAIL_USER, pass: EMAIL_PASS } : undefined
-    });
-    return transporter;
-  }
-
-  transporter = nodemailer.createTransport({
-    jsonTransport: true
-  });
-
-  return transporter;
+  return transporterPromise;
 };
 
 export const sendEmail = async ({ to, subject, text, html }) => {
   const activeTransporter = await createTransporter();
-  const activeTransporter = createTransporter();
+
   const info = await activeTransporter.sendMail({
     from: EMAIL_FROM || 'TapHair <no-reply@taphair.com>',
     to,
@@ -114,10 +110,7 @@ export const sendEmail = async ({ to, subject, text, html }) => {
   });
 
   if (activeTransporter.options?.jsonTransport) {
-    console.info('📧 Email simulé (mode jsonTransport):', info.message ?? info);
-    console.info('ℹ️  Pour activer l\'envoi réel, installez et configurez Nodemailer ("npm install" dans back, puis variables SMTP).');
-  if ('jsonTransport' in activeTransporter.options && activeTransporter.options.jsonTransport) {
-    console.info('📧 Email simulé (mode jsonTransport):', info.message);
+    console.info('ℹ️  Email non envoyé (mode simulation). Configurez un SMTP et définissez EMAIL_ENABLED=true pour activer l\'envoi.');
   }
 
   return info;

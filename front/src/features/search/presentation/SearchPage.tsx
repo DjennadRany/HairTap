@@ -1,16 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { SearchMode } from '../domain/types';
-import { getSearchComponentFactory } from '../infrastructure/SearchComponentFactory';
-import { LocationSearchBar } from '@/components/LocationSearchBar';
 import { SearchFilters, type SearchFilters as SearchFiltersType } from '../../../components/SearchFilters';
 import CoiffeurCard from '../../../components/CoiffeurCard';
-import { point, distance as turfDistance } from '@turf/turf';
 import { ProtectedRoute } from '../../../components/ProtectedRoute';
 import { coiffeurService } from '@/services/api/coiffeurs';
 import { favoriteService } from '@/services/api/favorites';
 import type { User } from '../../../types/models';
-import { Map } from '../../../components/Map';
 import { useGeolocation } from '../../../hooks/useGeolocation';
 import { GalleryHub } from '../../../components/GalleryHub';
 import { FaImages, FaUserTie } from 'react-icons/fa';
@@ -18,17 +13,13 @@ import ListCardToggle from '../../../components/ListCardToggle';
 import { useIsMobile } from '../../../hooks/useIsMobile';
 import { useGallery } from '../../../contexts/GalleryContext';
 
-type SearchTab = 'gallery' | 'coiffeurs';
-
 export const SearchPage: React.FC = () => {
   const navigate = useNavigate();
-  const { location, error: locationError } = useGeolocation();
+  const { location } = useGeolocation();
   const isMobile = useIsMobile();
   const { activeTab, setActiveTab } = useGallery();
-  const [showMap, setShowMap] = useState(false);
   const [loading, setLoading] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [selectedResults, setSelectedResults] = useState<User[]>([]);
   const [results, setResults] = useState<User[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
 
@@ -39,59 +30,57 @@ export const SearchPage: React.FC = () => {
     rating: 0,
     city: '',
     date: '',
-    specialities: []
+    specialities: [],
+    maxDistance: 25
   });
 
-  const [center, setCenter] = useState<{ latitude: number; longitude: number }>({ latitude: 48.8566, longitude: 2.3522 });
-  const [radius, setRadius] = useState<number>(10);
+  const stableLocation = useMemo(() => {
+    if (!location) {
+      return null;
+    }
 
-  const handleSearch = async () => {
+    const { latitude, longitude } = location;
+    if (typeof latitude !== 'number' || typeof longitude !== 'number') {
+      return null;
+    }
+
+    return {
+      latitude,
+      longitude,
+      key: `${latitude.toFixed(3)}-${longitude.toFixed(3)}`
+    };
+  }, [location]);
+
+  const handleSearch = useCallback(async () => {
     setLoading(true);
     try {
+      const hasLocation = Boolean(stableLocation);
       const searchResults = await coiffeurService.searchCoiffeurs({
-        service: filters.service,
-        speciality: filters.mode,
-        priceRange: filters.priceRange.map(p => p.toString()),
-        city: filters.city,
-        date: filters.date
+        service: filters.service || undefined,
+        city: filters.city || undefined,
+        date: filters.date || undefined,
+        specialities: filters.specialities.length ? filters.specialities : undefined,
+        modes: filters.mode.length ? filters.mode : undefined,
+        rating: filters.rating > 0 ? filters.rating : undefined,
+        priceMin: filters.priceRange[0],
+        priceMax: filters.priceRange[1],
+        ...(hasLocation
+          ? {
+              maxDistance: filters.maxDistance,
+              latitude: stableLocation?.latitude,
+              longitude: stableLocation?.longitude
+            }
+          : {})
       });
-      console.log('Résultats recherche coiffeurs:', searchResults);
 
-      // Filtrer par distance si la géolocalisation est disponible
-      let filteredResults = searchResults;
-      if (location) {
-        filteredResults = searchResults.filter(coiffeur => {
-          if (!coiffeur.address?.coordinates) return true;
-          const distance = calculateDistance(
-            location.latitude,
-            location.longitude,
-            coiffeur.address.coordinates.lat,
-            coiffeur.address.coordinates.lng
-          );
-          return distance <= 50; // 50km max
-        });
-      }
-
-      setResults(filteredResults);
-      setSelectedResults(filteredResults);
+      setResults(searchResults);
     } catch (error) {
       console.error('Erreur lors de la recherche:', error);
+      setResults([]);
     } finally {
       setLoading(false);
     }
-  };
-
-  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-    const R = 6371; // Rayon de la Terre en km
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = 
-      Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-      Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    return R * c;
-  };
+  }, [filters, stableLocation]);
 
   const handleCoiffeurClick = (coiffeur: User) => {
     navigate(`/coiffeur/${coiffeur._id}`);
@@ -130,14 +119,12 @@ export const SearchPage: React.FC = () => {
   };
 
   useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      handleSearch();
-    }, 500); // Délai de 500ms pour éviter les requêtes trop fréquentes
+    const timeoutId = window.setTimeout(() => {
+      void handleSearch();
+    }, 400);
 
-    return () => clearTimeout(timeoutId);
-  }, [filters, location]);
-
-  const componentFactory = getSearchComponentFactory();
+    return () => window.clearTimeout(timeoutId);
+  }, [handleSearch]);
 
   return (
     <div className={`container mx-auto py-8 ${activeTab === 'gallery' && isMobile ? 'px-0' : 'px-4'}`}>
@@ -183,7 +170,9 @@ export const SearchPage: React.FC = () => {
               isLoading={loading}
             />
             <button
-              onClick={handleSearch}
+              onClick={() => {
+                void handleSearch();
+              }}
               disabled={loading}
               className="w-full mt-4 bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-black disabled:opacity-50"
             >
@@ -236,4 +225,4 @@ export default function ProtectedSearchPageWrapper() {
       <SearchPage />
     </ProtectedRoute>
   );
-} 
+}
