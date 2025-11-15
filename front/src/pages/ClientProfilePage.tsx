@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
-import { useSelector, useDispatch } from 'react-redux';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { selectCurrentUser, setUser, User as AuthUser } from '../store/slices/authSlice';
 import { useParams } from 'react-router-dom';
 import { userService } from '../services/api/users';
@@ -47,9 +47,9 @@ interface ProfileFormData {
 }
 
 const ClientProfilePage = () => {
-  const dispatch = useDispatch();
+  const dispatch = useAppDispatch();
   const { id: paramId } = useParams();
-  const user = useSelector(selectCurrentUser) as UserModel | null;
+  const user = useAppSelector(selectCurrentUser) as UserModel | null;
   const id = paramId || user?._id;
   const [success, setSuccess] = useState<string>('');
   const [errorMsg, setErrorMsg] = useState<string>('');

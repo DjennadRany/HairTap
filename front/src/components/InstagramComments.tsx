@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { FaHeart, FaReply, FaPaperPlane, FaTrash, FaFlag, FaEllipsisV } from 'react-icons/fa';
 import { getImageUrl, DEFAULT_USER_IMAGE } from '../utils/imageUtils';
 import { commentService, Comment } from '../services/api/comments';
-import { useSelector } from 'react-redux';
 import { selectCurrentUser } from '../store/slices/authSlice';
+import { useAppSelector } from '../store/hooks';
 
 interface InstagramCommentsProps {
   serviceId: string;
@@ -32,7 +32,7 @@ export const InstagramComments: React.FC<InstagramCommentsProps> = ({
   const [reportReason, setReportReason] = useState('');
   const [showReportModal, setShowReportModal] = useState<string | null>(null);
   
-  const currentUser = useSelector(selectCurrentUser);
+  const currentUser = useAppSelector(selectCurrentUser);
 
   // Fermer le menu en cliquant en dehors
   useEffect(() => {

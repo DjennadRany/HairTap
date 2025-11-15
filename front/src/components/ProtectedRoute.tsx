@@ -1,6 +1,5 @@
 import { Navigate, useLocation } from 'react-router-dom';
-import { useSelector } from 'react-redux';
-import type { RootState } from '../store/store';
+import { useAppSelector } from '../store/hooks';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -9,7 +8,7 @@ interface ProtectedRouteProps {
 
 export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
   const location = useLocation();
-  const { user, isAuthenticated } = useSelector((state: RootState) => state.auth);
+  const { user, isAuthenticated } = useAppSelector((state) => state.auth);
 
   // Si on est sur la page d'accueil, on l'affiche toujours
   if (location.pathname === '/') {

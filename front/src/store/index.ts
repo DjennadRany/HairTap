@@ -1,14 +1,32 @@
 import { configureStore } from '@reduxjs/toolkit';
+import { persistStore, persistReducer } from 'redux-persist';
+import storage from 'redux-persist/lib/storage';
 import authReducer from './slices/authSlice';
 import bookingReducer from './slices/bookingSlice';
-import profileReducer from './slices/profileSlice';
-import { loadProfileFromLocalStorage } from './slices/profileSlice';
+import profileReducer, { loadProfileFromLocalStorage } from './slices/profileSlice';
+import redirectReducer from './slices/redirectSlice';
+
+const authPersistConfig = {
+  key: 'auth',
+  storage,
+  whitelist: ['user'],
+};
+
+const redirectPersistConfig = {
+  key: 'redirect',
+  storage,
+  whitelist: ['redirectUrl'],
+};
+
+const persistedAuthReducer = persistReducer(authPersistConfig, authReducer);
+const persistedRedirectReducer = persistReducer(redirectPersistConfig, redirectReducer);
 
 const preloadedProfile = loadProfileFromLocalStorage();
 
-const store = configureStore({
+export const store = configureStore({
   reducer: {
-    auth: authReducer,
+    auth: persistedAuthReducer,
+    redirect: persistedRedirectReducer,
     booking: bookingReducer,
     profile: profileReducer,
   },
@@ -22,12 +40,13 @@ const store = configureStore({
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: {
-        // Ignore these action types for Google Auth
-        ignoredActions: ['auth/setUser'],
+        ignoredActions: ['persist/PERSIST', 'persist/REHYDRATE', 'auth/setUser'],
       },
     }),
 });
 
+export const persistor = persistStore(store);
+
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;
-export { store }; 
+export { configureStore };

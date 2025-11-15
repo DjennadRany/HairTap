@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { useSelector } from 'react-redux';
 import { selectCurrentUser } from '../store/slices/authSlice';
 import { productService, Product } from '../services/api/products';
 import ProductOrderModal from './ProductOrderModal';
 import { FaHeart, FaHeartBroken, FaShoppingCart, FaSpinner } from 'react-icons/fa';
 import { getImageUrl, handleImageError, DEFAULT_PRODUCT_IMAGE } from '../utils/imageUtils';
+import { useAppSelector } from '../store/hooks';
 
 interface ProductGalleryProps {
   coiffeurId: string;
@@ -29,7 +29,7 @@ const ProductGallery: React.FC<ProductGalleryProps> = ({
   isOwner = false,
   onProductBuy
 }) => {
-  const user = useSelector(selectCurrentUser);
+  const user = useAppSelector(selectCurrentUser);
   const [products, setProducts] = useState<GalleryProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [showOrderModal, setShowOrderModal] = useState(false);

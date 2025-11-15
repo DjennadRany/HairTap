@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
-import { useSelector } from 'react-redux';
 import { selectCurrentUser } from '../store/slices/authSlice';
 import { Booking, User } from '../types/models';
+import { useAppSelector } from '../store/hooks';
 
 const CoiffeurRevenuePage = () => {
-  const user = useSelector(selectCurrentUser) as User | null;
+  const user = useAppSelector(selectCurrentUser) as User | null;
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
 

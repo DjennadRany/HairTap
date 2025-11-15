@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useSelector } from 'react-redux';
 import { selectCurrentUser } from '../store/slices/authSlice';
 import { coiffeurService } from '../services/api/coiffeurs';
 import { FaPlus, FaEdit, FaTrash, FaHeart, FaHeartBroken, FaImage, FaTags, FaClock, FaEuroSign, FaStar, FaSearch } from 'react-icons/fa';
@@ -7,6 +6,7 @@ import { MdVerified } from 'react-icons/md';
 import ServiceModal from './ServiceModal';
 // ServiceImage component removed - will be reimplemented later
 import ServiceCard from './ServiceCard';
+import { useAppSelector } from '../store/hooks';
 
 // Type pour les services coiffeur avec nouvelles propriétés
 interface Service {
@@ -39,7 +39,7 @@ const ServiceManager: React.FC<ServiceManagerProps> = ({
   onServiceBook,
   onServiceLike
 }) => {
-  const user = useSelector(selectCurrentUser);
+  const user = useAppSelector(selectCurrentUser);
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);

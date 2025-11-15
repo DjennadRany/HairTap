@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useSelector } from 'react-redux';
 import { selectCurrentUser } from '../store/slices/authSlice';
 import { Navigate } from 'react-router-dom';
 import { bookingService, Booking } from '../services/api/bookings';
@@ -17,9 +16,10 @@ import {
   StarIcon
 } from '@heroicons/react/24/outline';
 import type { User } from '../types/models';
+import { useAppSelector } from '../store/hooks';
 
 const CoiffeurReservationsPage: React.FC = () => {
-  const user = useSelector(selectCurrentUser) as User | null;
+  const user = useAppSelector(selectCurrentUser) as User | null;
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);

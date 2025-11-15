@@ -1,10 +1,9 @@
 import type { FC } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { useSelector, useDispatch } from 'react-redux';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { useState, useRef, useEffect } from 'react';
 import { getUnreadCount } from '../hooks/useChat';
 import { logout } from '../store/slices/authSlice';
-import type { RootState } from '../store/store';
 import { FaUser, FaSignOutAlt, FaCog, FaImages, FaUserTie } from 'react-icons/fa';
 import { PHOTO_URLS } from '../config/api';
 import { getImageUrl, handleImageError, DEFAULT_USER_IMAGE } from '../utils/imageUtils';
@@ -13,8 +12,8 @@ import { ConnectionStatusManager } from './ConnectionStatusManager';
 import { useGallery } from '../contexts/GalleryContext';
 
 const Header: FC = () => {
-  const { isAuthenticated, user } = useSelector((state: RootState) => state.auth);
-  const dispatch = useDispatch();
+  const { isAuthenticated, user } = useAppSelector((state) => state.auth);
+  const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const location = useLocation();
   const isMobile = useIsMobile();

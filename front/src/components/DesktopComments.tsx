@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { FaHeart, FaReply, FaSpinner } from 'react-icons/fa';
-import { useSelector } from 'react-redux';
 import { selectCurrentUser } from '../store/slices/authSlice';
 import { commentService } from '../services/api/comments';
 import { getImageUrl, DEFAULT_USER_IMAGE } from '../utils/imageUtils';
+import { useAppSelector } from '../store/hooks';
 
 interface Comment {
   _id: string;
@@ -54,7 +54,7 @@ export const DesktopComments: React.FC<DesktopCommentsProps> = ({
   const [replyText, setReplyText] = useState('');
   const [submitting, setSubmitting] = useState(false);
   
-  const currentUser = useSelector(selectCurrentUser);
+  const currentUser = useAppSelector(selectCurrentUser);
 
   // Charger les commentaires depuis l'API
   useEffect(() => {

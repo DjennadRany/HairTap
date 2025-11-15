@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { useSelector } from 'react-redux';
+import { useAppSelector } from '../store/hooks';
 import { userService } from '../services/api/users';
 import { reviewService } from '../services/api/reviews';
 import { favoriteService } from '../services/api/favorites';
@@ -35,7 +35,7 @@ const CoiffeurProfilePage = () => {
   const { id: paramId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const user = useSelector((state: any) => state.auth.user) as User | null;
+  const user = useAppSelector((state) => state.auth.user) as User | null;
   const id = paramId || user?._id;
   const isOwner = user && user._id === id && user.role === 'coiffeur';
   const isClient = user && (user.role === 'user' || user.role === 'client');

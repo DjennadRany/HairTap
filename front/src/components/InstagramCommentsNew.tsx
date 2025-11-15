@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { FaHeart, FaReply, FaPaperPlane } from 'react-icons/fa';
 import { getImageUrl, DEFAULT_USER_IMAGE } from '../utils/imageUtils';
 import { commentService, Comment } from '../services/api/comments';
-import { useSelector } from 'react-redux';
 import { selectCurrentUser } from '../store/slices/authSlice';
+import { useAppSelector } from '../store/hooks';
 
 interface InstagramCommentsProps {
   serviceId: string;
@@ -27,7 +27,7 @@ export const InstagramComments: React.FC<InstagramCommentsProps> = ({
   const [replyText, setReplyText] = useState('');
   const [submitting, setSubmitting] = useState(false);
   
-  const currentUser = useSelector(selectCurrentUser);
+  const currentUser = useAppSelector(selectCurrentUser);
 
   // Charger les commentaires depuis l'API
   useEffect(() => {

@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { useSelector } from 'react-redux';
 import { selectCurrentUser } from '../store/slices/authSlice';
 import { coiffeurService } from '../services/api/coiffeurs';
 import ServiceCard from './ServiceCard';
 import ServiceModal from './ServiceModal';
 import { FaPlus } from 'react-icons/fa';
+import { useAppSelector } from '../store/hooks';
 
 interface ServicesSectionProps {
   coiffeurId: string;
@@ -38,7 +38,7 @@ const ServicesSection: React.FC<ServicesSectionProps> = ({
   onServiceBook,
   onServiceLike
 }) => {
-  const user = useSelector(selectCurrentUser);
+  const user = useAppSelector(selectCurrentUser);
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);

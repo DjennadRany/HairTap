@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useSelector } from 'react-redux';
 import { selectCurrentUser } from '../store/slices/authSlice';
 import { coiffeurService } from '../services/api/coiffeurs';
 import { favoriteService } from '../services/api/favorites';
@@ -12,6 +11,7 @@ import { getImageUrl, handleImageError, DEFAULT_COIFFEUR_IMAGE, DEFAULT_SERVICE_
 import { ConnectionIndicator } from './ConnectionIndicator';
 // ImageOptimized component removed - will be reimplemented later
 import type { User } from '../types/models';
+import { useAppSelector } from '../store/hooks';
 
 interface CoiffeurCardProps {
   coiffeur: User;
@@ -39,7 +39,7 @@ const CoiffeurCard: React.FC<CoiffeurCardProps> = ({
   userLocation,
   viewMode = 'grid'
 }) => {
-  const user = useSelector(selectCurrentUser);
+  const user = useAppSelector(selectCurrentUser);
   const navigate = useNavigate();
   const { showNotification } = useNotification();
   const [serviceImages, setServiceImages] = useState<ServiceImage[]>([]);

@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useSelector } from 'react-redux';
 import { selectCurrentUser } from '../store/slices/authSlice';
 import { Card } from './ui/card';
 import { Button } from './ui/Button';
@@ -12,6 +11,7 @@ import { bookingService } from '../services/api/bookings';
 import { userService } from '../services/api/users';
 import StripePaymentModal from './modals/StripePaymentModal';
 import type { User } from '../types/models';
+import { useAppSelector } from '../store/hooks';
 
 // Type étendu pour les adresses
 interface UserWithAddresses extends User {
@@ -60,7 +60,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
   onCancel
 }) => {
   const navigate = useNavigate();
-  const user = useSelector(selectCurrentUser) as UserWithAddresses;
+  const user = useAppSelector(selectCurrentUser) as UserWithAddresses;
   
   // Debug: Vérifier les données reçues
   console.log('🔍 [BookingForm] Données reçues:', {

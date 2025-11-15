@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useSelector } from 'react-redux';
 import { selectCurrentUser } from '../store/slices/authSlice';
 import { productService, Product } from '../services/api/products';
 import ProductCard from './ProductCard';
 import ProductModal from './ProductModal';
 import ProductOrderModal from './ProductOrderModal';
 import { FaPlus } from 'react-icons/fa';
+import { useAppSelector } from '../store/hooks';
 
 interface ProductsSectionProps {
   coiffeurId: string;
@@ -24,7 +24,7 @@ const ProductsSection: React.FC<ProductsSectionProps> = ({
   onProductBuy,
   onProductLike
 }) => {
-  const user = useSelector(selectCurrentUser);
+  const user = useAppSelector(selectCurrentUser);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);

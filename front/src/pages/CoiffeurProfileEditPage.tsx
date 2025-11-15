@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
 import { selectCurrentUser, setUser } from '../store/slices/authSlice';
 import { Navigate } from 'react-router-dom';
 import { userService } from '../services/api/users';
@@ -12,10 +11,11 @@ import CoiffeurInfoDisplay from '../components/CoiffeurInfoDisplay';
 import { FaCamera, FaSpinner, FaBriefcase, FaGraduationCap, FaMapMarkerAlt } from 'react-icons/fa';
 import { MdVerified } from 'react-icons/md';
 import type { User } from '../types/models';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
 
 const CoiffeurProfileEditPage = () => {
-  const user = useSelector(selectCurrentUser) as User | null;
-  const dispatch = useDispatch();
+  const user = useAppSelector(selectCurrentUser) as User | null;
+  const dispatch = useAppDispatch();
   const [loading, setLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);

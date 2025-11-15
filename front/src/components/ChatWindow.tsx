@@ -1,10 +1,10 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { useChat } from '../hooks/useChat';
-import { useSelector } from 'react-redux';
 import { selectCurrentUser } from '../store/slices/authSlice';
 import { coiffeurService } from '../services/api/coiffeurs';
 import { User } from '../types/models';
 import { usePushNotification } from './PushNotification';
+import { useAppSelector } from '../store/hooks';
 
 
 import { getImageUrl, handleImageError, DEFAULT_USER_IMAGE } from '../utils/imageUtils';
@@ -22,7 +22,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ currentUserId, otherUserId, oth
   const [otherUser, setOtherUser] = useState<User | null>(null);
   const [isTyping, setIsTyping] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
-  const currentUser = useSelector(selectCurrentUser);
+  const currentUser = useAppSelector(selectCurrentUser);
   const { showNotification: showPushNotification } = usePushNotification();
 
   useEffect(() => {

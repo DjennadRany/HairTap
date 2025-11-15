@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { useSelector } from 'react-redux';
 import { useConnectionStatus } from '../hooks/useConnectionStatus';
 import { selectCurrentUser } from '../store/slices/authSlice';
 import { ConnectionIndicator } from './ConnectionIndicator';
 import { FaCircle, FaTimes, FaCheck, FaClock, FaUserSlash } from 'react-icons/fa';
+import { useAppSelector } from '../store/hooks';
 
 export const ConnectionStatusManager: React.FC = () => {
-  const user = useSelector(selectCurrentUser);
+  const user = useAppSelector(selectCurrentUser);
   const [showStatusMenu, setShowStatusMenu] = useState(false);
   
   const {

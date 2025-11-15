@@ -1,6 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useSelector } from 'react-redux';
-import { selectCurrentUser } from '../store/slices/authSlice';
 import { Card } from './ui/card';
 import { FaCalendarAlt, FaUsers, FaStar, FaEuroSign, FaClock, FaHeart } from 'react-icons/fa';
 import { userService } from '../services/api/users';

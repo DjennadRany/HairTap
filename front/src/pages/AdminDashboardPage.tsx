@@ -84,7 +84,7 @@ const AdminDashboardPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
       {/* Debug Panel - Only in development */}
-      {process.env.NODE_ENV === 'development' && <AdminDebug />}
+      {import.meta.env.MODE === 'development' && <AdminDebug />}
       
       {/* Header du Dashboard */}
       <div className="bg-white shadow-sm border-b">

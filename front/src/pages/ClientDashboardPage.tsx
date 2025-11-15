@@ -1,11 +1,11 @@
 import React from 'react';
-import { useSelector } from 'react-redux';
 import { selectCurrentUser } from '../store/slices/authSlice';
 import Dashboard from '../components/Dashboard';
 import type { User } from '../types/models';
+import { useAppSelector } from '../store/hooks';
 
 const ClientDashboardPage = () => {
-  const user = useSelector(selectCurrentUser) as User | null;
+  const user = useAppSelector(selectCurrentUser) as User | null;
 
   if (!user) {
     return (

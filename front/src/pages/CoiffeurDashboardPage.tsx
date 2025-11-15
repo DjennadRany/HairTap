@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useSelector } from 'react-redux';
 import { selectCurrentUser } from '../store/slices/authSlice';
 import Dashboard from '../components/Dashboard';
 import ServiceManager from '../components/ServiceManager';
@@ -9,9 +8,10 @@ import TimeChangeRequestsManager from '../components/coiffeur/TimeChangeRequests
 import { Card } from '../components/ui/card';
 import { FaChartBar, FaCog, FaCalendarAlt, FaUsers, FaStar, FaEuroSign } from 'react-icons/fa';
 import type { User } from '../types/models';
+import { useAppSelector } from '../store/hooks';
 
 const CoiffeurDashboardPage = () => {
-  const user = useSelector(selectCurrentUser) as User | null;
+  const user = useAppSelector(selectCurrentUser) as User | null;
   const [activeTab, setActiveTab] = useState<'overview' | 'services' | 'bookings' | 'timeChanges'>('overview');
 
   if (!user) {

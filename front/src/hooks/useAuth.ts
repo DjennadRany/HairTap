@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { setUser, setToken, logout } from '../store/slices/authSlice';
 import { selectIsAuthenticated, selectCurrentUser } from '../store/slices/authSlice';
 import { setProfile, resetProfile } from '../store/slices/profileSlice';
@@ -26,13 +26,13 @@ export interface AuthHook {
 export function useAuth(): AuthHook {
   const navigate = useNavigate();
   const location = useLocation();
-  const dispatch = useDispatch();
+  const dispatch = useAppDispatch();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
   // Utiliser le state Redux pour l'authentification
-  const isAuthenticated = useSelector(selectIsAuthenticated);
-  const user = useSelector(selectCurrentUser);
+  const isAuthenticated = useAppSelector(selectIsAuthenticated);
+  const user = useAppSelector(selectCurrentUser);
 
   const login = useCallback(async (credentials: LoginCredentials) => {
     try {
