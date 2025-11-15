@@ -1,10 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { selectCurrentUser, setUser, User as AuthUser } from '../store/slices/authSlice';
 import { useParams } from 'react-router-dom';
-import { userService } from '../services/api/users';
-import { FaUser, FaEnvelope, FaLock, FaSave, FaMapMarkerAlt, FaMapPin } from 'react-icons/fa';
+import { FaEnvelope, FaLock, FaMapMarkerAlt, FaMapPin, FaPhone, FaSave, FaStickyNote, FaUser } from 'react-icons/fa';
+
 import SimplePhotoUpload from '../components/SimplePhotoUpload';
 import AddressDisplay from '../components/AddressDisplay';
 import AddressForm from '../components/AddressForm';
@@ -13,350 +11,549 @@ import PreferencesDisplay from '../components/PreferencesDisplay';
 import PaymentMethodsList from '../components/PaymentMethodsList';
 import AddPaymentMethodModal from '../components/modals/AddPaymentMethodModal';
 
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { selectCurrentUser, setUser } from '../store/slices/authSlice';
+import { userService } from '../services/api/users';
+import { authService } from '../services/api/auth';
 
 import type { User as UserModel } from '../types/models';
 import { PHOTO_URLS } from '../config/api';
 
+interface StatusMessage {
+  type: 'success' | 'error';
+  message: string;
+}
+
+interface AddressField {
+  streetNumber?: string;
+  street?: string;
+  postalCode?: string;
+  city?: string;
+  floor?: string;
+  apartment?: string;
+  buildingCode?: string;
+  additionalInfo?: string;
+  coordinates?: {
+    lat?: number;
+    lng?: number;
+  };
+}
+
 interface ProfileFormData {
   name: string;
   email: string;
-  password: string;
-  confirmPassword: string;
-  addresses?: {
-    home?: {
-      streetNumber: string;
-      street: string;
-      postalCode: string;
-      city: string;
-      floor: string;
-      apartment: string;
-      buildingCode: string;
-      additionalInfo: string;
-    };
-    office?: {
-      streetNumber: string;
-      street: string;
-      postalCode: string;
-      city: string;
-      floor: string;
-      apartment: string;
-      buildingCode: string;
-      additionalInfo: string;
-    };
+  phone?: string;
+  bio?: string;
+  addresses: {
+    home: AddressField;
+    office: AddressField;
   };
 }
+
+interface PasswordFormData {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
+const EMPTY_ADDRESS: AddressField = {
+  streetNumber: '',
+  street: '',
+  postalCode: '',
+  city: '',
+  floor: '',
+  apartment: '',
+  buildingCode: '',
+  additionalInfo: ''
+};
+
+const buildAddress = (address?: AddressField): AddressField => ({
+  streetNumber: address?.streetNumber ?? '',
+  street: address?.street ?? '',
+  postalCode: address?.postalCode ?? '',
+  city: address?.city ?? '',
+  floor: address?.floor ?? '',
+  apartment: address?.apartment ?? '',
+  buildingCode: address?.buildingCode ?? '',
+  additionalInfo: address?.additionalInfo ?? '',
+  coordinates: address?.coordinates
+});
+
+const mergeAddresses = (addresses?: UserModel['addresses']): ProfileFormData['addresses'] => ({
+  home: buildAddress(addresses?.home),
+  office: buildAddress(addresses?.office)
+});
+
+const hasAddressContent = (address: AddressField) => {
+  const keys: (keyof AddressField)[] = [
+    'streetNumber',
+    'street',
+    'postalCode',
+    'city',
+    'floor',
+    'apartment',
+    'buildingCode',
+    'additionalInfo'
+  ];
+
+  return keys.some((key) => {
+    const value = address[key];
+    return typeof value === 'string' && value.trim().length > 0;
+  });
+};
+
+const sanitizeAddress = (address: AddressField): AddressField => {
+  const sanitized: AddressField = {};
+  const keys: (keyof AddressField)[] = [
+    'streetNumber',
+    'street',
+    'postalCode',
+    'city',
+    'floor',
+    'apartment',
+    'buildingCode',
+    'additionalInfo'
+  ];
+
+  keys.forEach((key) => {
+    const value = address[key];
+    if (typeof value === 'string' && value.trim()) {
+      sanitized[key] = value.trim();
+    }
+  });
+
+  if (address.coordinates) {
+    sanitized.coordinates = address.coordinates;
+  }
+
+  return sanitized;
+};
 
 const ClientProfilePage = () => {
   const dispatch = useAppDispatch();
   const { id: paramId } = useParams();
-  const user = useAppSelector(selectCurrentUser) as UserModel | null;
-  const id = paramId || user?._id;
-  const [success, setSuccess] = useState<string>('');
-  const [errorMsg, setErrorMsg] = useState<string>('');
+  const authUser = useAppSelector(selectCurrentUser);
+  const userId = paramId || authUser?._id || '';
+
   const [profile, setProfile] = useState<UserModel | null>(null);
+  const [status, setStatus] = useState<StatusMessage | null>(null);
   const [activeAddress, setActiveAddress] = useState<'home' | 'office'>('home');
-  const [isEditingAddress, setIsEditingAddress] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [isEditingAddress, setIsEditingAddress] = useState(false);
   const [isEditingPreferences, setIsEditingPreferences] = useState(false);
   const [showAddPaymentMethodModal, setShowAddPaymentMethodModal] = useState(false);
-
-
-  const defaultName = profile?.name || user?.name || '';
-  const defaultEmail = profile?.email || user?.email || '';
-  const defaultPhoto = profile?.photo || user?.photo || '';
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
   const {
     register,
     handleSubmit,
-    watch,
-    setValue,
-    formState: { errors },
     reset,
+    setValue,
+    formState: { errors, isSubmitting: isSavingProfile }
   } = useForm<ProfileFormData>({
     defaultValues: {
-      name: defaultName,
-      email: defaultEmail,
-      password: '',
-      confirmPassword: '',
-    },
+      name: '',
+      email: '',
+      phone: '',
+      bio: '',
+      addresses: {
+        home: { ...EMPTY_ADDRESS },
+        office: { ...EMPTY_ADDRESS }
+      }
+    }
   });
 
-  const password = watch('password');
-
-  const onSubmit = async (data: ProfileFormData) => {
-    try {
-      setSuccess('');
-      setErrorMsg('');
-      if (!id) {
-        setErrorMsg("Impossible de retrouver l'utilisateur.");
-        return;
-      }
-      
-      console.log('📝 Données du formulaire:', data);
-      
-      const payload: any = {
-        name: data.name,
-        email: data.email,
-      };
-      if (data.password) {
-        if (data.password === data.confirmPassword) {
-          payload.password = data.password;
-        } else {
-          setErrorMsg('Les mots de passe ne correspondent pas');
-          return;
-        }
-      }
-      
-      // Sauvegarder les adresses - UX-Pro
-      if (data.addresses) {
-        payload.addresses = data.addresses;
-        console.log('🔧 [ClientProfilePage] Adresses à sauvegarder:', JSON.stringify(data.addresses, null, 2));
-        
-        // Vérifier que les adresses ne sont pas vides
-        const hasHomeAddress = data.addresses.home && (
-          data.addresses.home.street || 
-          data.addresses.home.city || 
-          data.addresses.home.postalCode
-        );
-        const hasOfficeAddress = data.addresses.office && (
-          data.addresses.office.street || 
-          data.addresses.office.city || 
-          data.addresses.office.postalCode
-        );
-        
-        console.log('🏠 Adresse home valide:', hasHomeAddress);
-        console.log('🏢 Adresse office valide:', hasOfficeAddress);
-      } else {
-        console.log('❌ [ClientProfilePage] Pas d\'adresses dans data.addresses');
-      }
-      
-      console.log('🔧 Payload complet:', payload);
-      const updatedUser = await userService.updateUser(id, payload);
-      console.log('✅ Utilisateur mis à jour:', updatedUser);
-      
-      // Ne jamais mapper admin côté front
-      let mappedRole: 'client' | 'coiffeur' = 'client';
-      if (updatedUser.role === 'coiffeur') mappedRole = 'coiffeur';
-      // Si jamais admin, fallback sur client
-      dispatch(setUser({
-        _id: updatedUser._id,
-        name: updatedUser.name,
-        email: updatedUser.email,
-        role: mappedRole,
-        photo: updatedUser.photo
-      }));
-      setSuccess('Profil mis à jour avec succès !');
-      
-             // Adresses sauvegardées avec succès
-       if (data.addresses) {
-         console.log('✅ Adresses sauvegardées avec succès');
-       }
-      
-             // Recharger les données du profil pour confirmer la sauvegarde
-       if (id) {
-         userService.getUser(id).then(setProfile);
-       }
-       
-       // Retourner en mode lecture après sauvegarde
-       setIsEditingProfile(false);
-       setIsEditingAddress(false);
-       setIsEditingPreferences(false);
-    } catch (error) {
-      setErrorMsg('Erreur lors de la mise à jour du profil');
-      console.error('❌ Erreur:', error);
+  const {
+    register: registerPassword,
+    handleSubmit: handlePasswordSubmit,
+    reset: resetPasswordForm,
+    formState: { errors: passwordErrors, isSubmitting: isSavingPassword }
+  } = useForm<PasswordFormData>({
+    defaultValues: {
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: ''
     }
-  };
-
-  const handlePhotoUpdate = (photoUrl: string) => {
-    console.log('🖼️ [ClientProfilePage] handlePhotoUpdate appelé avec:', photoUrl);
-    
-    // Mettre à jour le state global pour que la photo apparaisse dans les cartes hub
-    if (user) {
-      let mappedRole: 'client' | 'coiffeur' = 'client';
-      if (user.role === 'coiffeur') mappedRole = 'coiffeur';
-      
-      console.log('🔄 [ClientProfilePage] Mise à jour du state global avec photo:', photoUrl);
-      dispatch(setUser({
-        ...user,
-        role: mappedRole,
-        photo: photoUrl
-      }));
-    }
-    
-    // Rafraîchir les données du profil
-    if (id) {
-      console.log('🔄 [ClientProfilePage] Rafraîchissement du profil pour ID:', id);
-      userService.getUser(id).then(setProfile);
-    }
-  };
+  });
 
   useEffect(() => {
-    if (!id || typeof id !== 'string') return;
-    userService.getUser(id)
+    if (!userId) {
+      setIsLoadingProfile(false);
+      return;
+    }
+
+    let isMounted = true;
+    setIsLoadingProfile(true);
+
+    userService
+      .getUser(userId)
       .then((data) => {
+        if (!isMounted) return;
         setProfile(data);
-        console.log('📥 Données utilisateur chargées:', data);
-        console.log('🏠 Adresses reçues:', data.addresses);
-        console.log('🏠 Adresse home:', data.addresses?.home);
-        console.log('🏢 Adresse office:', data.addresses?.office);
         reset({
           name: data.name,
           email: data.email,
-          password: '',
-          confirmPassword: '',
-          addresses: data.addresses || {}
+          phone: data.phone ?? '',
+          bio: data.bio ?? '',
+          addresses: mergeAddresses(data.addresses)
         });
       })
-      .catch(() => setProfile(null));
-  }, [id, reset]);
+      .catch((error) => {
+        console.error('Erreur lors du chargement du profil:', error);
+        if (isMounted) {
+          setStatus({ type: 'error', message: 'Impossible de charger le profil utilisateur.' });
+          setProfile(null);
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsLoadingProfile(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [userId, reset]);
+
+  const addressesFromProfile = useMemo(
+    () => mergeAddresses(profile?.addresses),
+    [profile?.addresses]
+  );
+
+  const handlePhotoUpdate = (photoUrl: string) => {
+    setProfile((prev) => (prev ? { ...prev, photo: photoUrl } : prev));
+
+    if (authUser) {
+      dispatch(
+        setUser({
+          ...authUser,
+          photo: photoUrl
+        })
+      );
+    }
+
+    setStatus({ type: 'success', message: 'Photo de profil mise à jour.' });
+  };
+
+  const handleProfileSubmit = async (values: ProfileFormData) => {
+    if (!userId) {
+      setStatus({ type: 'error', message: "Impossible de retrouver l'utilisateur." });
+      return;
+    }
+
+    setStatus(null);
+
+    try {
+      const payload: Partial<UserModel> = {
+        name: values.name.trim(),
+        email: values.email.trim(),
+        phone: values.phone?.trim() ?? '',
+        bio: values.bio?.trim() ?? ''
+      };
+
+      const home = sanitizeAddress(values.addresses.home);
+      const office = sanitizeAddress(values.addresses.office);
+      const addressesPayload: UserModel['addresses'] = {};
+
+      if (Object.keys(home).length > 0) {
+        addressesPayload.home = home;
+      }
+      if (Object.keys(office).length > 0) {
+        addressesPayload.office = office;
+      }
+
+      payload.addresses = addressesPayload;
+
+      const updatedUser = await userService.updateUser(userId, payload);
+
+      setProfile(updatedUser);
+      reset({
+        name: updatedUser.name,
+        email: updatedUser.email,
+        phone: updatedUser.phone ?? '',
+        bio: updatedUser.bio ?? '',
+        addresses: mergeAddresses(updatedUser.addresses)
+      });
+
+      const mappedRole: 'client' | 'coiffeur' | 'admin' =
+        updatedUser.role === 'coiffeur' ? 'coiffeur' : updatedUser.role === 'admin' ? 'admin' : 'client';
+
+      dispatch(
+        setUser({
+          _id: updatedUser._id,
+          name: updatedUser.name,
+          email: updatedUser.email,
+          role: mappedRole,
+          photo: updatedUser.photo
+        })
+      );
+
+      setIsEditingProfile(false);
+      setIsEditingAddress(false);
+      setIsEditingPreferences(false);
+      setStatus({ type: 'success', message: 'Profil mis à jour avec succès.' });
+    } catch (error: any) {
+      console.error('Erreur lors de la mise à jour du profil:', error);
+      const apiMessage = error?.response?.data?.message;
+      setStatus({ type: 'error', message: apiMessage || 'Erreur lors de la mise à jour du profil.' });
+    }
+  };
+
+  const handlePasswordChange = async (values: PasswordFormData) => {
+    if (values.newPassword !== values.confirmPassword) {
+      setStatus({ type: 'error', message: 'Les mots de passe ne correspondent pas.' });
+      return;
+    }
+
+    setStatus(null);
+
+    try {
+      const response = await authService.changePassword({
+        currentPassword: values.currentPassword,
+        newPassword: values.newPassword
+      });
+
+      setStatus({ type: 'success', message: response.message });
+      resetPasswordForm();
+    } catch (error: any) {
+      console.error('Erreur lors du changement de mot de passe:', error);
+      const apiMessage = error?.response?.data?.message;
+      setStatus({ type: 'error', message: apiMessage || 'Erreur lors du changement de mot de passe.' });
+    }
+  };
+
+  const handleUseCurrentLocation = async () => {
+    if (!navigator.geolocation) {
+      setStatus({ type: 'error', message: 'La géolocalisation n\'est pas supportée par votre navigateur.' });
+      return;
+    }
+
+    try {
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 60000
+        });
+      });
+
+      const { latitude, longitude } = position.coords;
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1&zoom=18`
+      );
+      const data = await response.json();
+
+      if (data.address) {
+        const address = data.address;
+        setValue(`addresses.${activeAddress}.streetNumber`, address.house_number || '');
+        setValue(`addresses.${activeAddress}.street`, address.road || '');
+        setValue(`addresses.${activeAddress}.postalCode`, address.postcode || '');
+        setValue(
+          `addresses.${activeAddress}.city`,
+          address.city || address.town || address.village || ''
+        );
+        setValue(
+          `addresses.${activeAddress}.additionalInfo`,
+          `Géolocalisé: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
+        );
+
+        setStatus({ type: 'success', message: 'Adresse détectée automatiquement.' });
+      }
+    } catch (error) {
+      console.error('Erreur géolocalisation:', error);
+      setStatus({ type: 'error', message: 'Impossible de récupérer votre position.' });
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!userId) {
+      setStatus({ type: 'error', message: "Impossible de retrouver l'utilisateur." });
+      return;
+    }
+
+    const confirmation = window.confirm(
+      '⚠️ Cette action est irréversible. Souhaitez-vous vraiment supprimer votre compte TapHair ?'
+    );
+
+    if (!confirmation) {
+      return;
+    }
+
+    try {
+      setIsDeletingAccount(true);
+      setStatus({ type: 'success', message: 'Suppression du compte en cours…' });
+      await userService.deleteUser(userId);
+      setStatus({ type: 'success', message: 'Compte supprimé avec succès. Redirection…' });
+
+      setTimeout(() => {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/';
+      }, 2000);
+    } catch (error: any) {
+      console.error('Erreur suppression compte:', error);
+      const apiMessage = error?.response?.data?.message;
+      setStatus({ type: 'error', message: apiMessage || 'Erreur lors de la suppression du compte.' });
+    } finally {
+      setIsDeletingAccount(false);
+    }
+  };
+
+  if (isLoadingProfile) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-lg p-8 text-center text-gray-600">
+          Chargement du profil…
+        </div>
+      </div>
+    );
+  }
+
+  if (!userId) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-lg p-8 text-center text-red-600">
+          Impossible de charger le profil utilisateur.
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="max-w-2xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8 text-center">Mon profil</h1>
-        
-        {success && (
-          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-6">
-            {success}
-          </div>
-        )}
-        {errorMsg && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
-            {errorMsg}
+      <div className="max-w-2xl mx-auto space-y-6">
+        <h1 className="text-3xl font-bold text-center">Mon profil</h1>
+
+        {status && (
+          <div
+            className={`rounded-md px-4 py-3 border ${
+              status.type === 'success'
+                ? 'bg-green-50 border-green-200 text-green-700'
+                : 'bg-red-50 border-red-200 text-red-700'
+            }`}
+          >
+            {status.message}
           </div>
         )}
 
         <div className="bg-white rounded-lg shadow-lg p-8">
-          {/* Section Photo de Profil */}
           <div className="flex flex-col items-center mb-8">
             <SimplePhotoUpload
-              userId={id || ''}
-              currentPhoto={profile?.photo || user?.photo || PHOTO_URLS.DEFAULT_AVATAR}
+              userId={userId}
+              currentPhoto={profile?.photo || authUser?.photo || PHOTO_URLS.DEFAULT_AVATAR}
               onPhotoUpdate={handlePhotoUpdate}
             />
-
             <p className="text-sm text-gray-600 mt-2 text-center">
               Cliquez sur l'appareil photo pour changer votre photo de profil
             </p>
           </div>
 
-                     {/* Formulaire */}
-           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-             {/* Informations personnelles - Mode lecture ou édition */}
-             {!isEditingProfile ? (
-               <ProfileInfoDisplay
-                 name={profile?.name || user?.name || ''}
-                 email={profile?.email || user?.email || ''}
-                 phone={profile?.phone || user?.phone}
-                 bio={profile?.bio || user?.bio}
-                 onEdit={() => setIsEditingProfile(true)}
-               />
-             ) : (
-               <div className="space-y-4">
-                 <div className="flex justify-between items-center">
-                   <h3 className="text-lg font-semibold">📝 Modifier les informations</h3>
-                   <button
-                     type="button"
-                     onClick={() => setIsEditingProfile(false)}
-                     className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm"
-                   >
-                     Annuler
-                   </button>
-                 </div>
-                 
-                 <div>
-                   <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                     <FaUser className="text-gray-500" />
-                     Nom complet
-                   </label>
-                   <input
-                     type="text"
-                     {...register('name', { required: 'Le nom est requis' })}
-                     className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                     placeholder="Votre nom complet"
-                   />
-                   {errors.name && (
-                     <p className="text-red-600 text-sm mt-1">{errors.name.message}</p>
-                   )}
-                 </div>
-
-                 <div>
-                   <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                     <FaEnvelope className="text-gray-500" />
-                     Email
-                   </label>
-                   <input
-                     type="email"
-                     {...register('email', { 
-                       required: 'L\'email est requis',
-                       pattern: {
-                         value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                         message: 'Email invalide'
-                       }
-                     })}
-                     className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                     placeholder="votre@email.com"
-                   />
-                   {errors.email && (
-                     <p className="text-red-600 text-sm mt-1">{errors.email.message}</p>
-                   )}
-                 </div>
-               </div>
-             )}
-
-             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                <FaLock className="text-gray-500" />
-                Nouveau mot de passe (optionnel)
-              </label>
-              <input
-                type="password"
-                {...register('password')}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Laissez vide pour ne pas changer"
+          <form onSubmit={handleSubmit(handleProfileSubmit)} className="space-y-6">
+            {!isEditingProfile ? (
+              <ProfileInfoDisplay
+                name={profile?.name || ''}
+                email={profile?.email || ''}
+                phone={profile?.phone}
+                bio={profile?.bio}
+                onEdit={() => setIsEditingProfile(true)}
               />
-            </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-semibold">📝 Modifier les informations</h3>
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingProfile(false)}
+                    className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm"
+                  >
+                    Annuler
+                  </button>
+                </div>
 
-            {password && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                  <FaLock className="text-gray-500" />
-                  Confirmer le mot de passe
-                </label>
-                <input
-                  type="password"
-                  {...register('confirmPassword', {
-                    validate: value => !password || value === password || 'Les mots de passe ne correspondent pas'
-                  })}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Confirmez votre mot de passe"
-                />
-                {errors.confirmPassword && (
-                  <p className="text-red-600 text-sm mt-1">{errors.confirmPassword.message}</p>
-                )}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                    <FaUser className="text-gray-500" />
+                    Nom complet
+                  </label>
+                  <input
+                    type="text"
+                    {...register('name', { required: 'Le nom est requis' })}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Votre nom complet"
+                  />
+                  {errors.name && (
+                    <p className="text-red-600 text-sm mt-1">{errors.name.message}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                    <FaEnvelope className="text-gray-500" />
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    {...register('email', {
+                      required: 'L\'email est requis',
+                      pattern: {
+                        value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                        message: 'Email invalide'
+                      }
+                    })}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="vous@email.com"
+                  />
+                  {errors.email && (
+                    <p className="text-red-600 text-sm mt-1">{errors.email.message}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                    <FaPhone className="text-gray-500" />
+                    Téléphone
+                  </label>
+                  <input
+                    type="tel"
+                    {...register('phone')}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Votre numéro de téléphone"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                    <FaStickyNote className="text-gray-500" />
+                    Bio
+                  </label>
+                  <textarea
+                    rows={3}
+                    {...register('bio')}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                    placeholder="Parlez-nous un peu de vous"
+                  />
+                </div>
               </div>
             )}
 
-                         {/* Section Adresses - UX-Pro Simple */}
-             <div className="border-t pt-6">
-
-               
-               <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                 <FaMapMarkerAlt className="text-gray-500" />
-                 Mes adresses
-               </h3>
+            <div className="border-t pt-6">
+              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <FaMapMarkerAlt className="text-gray-500" />
+                Mes adresses
+              </h3>
               <p className="text-sm text-gray-600 mb-4">
                 Configurez vos adresses principales pour les réservations
               </p>
-              
-              {/* Onglets d'adresses */}
+
               <div className="flex gap-2 mb-4">
                 <button
                   type="button"
                   onClick={() => setActiveAddress('home')}
                   className={`px-4 py-2 rounded-lg transition-colors ${
-                    activeAddress === 'home' 
-                      ? 'bg-blue-600 text-white' 
+                    activeAddress === 'home'
+                      ? 'bg-blue-600 text-white'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
@@ -366,198 +563,181 @@ const ClientProfilePage = () => {
                   type="button"
                   onClick={() => setActiveAddress('office')}
                   className={`px-4 py-2 rounded-lg transition-colors ${
-                    activeAddress === 'office' 
-                      ? 'bg-blue-600 text-white' 
+                    activeAddress === 'office'
+                      ? 'bg-blue-600 text-white'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
                   🏢 Bureau
                 </button>
               </div>
-              
 
-              
-                                                          {/* Affichage des adresses - Mode lecture ou édition */}
-               {(() => {
-                 const hasAddressData = profile?.addresses && 
-                   profile.addresses[activeAddress] && 
-                   Object.values(profile.addresses[activeAddress]).some(val => val && typeof val === 'string' && val.trim());
-                 
-                 console.log('🔍 Debug affichage adresses:');
-                 console.log('- isEditingAddress:', isEditingAddress);
-                 console.log('- profile.addresses:', profile?.addresses);
-                 console.log('- activeAddress:', activeAddress);
-                 console.log('- hasAddressData:', hasAddressData);
-                 
-                 if (!isEditingAddress && hasAddressData) {
-                   // AFFICHAGE EN DUR - Mode lecture avec vraies données
-                   return (
-                     <AddressDisplay
-                       addressType={activeAddress}
-                       address={profile.addresses![activeAddress]}
-                       onEdit={() => setIsEditingAddress(true)}
-                     />
-                   );
-                 } else {
-                   // MODE ÉDITION - Formulaire d'édition des adresses
-                   return (
-                     <AddressForm
-                       addressType={activeAddress}
-                       register={register}
-                       onView={() => setIsEditingAddress(false)}
-                       hasExistingData={!!hasAddressData}
-                     />
-                   );
-                 }
-               })()}
-              
+              {(() => {
+                const hasData = hasAddressContent(addressesFromProfile[activeAddress]);
+
+                if (!isEditingAddress && hasData) {
+                  return (
+                    <AddressDisplay
+                      addressType={activeAddress}
+                      address={addressesFromProfile[activeAddress]}
+                      onEdit={() => setIsEditingAddress(true)}
+                    />
+                  );
+                }
+
+                return (
+                  <AddressForm
+                    addressType={activeAddress}
+                    register={register}
+                    onView={() => setIsEditingAddress(false)}
+                    hasExistingData={hasData}
+                  />
+                );
+              })()}
+
               <div className="mt-4 flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={async () => {
-                    if (navigator.geolocation) {
-                      try {
-                        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-                          navigator.geolocation.getCurrentPosition(resolve, reject, {
-                            enableHighAccuracy: true,
-                            timeout: 10000,
-                            maximumAge: 60000
-                          });
-                        });
-                        
-                        // Reverse geocoding avec OpenStreetMap (gratuit)
-                        const { latitude, longitude } = position.coords;
-                        const response = await fetch(
-                          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1&zoom=18`
-                        );
-                        const data = await response.json();
-                        
-                        if (data.address) {
-                          // Auto-complétion directe des champs
-                          const address = data.address;
-                          setValue(`addresses.${activeAddress}.streetNumber`, address.house_number || '');
-                          setValue(`addresses.${activeAddress}.street`, address.road || '');
-                          setValue(`addresses.${activeAddress}.postalCode`, address.postcode || '');
-                          setValue(`addresses.${activeAddress}.city`, address.city || address.town || address.village || '');
-                          setValue(`addresses.${activeAddress}.additionalInfo`, `Géolocalisé: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
-                        }
-                      } catch (error) {
-                        console.error('Erreur géolocalisation:', error);
-                        alert('Impossible de récupérer votre position. Vérifiez les permissions de localisation.');
-                      }
-                    } else {
-                      alert('La géolocalisation n\'est pas supportée par votre navigateur.');
-                    }
-                  }}
+                  onClick={handleUseCurrentLocation}
                   className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
                 >
                   <FaMapPin />
                   Utiliser ma position actuelle
                 </button>
-                             </div>
-             </div>
+              </div>
+            </div>
 
-             {/* Section Méthodes de paiement */}
-             <div className="border-t pt-6">
-               <PaymentMethodsList
-                 onAddPaymentMethod={() => setShowAddPaymentMethodModal(true)}
-                 showAddButton={true}
-               />
-             </div>
+            <div className="border-t pt-6">
+              <PaymentMethodsList
+                onAddPaymentMethod={() => setShowAddPaymentMethodModal(true)}
+                showAddButton
+              />
+            </div>
 
-             {/* Section Préférences */}
-             {profile?.preferences && (
-               <div className="border-t pt-6">
-                 {!isEditingPreferences ? (
-                   <PreferencesDisplay
-                     preferences={profile.preferences}
-                     onEdit={() => setIsEditingPreferences(true)}
-                   />
-                 ) : (
-                   <div className="space-y-4">
-                     <div className="flex justify-between items-center">
-                       <h3 className="text-lg font-semibold">⚙️ Modifier les préférences</h3>
-                       <button
-                         type="button"
-                         onClick={() => setIsEditingPreferences(false)}
-                         className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm"
-                       >
-                         Annuler
-                       </button>
-                     </div>
-                     {/* Ici on pourrait ajouter un formulaire d'édition des préférences */}
-                     <p className="text-gray-600">Formulaire d'édition des préférences à implémenter</p>
-                   </div>
-                 )}
-               </div>
-             )}
+            {profile?.preferences && (
+              <div className="border-t pt-6">
+                {!isEditingPreferences ? (
+                  <PreferencesDisplay
+                    preferences={profile.preferences}
+                    onEdit={() => setIsEditingPreferences(true)}
+                  />
+                ) : (
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <h3 className="text-lg font-semibold">⚙️ Modifier les préférences</h3>
+                      <button
+                        type="button"
+                        onClick={() => setIsEditingPreferences(false)}
+                        className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm"
+                      >
+                        Annuler
+                      </button>
+                    </div>
+                    <p className="text-gray-600">
+                      Formulaire d'édition des préférences à implémenter.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
 
-             <div className="pt-6">
+            <div className="pt-6">
               <button
                 type="submit"
-                className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                disabled={isSavingProfile}
+                className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 <FaSave />
-                Enregistrer les modifications
+                {isSavingProfile ? 'Enregistrement…' : 'Enregistrer les modifications'}
               </button>
             </div>
 
-            {/* Modal d'ajout de méthode de paiement */}
             <AddPaymentMethodModal
               isOpen={showAddPaymentMethodModal}
               onClose={() => setShowAddPaymentMethodModal(false)}
               onSuccess={() => {
-                // Le composant PaymentMethodsList se rechargera automatiquement
-                setSuccess('Carte ajoutée avec succès !');
+                setShowAddPaymentMethodModal(false);
+                setStatus({ type: 'success', message: 'Carte ajoutée avec succès !' });
               }}
             />
 
-            {/* Section Suppression de compte */}
             <div className="pt-6 border-t border-red-200">
-              <div className="bg-red-50 p-4 rounded-lg">
-                <h3 className="text-lg font-semibold text-red-800 mb-2">⚠️ Zone dangereuse</h3>
-                <p className="text-red-700 text-sm mb-4">
-                  La suppression de votre compte est irréversible. Toutes vos données, réservations et informations seront définitivement supprimées.
+              <div className="bg-red-50 p-4 rounded-lg space-y-4">
+                <h3 className="text-lg font-semibold text-red-800">⚠️ Zone dangereuse</h3>
+                <p className="text-red-700 text-sm">
+                  La suppression de votre compte est irréversible. Toutes vos données et réservations seront définitivement supprimées.
                 </p>
                 <button
                   type="button"
-                  onClick={async () => {
-                    if (window.confirm('⚠️ ATTENTION : Cette action est irréversible !\n\nÊtes-vous absolument sûr de vouloir supprimer votre compte ?\n\nToutes vos données seront définitivement perdues.')) {
-                      try {
-                        if (!id) {
-                          setErrorMsg("Impossible de retrouver l'utilisateur.");
-                          return;
-                        }
-                        
-                        setErrorMsg('');
-                        setSuccess('Suppression du compte en cours...');
-                        
-                        // Supprimer le compte
-                        await userService.deleteUser(id);
-                        
-                        setSuccess('Compte supprimé avec succès. Redirection...');
-                        
-                        // Rediriger vers logout après 2 secondes
-                        setTimeout(() => {
-                          // Déconnexion et redirection
-                          localStorage.removeItem('token');
-                          localStorage.removeItem('user');
-                          window.location.href = '/';
-                        }, 2000);
-                        
-                      } catch (error: any) {
-                        console.error('Erreur suppression compte:', error);
-                        setErrorMsg(error.response?.data?.message || 'Erreur lors de la suppression du compte');
-                        setSuccess('');
-                      }
-                    }
-                  }}
-                  className="w-full bg-red-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-red-700 transition-colors flex items-center justify-center gap-2"
+                  onClick={handleDeleteAccount}
+                  disabled={isDeletingAccount}
+                  className="w-full bg-red-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-red-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  🗑️ Supprimer mon compte
+                  🗑️ {isDeletingAccount ? 'Suppression en cours…' : 'Supprimer mon compte'}
                 </button>
               </div>
             </div>
+          </form>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-lg p-8">
+          <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+            <FaLock className="text-gray-500" />
+            Sécurité du compte
+          </h2>
+          <form onSubmit={handlePasswordSubmit(handlePasswordChange)} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Mot de passe actuel</label>
+              <input
+                type="password"
+                {...registerPassword('currentPassword', { required: 'Mot de passe actuel requis' })}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Mot de passe actuel"
+              />
+              {passwordErrors.currentPassword && (
+                <p className="text-red-600 text-sm mt-1">{passwordErrors.currentPassword.message}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Nouveau mot de passe</label>
+              <input
+                type="password"
+                {...registerPassword('newPassword', {
+                  required: 'Nouveau mot de passe requis',
+                  minLength: {
+                    value: 8,
+                    message: 'Le mot de passe doit contenir au moins 8 caractères'
+                  }
+                })}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Nouveau mot de passe"
+              />
+              {passwordErrors.newPassword && (
+                <p className="text-red-600 text-sm mt-1">{passwordErrors.newPassword.message}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Confirmer le mot de passe</label>
+              <input
+                type="password"
+                {...registerPassword('confirmPassword', { required: 'Confirmation requise' })}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Confirmez le nouveau mot de passe"
+              />
+              {passwordErrors.confirmPassword && (
+                <p className="text-red-600 text-sm mt-1">{passwordErrors.confirmPassword.message}</p>
+              )}
+            </div>
+
+            <button
+              type="submit"
+              disabled={isSavingPassword}
+              className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {isSavingPassword ? 'Mise à jour…' : 'Mettre à jour mon mot de passe'}
+            </button>
           </form>
         </div>
       </div>
@@ -565,4 +745,4 @@ const ClientProfilePage = () => {
   );
 };
 
-export default ClientProfilePage; 
+export default ClientProfilePage;

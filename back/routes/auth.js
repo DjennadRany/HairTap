@@ -5,6 +5,8 @@ import { OAuth2Client } from 'google-auth-library';
 import { auth } from '../middleware/auth.js';
 import { validateAuth } from '../middleware/validate.js';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
+import { sendPasswordResetEmail } from '../services/emailService.js';
 
 const router = express.Router();
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -326,18 +328,19 @@ router.post('/change-password', auth, async (req, res) => {
       return res.status(400).json({ message: 'Tous les champs sont requis' });
     }
 
-    const user = await User.findById(req.user.id);
+    const user = await User.findById(req.user.id).select('+password');
     if (!user) {
       return res.status(404).json({ message: 'Utilisateur non trouvé' });
     }
 
-    // Vérifier l'ancien mot de passe (comparaison directe pour les tests)
-    if (currentPassword !== user.password) {
+    const isMatch = await user.comparePassword(currentPassword);
+    if (!isMatch) {
       return res.status(400).json({ message: 'Mot de passe actuel incorrect' });
     }
 
-    // Sauvegarder le nouveau mot de passe en clair
     user.password = newPassword;
+    user.passwordResetToken = undefined;
+    user.passwordResetExpires = undefined;
     await user.save();
 
     res.json({ message: 'Mot de passe modifié avec succès' });
@@ -348,7 +351,7 @@ router.post('/change-password', auth, async (req, res) => {
 });
 
 // Réinitialiser le mot de passe
-router.post('/reset-password', async (req, res) => {
+router.post('/forgot-password', async (req, res) => {
   try {
     const { email } = req.body;
 
@@ -356,22 +359,63 @@ router.post('/reset-password', async (req, res) => {
       return res.status(400).json({ message: 'Email requis' });
     }
 
-    const user = await User.findOne({ email });
+    const normalizedEmail = email.toLowerCase();
+    const user = await User.findOne({ email: normalizedEmail });
+
     if (!user) {
-      return res.status(404).json({ message: 'Utilisateur non trouvé' });
+      return res.json({ message: 'Si un compte existe pour cet email, un lien de réinitialisation a été envoyé.' });
     }
 
-    // Générer un mot de passe temporaire
-    const tempPassword = Math.random().toString(36).slice(-8);
-    user.password = tempPassword; // Stockage en clair pour les tests
+    const resetToken = user.createPasswordResetToken();
+    await user.save({ validateBeforeSave: false });
+
+    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const resetUrl = `${baseUrl.replace(/\/$/, '')}/reset-password?token=${resetToken}`;
+
+    try {
+      await sendPasswordResetEmail({
+        email: user.email,
+        resetUrl
+      });
+    } catch (emailError) {
+      user.passwordResetToken = undefined;
+      user.passwordResetExpires = undefined;
+      await user.save({ validateBeforeSave: false });
+      throw emailError;
+    }
+
+    res.json({ message: 'Un lien de réinitialisation a été envoyé par email.' });
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({ message: 'Erreur lors de la demande de réinitialisation de mot de passe' });
+  }
+});
+
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { token, password } = req.body;
+
+    if (!token || !password) {
+      return res.status(400).json({ message: 'Token et nouveau mot de passe requis' });
+    }
+
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
+    const user = await User.findOne({
+      passwordResetToken: hashedToken,
+      passwordResetExpires: { $gt: Date.now() }
+    }).select('+password');
+
+    if (!user) {
+      return res.status(400).json({ message: 'Lien de réinitialisation invalide ou expiré' });
+    }
+
+    user.password = password;
+    user.passwordResetToken = undefined;
+    user.passwordResetExpires = undefined;
     await user.save();
 
-    // TODO: Envoyer le mot de passe temporaire par email
-    // Pour l'instant, on renvoie le mot de passe (à retirer en production)
-    res.json({ 
-      message: 'Un email de réinitialisation a été envoyé',
-      tempPassword // À retirer en production
-    });
+    res.json({ message: 'Mot de passe réinitialisé avec succès' });
   } catch (error) {
     console.error('Reset password error:', error);
     res.status(500).json({ message: 'Erreur lors de la réinitialisation du mot de passe' });
