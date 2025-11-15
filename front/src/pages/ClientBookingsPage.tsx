@@ -33,6 +33,9 @@ interface BookingDisplay {
   };
   notes?: string;
   createdAt: string;
+  acceptedTermsAt?: string;
+  acceptedCancellationPolicyAt?: string;
+  acceptedPaymentConsentAt?: string;
 }
 
 const ClientBookingsPage: React.FC = () => {
@@ -66,7 +69,10 @@ const ClientBookingsPage: React.FC = () => {
           mode: booking.mode,
           address: booking.address,
           notes: booking.notes,
-          createdAt: booking.createdAt
+          createdAt: booking.createdAt,
+          acceptedTermsAt: booking.acceptedTermsAt,
+          acceptedCancellationPolicyAt: booking.acceptedCancellationPolicyAt,
+          acceptedPaymentConsentAt: booking.acceptedPaymentConsentAt
         }));
         setBookings(displayBookings);
       } catch (error) {
@@ -139,10 +145,30 @@ const ClientBookingsPage: React.FC = () => {
 
   const formatTime = (dateString: string): string => {
     const date = new Date(dateString);
-    return date.toLocaleTimeString('fr-FR', { 
-      hour: '2-digit', 
-      minute: '2-digit' 
+    return date.toLocaleTimeString('fr-FR', {
+      hour: '2-digit',
+      minute: '2-digit'
     });
+  };
+
+  const formatConsentDate = (dateString?: string): string => {
+    if (!dateString) {
+      return 'Non renseigné';
+    }
+    const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) {
+      return 'Non renseigné';
+    }
+    const formattedDate = date.toLocaleDateString('fr-FR', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric'
+    });
+    const formattedTime = date.toLocaleTimeString('fr-FR', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+    return `${formattedDate} à ${formattedTime}`;
   };
 
   // Filtrer les réservations selon le mode de vue et le statut
@@ -397,6 +423,33 @@ const ClientBookingsPage: React.FC = () => {
                         </p>
                       </div>
                     )}
+
+                    <div className="mt-4">
+                      <h4 className="text-sm font-semibold text-gray-900 mb-2">Traçabilité des consentements</h4>
+                      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-2 text-sm text-gray-700">
+                        <div className="flex items-start gap-2">
+                          <FaCheck className="text-green-600 mt-1" />
+                          <span>
+                            CGV acceptées le{' '}
+                            <span className="font-medium text-gray-900">{formatConsentDate(booking.acceptedTermsAt)}</span>
+                          </span>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <FaCheck className="text-green-600 mt-1" />
+                          <span>
+                            Politique d'annulation acceptée le{' '}
+                            <span className="font-medium text-gray-900">{formatConsentDate(booking.acceptedCancellationPolicyAt)}</span>
+                          </span>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <FaCheck className="text-green-600 mt-1" />
+                          <span>
+                            Consentement de paiement donné le{' '}
+                            <span className="font-medium text-gray-900">{formatConsentDate(booking.acceptedPaymentConsentAt)}</span>
+                          </span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
                   {/* Actions */}

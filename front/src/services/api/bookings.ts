@@ -28,6 +28,9 @@ export interface Booking {
       lng: number;
     };
   };
+  acceptedTermsAt?: string;
+  acceptedCancellationPolicyAt?: string;
+  acceptedPaymentConsentAt?: string;
   // Informations Stripe
   stripePaymentIntentId?: string;
   stripeCustomerId?: string;
@@ -58,6 +61,9 @@ export interface CreateBookingData {
       lng: number;
     };
   };
+  acceptedTermsAt: string;
+  acceptedCancellationPolicyAt: string;
+  acceptedPaymentConsentAt: string;
 }
 
 export interface BookingResponse {
