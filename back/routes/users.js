@@ -1,5 +1,10 @@
 import express from 'express';
 import multer from 'multer';
+import path from 'path';
+import { promises as fsPromises } from 'fs';
+import { createReadStream, createWriteStream } from 'fs';
+import { pipeline } from 'stream/promises';
+import { randomUUID } from 'crypto';
 import { auth } from '../middleware/auth.js';
 import User from '../models/User.js';
 import Service from '../models/Service.js';
@@ -7,17 +12,74 @@ import geolocationService from '../services/geolocationService.js';
 
 const router = express.Router();
 
-// Configuration multer simple
-const storage = multer.memoryStorage();
+const { mkdir, access, unlink } = fsPromises;
+
+const ensureDirExists = async (dirPath) => {
+  try {
+    await access(dirPath);
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      await mkdir(dirPath, { recursive: true });
+    } else {
+      throw error;
+    }
+  }
+};
+
+const slugify = (value) => {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .toLowerCase() || 'fichier';
+};
+
+const getExtension = (filename) => path.extname(filename || '').toLowerCase();
+
+const buildFileName = (originalName) => {
+  const extension = getExtension(originalName);
+  const baseName = path.basename(originalName, extension);
+  const slug = slugify(baseName);
+  return `${slug}-${randomUUID()}${extension}`;
+};
+
+const ALLOWED_IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp']);
+const ALLOWED_IMAGE_MIMES = new Set([
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/webp'
+]);
+
+const TEMP_UPLOAD_DIR = path.join(process.cwd(), 'uploads', 'tmp');
+
+const storage = multer.diskStorage({
+  destination: async (req, file, cb) => {
+    try {
+      await ensureDirExists(TEMP_UPLOAD_DIR);
+      cb(null, TEMP_UPLOAD_DIR);
+    } catch (error) {
+      cb(error);
+    }
+  },
+  filename: (req, file, cb) => {
+    const extension = getExtension(file.originalname);
+    cb(null, `${randomUUID()}${extension}`);
+  }
+});
+
 const upload = multer({
   storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB max
+  limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) {
-      cb(null, true);
-    } else {
-      cb(new Error('Seuls les fichiers image sont autorisés'), false);
+    const extension = getExtension(file.originalname);
+
+    if (!ALLOWED_IMAGE_EXTENSIONS.has(extension) || !ALLOWED_IMAGE_MIMES.has(file.mimetype)) {
+      return cb(new Error('Seules les images JPG, PNG ou WEBP sont autorisées'));
     }
+
+    cb(null, true);
   }
 });
 
@@ -124,6 +186,9 @@ router.patch('/:id', auth, async (req, res) => {
 
 // Route pour upload de photo de profil
 router.post('/:id/photo', auth, upload.single('photo'), async (req, res) => {
+  let tempFilePath;
+  let finalFilePath;
+
   try {
     const { id } = req.params;
     const file = req.file;
@@ -132,36 +197,34 @@ router.post('/:id/photo', auth, upload.single('photo'), async (req, res) => {
       return res.status(400).json({ message: 'Aucune photo fournie' });
     }
 
-    // Validation du fichier
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-    if (!allowedTypes.includes(file.mimetype)) {
+    tempFilePath = file.path;
+
+    const extension = getExtension(file.originalname);
+    if (!ALLOWED_IMAGE_EXTENSIONS.has(extension)) {
+      return res.status(400).json({ message: 'Extension de fichier non autorisée' });
+    }
+
+    if (!ALLOWED_IMAGE_MIMES.has(file.mimetype)) {
       return res.status(400).json({ message: 'Type de fichier non autorisé' });
     }
 
-    const maxSize = 5 * 1024 * 1024; // 5MB
-    if (file.size > maxSize) {
+    if (file.size > 5 * 1024 * 1024) {
       return res.status(400).json({ message: 'Fichier trop volumineux (max 5MB)' });
     }
 
-    // Générer un nom unique pour le fichier
-    const fileName = `profile-${id}-${Date.now()}-${Math.random().toString(36).substring(2)}.${file.originalname.split('.').pop()}`;
-    const filePath = `uploads/profiles/${fileName}`;
-
-    // Sauvegarder le fichier
-    const fs = await import('fs');
-    const path = await import('path');
-    
     const uploadDir = path.join(process.cwd(), 'uploads', 'profiles');
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
+    await ensureDirExists(uploadDir);
 
-    fs.writeFileSync(path.join(uploadDir, fileName), file.buffer);
+    const fileName = buildFileName(file.originalname);
+    finalFilePath = path.join(uploadDir, fileName);
 
-    // Mettre à jour l'utilisateur avec l'URL relative
+    await pipeline(createReadStream(tempFilePath), createWriteStream(finalFilePath));
+
+    const relativePath = `/uploads/profiles/${fileName}`;
+
     const user = await User.findByIdAndUpdate(
       id,
-      { photo: `/${filePath}` },
+      { photo: relativePath },
       { new: true }
     );
 
@@ -170,18 +233,30 @@ router.post('/:id/photo', auth, upload.single('photo'), async (req, res) => {
     }
 
     console.log('✅ [POST /users/:id/photo] Photo uploadée avec succès');
-    console.log('📁 Fichier sauvegardé:', path.join(uploadDir, fileName));
-    console.log('🌐 URL retournée:', `/${filePath}`);
-    
-    res.json({ 
-      success: true, 
-      message: 'Photo mise à jour avec succès',
-      photo: `/${filePath}` 
-    });
+    console.log('📁 Fichier sauvegardé:', finalFilePath);
+    console.log('🌐 URL retournée:', relativePath);
 
+    res.json({
+      success: true,
+      message: 'Photo mise à jour avec succès',
+      photo: relativePath
+    });
   } catch (error) {
     console.error('Erreur upload photo:', error);
-    res.status(500).json({ message: 'Erreur lors de l\'upload de la photo' });
+
+    if (finalFilePath) {
+      await unlink(finalFilePath).catch(() => {});
+    }
+
+    if (error instanceof multer.MulterError && error.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ message: 'Fichier trop volumineux (max 5MB)' });
+    }
+
+    res.status(500).json({ message: "Erreur lors de l'upload de la photo" });
+  } finally {
+    if (tempFilePath) {
+      await unlink(tempFilePath).catch(() => {});
+    }
   }
 });
 
