@@ -1,7 +1,10 @@
 import express from 'express';
 import Booking from '../models/Booking.js';
+import WorkingSlot from '../models/WorkingSlot.js';
+import User from '../models/User.js';
 import { auth } from '../middleware/auth.js';
 import { validateBooking } from '../middleware/validate.js';
+import { fetchServiceForBooking } from '../services/slotService.js';
 
 const router = express.Router();
 
@@ -79,12 +82,18 @@ router.get('/:id', auth, async (req, res) => {
 // Créer une nouvelle réservation - AVEC VALIDATION DISPONIBILITÉ
 router.post('/', auth, async (req, res) => {
   try {
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ success: false, message: 'Non authentifié' });
+    }
+
     console.log('🔧 Données reçues pour réservation:', req.body);
-    
+
     const {
-      coiffeur,
-      service,
+      serviceId,
+      coiffeurId,
+      slotId,
       date,
+      time,
       duration,
       price,
       mode,
@@ -92,98 +101,170 @@ router.post('/', auth, async (req, res) => {
       notes
     } = req.body;
 
-    // Validation des données requises
-    if (!coiffeur || !service || !date || !duration || !price || !mode) {
-      console.log('❌ Données manquantes:', { coiffeur, service, date, duration, price, mode });
-      return res.status(400).json({ 
+    if (!serviceId || !coiffeurId || !mode) {
+      return res.status(400).json({
         success: false,
-        message: 'Données manquantes pour créer la réservation' 
+        message: 'serviceId, coiffeurId et mode sont obligatoires'
       });
     }
 
-    // VALIDATION DISPONIBILITÉ - CORRIGÉE
-    const bookingDate = new Date(date);
-    const endTime = new Date(bookingDate.getTime() + duration * 60000);
-    
-    console.log('🔍 Vérification disponibilité:', {
-      coiffeur,
-      bookingDate: bookingDate.toISOString(),
-      endTime: endTime.toISOString(),
-      duration
-    });
-    
-    // Vérifier les conflits de réservation (version ultra-simple)
-    const conflictingBookings = await Booking.find({
-      coiffeur,
-      status: { $nin: ['cancelled', 'completed'] },
-      date: bookingDate
-    });
-
-    // Afficher toutes les réservations existantes pour ce coiffeur
-    const allBookings = await Booking.find({
-      coiffeur,
-      status: { $nin: ['cancelled', 'completed'] }
-    }).sort({ date: 1 });
-    
-    console.log('📊 Toutes les réservations existantes pour ce coiffeur:', allBookings.map(b => ({
-      date: b.date.toISOString(),
-      service: b.service,
-      duration: b.duration,
-      status: b.status
-    })));
-    
-    console.log('🔍 Réservations conflictuelles trouvées:', conflictingBookings.length);
-    if (conflictingBookings.length > 0) {
-      console.log('📅 Créneaux conflictuels:', conflictingBookings.map(b => ({
-        date: b.date.toISOString(),
-        service: b.service,
-        duration: b.duration
-      })));
+    if (!slotId && (!date || !time)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Veuillez fournir un slotId ou une date et une heure'
+      });
     }
 
-    if (conflictingBookings.length > 0) {
+    if (!date || !time) {
+      return res.status(400).json({
+        success: false,
+        message: 'Date et heure requises'
+      });
+    }
+
+    const bookingDate = new Date(`${date}T${time}`);
+    if (Number.isNaN(bookingDate.getTime())) {
+      return res.status(400).json({ success: false, message: 'Format de date ou d\'heure invalide' });
+    }
+
+    const coiffeur = await User.findById(coiffeurId).select('role workingMode name');
+    if (!coiffeur || coiffeur.role !== 'coiffeur') {
+      return res.status(404).json({ success: false, message: 'Coiffeur non trouvé' });
+    }
+
+    const allowedModes = Array.isArray(coiffeur.workingMode) && coiffeur.workingMode.length > 0
+      ? coiffeur.workingMode
+      : ['salon', 'domicile'];
+
+    if (!allowedModes.includes(mode)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Ce coiffeur ne propose pas ce mode de réservation'
+      });
+    }
+
+    const service = await fetchServiceForBooking(serviceId, coiffeurId);
+
+    const resolvedDuration = typeof duration === 'number' ? duration : service.duration;
+    if (!resolvedDuration || resolvedDuration <= 0) {
+      return res.status(400).json({ success: false, message: 'Durée de service invalide' });
+    }
+
+    const resolvedPrice = typeof price === 'number' ? price : service.price;
+    if (resolvedPrice === undefined || resolvedPrice === null) {
+      return res.status(400).json({ success: false, message: 'Prix de la réservation manquant' });
+    }
+
+    let slot = null;
+    if (slotId) {
+      slot = await WorkingSlot.findById(slotId);
+      if (!slot) {
+        return res.status(404).json({ success: false, message: 'Créneau introuvable' });
+      }
+
+      if (slot.coiffeurId.toString() !== coiffeurId) {
+        return res.status(400).json({ success: false, message: 'Ce créneau n\'appartient pas à ce coiffeur' });
+      }
+
+      if (slot.status === 'maintenance' || slot.status === 'unavailable') {
+        return res.status(409).json({ success: false, message: 'Ce créneau n\'est pas disponible' });
+      }
+
+      const supportedModes = slot.availableAt === 'both' ? ['salon', 'domicile'] : [slot.availableAt];
+      if (!supportedModes.includes(mode)) {
+        return res.status(400).json({ success: false, message: 'Mode non compatible avec ce créneau' });
+      }
+
+      if (bookingDate.getDay() !== slot.dayOfWeek) {
+        return res.status(400).json({ success: false, message: 'La date ne correspond pas au créneau choisi' });
+      }
+
+      const expectedSlotTime = `${String(Math.floor(slot.startTime)).padStart(2, '0')}:${String(Math.round((slot.startTime - Math.floor(slot.startTime)) * 60)).padStart(2, '0')}`;
+      if (expectedSlotTime !== time) {
+        return res.status(400).json({ success: false, message: 'L\'heure ne correspond pas au créneau choisi' });
+      }
+
+      const slotDurationMinutes = Math.round((slot.endTime - slot.startTime) * 60);
+      if (resolvedDuration > slotDurationMinutes) {
+        return res.status(400).json({ success: false, message: 'La durée du service dépasse la durée du créneau' });
+      }
+
+      const remainingCapacity = (slot.maxBookings ?? 1) - (slot.currentBookings ?? 0);
+      if (remainingCapacity <= 0) {
+        return res.status(409).json({ success: false, message: 'Ce créneau est complet' });
+      }
+    }
+
+    const bookingEndTime = new Date(bookingDate.getTime() + resolvedDuration * 60000);
+
+    const overlappingBookings = await Booking.find({
+      coiffeur: coiffeurId,
+      status: { $nin: ['cancelled', 'completed'] },
+      date: { $lt: bookingEndTime },
+      $expr: {
+        $gt: [
+          { $add: ['$date', { $multiply: ['$duration', 60000] }] },
+          bookingDate
+        ]
+      }
+    });
+
+    if (overlappingBookings.length > 0) {
       return res.status(409).json({
         success: false,
         message: 'Créneau non disponible, veuillez choisir un autre horaire'
       });
     }
 
-    // Créer la réservation
-    console.log('🔧 Création de la réservation avec:', {
-      client: req.user.id,
-      coiffeur,
-      service,
-      date: bookingDate,
-      duration,
-      price,
-      mode,
-      address,
-      notes
-    });
-    
+    const normalizedAddress = mode === 'domicile' && address ? {
+      street: address.street,
+      streetNumber: address.streetNumber,
+      city: address.city,
+      postalCode: address.postalCode,
+      floor: address.floor,
+      apartment: address.apartment,
+      buildingCode: address.buildingCode,
+      additionalInfo: address.additionalInfo
+    } : undefined;
+
     const booking = new Booking({
       client: req.user.id,
-      coiffeur,
-      service,
+      coiffeur: coiffeurId,
+      service: service.name,
+      serviceId,
+      slotId: slot ? slot._id : undefined,
       date: bookingDate,
-      duration,
-      price,
+      time,
+      duration: resolvedDuration,
+      price: resolvedPrice,
       mode,
-      address,
+      address: normalizedAddress,
       notes,
       status: 'pending',
       paymentStatus: 'pending'
     });
 
-    console.log('✅ Réservation créée, sauvegarde...');
-    await booking.save();
-    console.log('✅ Réservation sauvegardée avec succès');
-    
-    // Populate les références pour la réponse
+    let slotReserved = false;
+    try {
+      if (slot) {
+        await slot.bookSlot();
+        slotReserved = true;
+      }
+      await booking.save();
+    } catch (error) {
+      if (slot && slotReserved) {
+        try {
+          await slot.releaseSlot();
+        } catch (releaseError) {
+          console.error('Erreur lors de la libération du créneau après échec de réservation:', releaseError);
+        }
+      }
+      throw error;
+    }
+
     await booking.populate('client', 'name email');
     await booking.populate('coiffeur', 'name email');
 
-    // Réponse standardisée
     res.status(201).json({
       success: true,
       data: booking,
@@ -191,9 +272,10 @@ router.post('/', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Create booking error:', error);
-    res.status(500).json({ 
+    const status = error.status || error.statusCode || 500;
+    res.status(status).json({
       success: false,
-      message: 'Erreur lors de la création de la réservation'
+      message: error.message || 'Erreur lors de la création de la réservation'
     });
   }
 });

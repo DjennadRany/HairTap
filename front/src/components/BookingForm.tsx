@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { selectCurrentUser } from '../store/slices/authSlice';
 import { Card } from './ui/card';
@@ -7,11 +7,13 @@ import { Button } from './ui/Button';
 import { format, addDays } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { FaCalendarAlt, FaMapMarkerAlt, FaClock, FaEuroSign, FaUser } from 'react-icons/fa';
-import { bookingService } from '../services/api/bookings';
+import { bookingService, type CreateBookingData } from '../services/api/bookings';
 import { userService } from '../services/api/users';
+import { coiffeurService, type CoiffeurSlotDTO } from '../services/api/coiffeurs';
 import StripePaymentModal from './modals/StripePaymentModal';
 import type { User } from '../types/models';
 import { useAppSelector } from '../store/hooks';
+import { useBookingValidation } from '../hooks/useBookingValidation';
 
 // Type étendu pour les adresses
 interface UserWithAddresses extends User {
@@ -197,17 +199,39 @@ const BookingForm: React.FC<BookingFormProps> = ({
   const [coiffeurBookings, setCoiffeurBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [availableSlots, setAvailableSlots] = useState<CoiffeurSlotDTO[]>([]);
+  const [slotsLoading, setSlotsLoading] = useState(true);
+  const [slotsError, setSlotsError] = useState<string | null>(null);
+  const [selectedSlot, setSelectedSlot] = useState<CoiffeurSlotDTO | null>(null);
 
   // Modes de travail du coiffeur - CORRIGÉ
-  const coiffeurModes = coiffeur.workingMode && coiffeur.workingMode.length > 0 
-    ? coiffeur.workingMode 
+  const coiffeurModes = coiffeur.workingMode && coiffeur.workingMode.length > 0
+    ? coiffeur.workingMode
     : ['salon', 'domicile']; // Valeur par défaut si pas de données
 
-  // Générer les disponibilités pour les 7 prochains jours
-  const coiffeurAvailability = Array.from({ length: 7 }, (_, i) => ({
-    date: format(addDays(new Date(), i), 'yyyy-MM-dd'),
-    slots: ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00', '17:00']
-  }));
+  const slotsByDate = useMemo(() => {
+    const grouped: Record<string, CoiffeurSlotDTO[]> = {};
+    availableSlots.forEach((slot) => {
+      if (!grouped[slot.date]) {
+        grouped[slot.date] = [];
+      }
+      grouped[slot.date].push(slot);
+    });
+
+    Object.keys(grouped).forEach((dateKey) => {
+      grouped[dateKey].sort((a, b) => a.startTime.localeCompare(b.startTime));
+    });
+
+    return grouped;
+  }, [availableSlots]);
+
+  const availableDates = useMemo(() => Object.keys(slotsByDate).sort(), [slotsByDate]);
+  const slotsForSelectedDate = selectedDate ? slotsByDate[selectedDate] || [] : [];
+
+  const { validateBooking, canUseSlot } = useBookingValidation({
+    existingBookings: coiffeurBookings,
+    coiffeurModes,
+  });
 
   useEffect(() => {
     const fetchCoiffeurBookings = async () => {
@@ -215,7 +239,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
         console.error('Coiffeur ID is undefined');
         return;
       }
-      
+
       try {
         const bookings = await bookingService.getCoiffeurBookings(coiffeur._id);
         setCoiffeurBookings(bookings);
@@ -227,20 +251,57 @@ const BookingForm: React.FC<BookingFormProps> = ({
     fetchCoiffeurBookings();
   }, [coiffeur._id]);
 
-  const getAvailableSlots = () => {
-    if (!selectedDate) return [];
-    const dayAvailability = coiffeurAvailability.find((a: any) => a.date === selectedDate);
-    return dayAvailability?.slots || [];
+  useEffect(() => {
+    const loadSlots = async () => {
+      if (!coiffeur._id) {
+        return;
+      }
+
+      setSlotsLoading(true);
+      setSlotsError(null);
+
+      try {
+        const start = format(new Date(), 'yyyy-MM-dd');
+        const end = format(addDays(new Date(), 13), 'yyyy-MM-dd');
+        const slots = await coiffeurService.getCoiffeurSlots(coiffeur._id, {
+          startDate: start,
+          endDate: end,
+        });
+        setAvailableSlots(slots);
+      } catch (err) {
+        console.error('❌ [BookingForm] Erreur lors du chargement des créneaux:', err);
+        setSlotsError('Impossible de récupérer les créneaux disponibles pour le moment.');
+      } finally {
+        setSlotsLoading(false);
+      }
+    };
+
+    loadSlots();
+  }, [coiffeur._id]);
+
+  useEffect(() => {
+    if (!selectedDate && availableDates.length > 0) {
+      setSelectedDate(availableDates[0]);
+    }
+  }, [availableDates, selectedDate]);
+
+  const handleDateSelect = (dateValue: string) => {
+    setSelectedDate(dateValue);
+    setSelectedTime('');
+    setSelectedSlot(null);
   };
 
-  // Vérifier si le créneau est disponible
-  const isSlotAvailable = (date: string, time: string) => {
-    const existingBookings = coiffeurBookings.filter(booking => 
-      booking.date.startsWith(date) && 
-      booking.date.includes(time)
-    );
-    return existingBookings.length === 0;
+  const handleTimeSelect = (slot: CoiffeurSlotDTO) => {
+    setSelectedTime(slot.startTime);
+    setSelectedSlot(slot);
   };
+
+  useEffect(() => {
+    if (selectedSlot && !slotsForSelectedDate.some((slot) => slot.id === selectedSlot.id)) {
+      setSelectedSlot(null);
+      setSelectedTime('');
+    }
+  }, [selectedSlot, slotsForSelectedDate]);
 
   const handleSubmit = async () => {
     if (!user) {
@@ -260,9 +321,16 @@ const BookingForm: React.FC<BookingFormProps> = ({
       return;
     }
 
-    // Vérifier la disponibilité du créneau
-    if (!isSlotAvailable(selectedDate, selectedTime)) {
-      setError('Ce créneau n\'est plus disponible. Veuillez choisir un autre horaire.');
+    const validationResult = validateBooking({
+      bookingMode,
+      serviceDuration: selectedService.duration,
+      selectedDate,
+      selectedTime,
+      slot: selectedSlot ?? undefined,
+    });
+
+    if (!validationResult.isValid) {
+      setError(validationResult.errors[0]);
       return;
     }
 
@@ -270,10 +338,12 @@ const BookingForm: React.FC<BookingFormProps> = ({
     setError(null);
 
     try {
-      const bookingData = {
-        coiffeur: coiffeur._id,
-        service: selectedService.name,
-        date: `${selectedDate}T${selectedTime}`,
+      const bookingPayload: CreateBookingData = {
+        serviceId: selectedService._id,
+        coiffeurId: coiffeur._id,
+        slotId: selectedSlot?.slotId,
+        date: selectedDate,
+        time: selectedTime,
         duration: selectedService.duration,
         price: selectedService.price,
         mode: bookingMode,
@@ -282,7 +352,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
       };
 
       // Créer la réservation
-      const booking = await bookingService.createBooking(bookingData);
+      const booking = await bookingService.createBooking(bookingPayload);
       
       // Sauvegarder l'adresse de réservation si c'est un domicile
       if (bookingMode === 'domicile' && user._id) {
@@ -424,49 +494,77 @@ const BookingForm: React.FC<BookingFormProps> = ({
           {/* Sélection de la date */}
           <div className="mb-6">
             <label className="block text-sm font-medium mb-3 text-fashion-gray-700">Date</label>
-            <div className="grid grid-cols-7 gap-2">
-              {coiffeurAvailability.slice(0, 7).map((day: any, index: number) => (
-                <button
-                  key={index}
-                  onClick={() => setSelectedDate(day.date)}
-                  className={`p-3 text-sm rounded-lg transition-all duration-200 font-medium ${
-                    selectedDate === day.date
-                      ? 'bg-fashion-black text-white shadow-lg'
-                      : 'bg-fashion-gray-100 hover:bg-fashion-gray-200 text-fashion-gray-700'
-                  }`}
-                >
-                  {format(new Date(day.date), 'dd/MM', { locale: fr })}
-                </button>
-              ))}
-            </div>
+            {slotsLoading ? (
+              <div className="text-sm text-fashion-gray-600">Chargement des créneaux...</div>
+            ) : availableDates.length === 0 ? (
+              <p className="text-sm text-fashion-gray-600">Aucun créneau disponible pour le moment.</p>
+            ) : (
+              <div className="grid grid-cols-7 gap-2">
+                {availableDates.map((dateValue) => (
+                  <button
+                    key={dateValue}
+                    onClick={() => handleDateSelect(dateValue)}
+                    className={`p-3 text-sm rounded-lg transition-all duration-200 font-medium ${
+                      selectedDate === dateValue
+                        ? 'bg-fashion-black text-white shadow-lg'
+                        : 'bg-fashion-gray-100 hover:bg-fashion-gray-200 text-fashion-gray-700'
+                    }`}
+                  >
+                    {format(new Date(dateValue), 'dd/MM', { locale: fr })}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
+          {slotsError && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm">
+              {slotsError}
+            </div>
+          )}
+
           {/* Sélection de l'heure */}
-          {selectedDate && (
+          {selectedDate && !slotsLoading && (
             <div className="mb-6">
               <label className="block text-sm font-medium mb-3 text-fashion-gray-700">Heure</label>
-              <div className="grid grid-cols-3 gap-2">
-                {getAvailableSlots().map((slot: string, index: number) => {
-                  const isAvailable = isSlotAvailable(selectedDate, slot);
-                  return (
-                    <button
-                      key={index}
-                      onClick={() => isAvailable && setSelectedTime(slot)}
-                      disabled={!isAvailable}
-                      className={`p-3 text-sm rounded-lg transition-all duration-200 font-medium ${
-                        selectedTime === slot
-                          ? 'bg-fashion-black text-white shadow-lg'
-                          : isAvailable
-                          ? 'bg-fashion-gray-100 hover:bg-fashion-gray-200 text-fashion-gray-700'
-                          : 'bg-fashion-gray-300 text-fashion-gray-500 cursor-not-allowed'
-                      }`}
-                    >
-                      {slot}
-                      {!isAvailable && <span className="text-xs block mt-1">Occupé</span>}
-                    </button>
-                  );
-                })}
-              </div>
+              {slotsForSelectedDate.length === 0 ? (
+                <p className="text-sm text-fashion-gray-600">Aucun créneau disponible ce jour-là.</p>
+              ) : (
+                <div className="grid grid-cols-3 gap-2">
+                  {slotsForSelectedDate.map((slot) => {
+                    const validation = selectedService
+                      ? canUseSlot(slot, bookingMode, selectedService.duration || 0)
+                      : { isValid: false, errors: ['Sélectionnez un service'] };
+                    const isAvailable = validation.isValid;
+                    const isSelected = selectedSlot?.id === slot.id && selectedTime === slot.startTime;
+
+                    return (
+                      <button
+                        key={slot.id}
+                        onClick={() => isAvailable && handleTimeSelect(slot)}
+                        disabled={!isAvailable || loading}
+                        className={`p-3 text-sm rounded-lg transition-all duration-200 font-medium ${
+                          isSelected
+                            ? 'bg-fashion-black text-white shadow-lg'
+                            : isAvailable
+                            ? 'bg-fashion-gray-100 hover:bg-fashion-gray-200 text-fashion-gray-700'
+                            : 'bg-fashion-gray-300 text-fashion-gray-500 cursor-not-allowed'
+                        }`}
+                      >
+                        <span>{slot.startTime}</span>
+                        {!isAvailable && (
+                          <span className="text-xs block mt-1">{validation.errors[0] ?? 'Indisponible'}</span>
+                        )}
+                        {isAvailable && slot.remainingCapacity <= 1 && (
+                          <span className="text-xs block mt-1 text-fashion-gray-600">
+                            {slot.remainingCapacity === 1 ? 'Dernière place' : `Plus que ${slot.remainingCapacity} places`}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
         </Card>
