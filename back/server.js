@@ -37,19 +37,54 @@ import paymentRoutes from './routes/payments.js'; // ✅ ROUTES PAIEMENTS STRIPE
 // imageRoutes removed - simplified photo system
 
 const envPath = path.resolve(process.cwd(), '.env');
-console.log('[DEBUG] .env path:', envPath, 'Exists:', fs.existsSync(envPath));
-dotenv.config();
-console.log('[DEBUG] JWT_SECRET:', process.env.JWT_SECRET);
+dotenv.config({ path: envPath });
+
+if (!process.env.JWT_SECRET) {
+  logger.error('Environment variable JWT_SECRET is required but was not provided.');
+  process.exit(1);
+}
+
+if (process.env.NODE_ENV !== 'production') {
+  logger.debug(`.env file loaded: ${fs.existsSync(envPath)}`);
+  logger.debug(`JWT_SECRET configured: ${Boolean(process.env.JWT_SECRET)}`);
+}
 
 const app = express();
 
-// Configuration CORS plus permissive pour le développement
-app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173'],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
-}));
+// Configuration CORS contrôlée par les variables d'environnement
+const defaultOrigins = ['http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173'];
+const allowedOrigins = process.env.CORS_ORIGINS
+  ? process.env.CORS_ORIGINS.split(',').map(origin => origin.trim()).filter(Boolean)
+  : defaultOrigins;
+
+const allowedMethods = process.env.CORS_METHODS
+  ? process.env.CORS_METHODS.split(',').map(method => method.trim()).filter(Boolean)
+  : ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'];
+
+const allowedHeaders = process.env.CORS_ALLOWED_HEADERS
+  ? process.env.CORS_ALLOWED_HEADERS.split(',').map(header => header.trim()).filter(Boolean)
+  : ['Content-Type', 'Authorization', 'X-Requested-With'];
+
+const allowCredentials = process.env.CORS_ALLOW_CREDENTIALS
+  ? process.env.CORS_ALLOW_CREDENTIALS.toLowerCase() === 'true'
+  : true;
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    logger.warn(`Blocked CORS request from origin: ${origin}`);
+    return callback(new Error('Not allowed by CORS'));
+  },
+  credentials: allowCredentials,
+  methods: allowedMethods,
+  allowedHeaders,
+  optionsSuccessStatus: 204
+};
+
+app.use(cors(corsOptions));
 
 // Configuration Helmet plus permissive pour les images
 app.use(helmet({
@@ -70,12 +105,19 @@ app.use(helmet({
   },
 }));
 
-// Rate Limiting - Désactivé pour le développement
-// const limiter = rateLimit({
-//   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 1 * 60 * 1000, // 1 minute
-//   max: parseInt(process.env.RATE_LIMIT_MAX) || 1000 // 1000 requêtes par minute
-// });
-// app.use(limiter);
+// Rate Limiting configurable via les variables d'environnement
+const rateLimitWindowMs = parseInt(process.env.RATE_LIMIT_WINDOW_MS ?? '', 10) || 60 * 1000;
+const rateLimitMax = parseInt(process.env.RATE_LIMIT_MAX ?? '', 10) || 1000;
+
+const limiter = rateLimit({
+  windowMs: rateLimitWindowMs,
+  max: rateLimitMax,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: 'Too many requests from this IP, please try again later.'
+});
+
+app.use(limiter);
 
 // Body Parser
 app.use(express.json());
