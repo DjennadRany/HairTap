@@ -34,6 +34,9 @@ interface Booking {
   };
   notes?: string;
   createdAt: string;
+  acceptedTermsAt?: string;
+  acceptedCancellationPolicyAt?: string;
+  acceptedPaymentConsentAt?: string;
 }
 
 const ClientBookings: React.FC = () => {
@@ -108,6 +111,24 @@ const ClientBookings: React.FC = () => {
     if (filter === 'all') return true;
     return booking.status === filter;
   });
+
+  const formatConsentDate = (dateString?: string) => {
+    if (!dateString) {
+      return 'Non renseigné';
+    }
+    const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) {
+      return 'Non renseigné';
+    }
+    return `${date.toLocaleDateString('fr-FR', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric'
+    })} à ${date.toLocaleTimeString('fr-FR', {
+      hour: '2-digit',
+      minute: '2-digit'
+    })}`;
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -296,6 +317,32 @@ const ClientBookings: React.FC = () => {
                         {booking.notes && (
                           <div><span className="font-medium">Notes:</span> {booking.notes}</div>
                         )}
+                        <div className="mt-3 pt-3 border-t border-gray-200">
+                          <div className="text-xs font-semibold uppercase text-gray-500 mb-2">Traçabilité des consentements</div>
+                          <div className="space-y-2">
+                            <div className="flex items-start gap-2 text-sm">
+                              <FaCheck className="text-green-600 mt-0.5" />
+                              <span>
+                                CGV acceptées le{' '}
+                                <span className="font-medium text-gray-900">{formatConsentDate(booking.acceptedTermsAt)}</span>
+                              </span>
+                            </div>
+                            <div className="flex items-start gap-2 text-sm">
+                              <FaCheck className="text-green-600 mt-0.5" />
+                              <span>
+                                Politique d'annulation acceptée le{' '}
+                                <span className="font-medium text-gray-900">{formatConsentDate(booking.acceptedCancellationPolicyAt)}</span>
+                              </span>
+                            </div>
+                            <div className="flex items-start gap-2 text-sm">
+                              <FaCheck className="text-green-600 mt-0.5" />
+                              <span>
+                                Consentement de paiement donné le{' '}
+                                <span className="font-medium text-gray-900">{formatConsentDate(booking.acceptedPaymentConsentAt)}</span>
+                              </span>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
