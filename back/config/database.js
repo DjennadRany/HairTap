@@ -4,31 +4,43 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const connectDB = async () => {
-  try {
-    const mongoURI = process.env.MONGO_URI || 'mongodb://localhost:27017/taphair';
-    logger.info(`Attempting to connect to MongoDB at: ${mongoURI}`);
+  const mongoURI = process.env.MONGO_URI || 'mongodb://localhost:27017/taphair';
+  const maxRetries = parseInt(process.env.MONGO_MAX_RETRIES ?? '', 10) || 5;
+  const retryDelayMs = parseInt(process.env.MONGO_RETRY_DELAY_MS ?? '', 10) || 5000;
 
-    const conn = await mongoose.connect(mongoURI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
+  let attempt = 0;
 
-    logger.info(`MongoDB Connected Successfully: ${conn.connection.host}`);
-    logger.info(`Database Name: ${conn.connection.name}`);
-    logger.info(`Connection State: ${conn.connection.readyState}`);
+  while (attempt <= maxRetries) {
+    try {
+      attempt += 1;
+      logger.info(`Attempting to connect to MongoDB (attempt ${attempt}/${maxRetries + 1})`);
 
-    // Vérifier les collections existantes
-    const collections = await conn.connection.db.listCollections().toArray();
-    logger.info('Existing collections:', collections.map(c => c.name));
+      const conn = await mongoose.connect(mongoURI);
 
-  } catch (error) {
-    logger.error('MongoDB Connection Error:', error);
-    logger.error('Error details:', {
-      name: error.name,
-      message: error.message,
-      code: error.code
-    });
-    process.exit(1);
+      logger.info(`MongoDB Connected Successfully: ${conn.connection.host}`);
+      logger.info(`Database Name: ${conn.connection.name}`);
+      logger.info(`Connection State: ${conn.connection.readyState}`);
+
+      // Vérifier les collections existantes
+      const collections = await conn.connection.db.listCollections().toArray();
+      logger.info('Existing collections:', collections.map(c => c.name));
+
+      return conn;
+    } catch (error) {
+      logger.error('MongoDB Connection Error:', {
+        name: error.name,
+        message: error.message,
+        code: error.code
+      });
+
+      if (attempt > maxRetries) {
+        logger.error('Max retries reached. Unable to connect to MongoDB.');
+        throw error;
+      }
+
+      logger.warn(`Retrying MongoDB connection in ${retryDelayMs}ms...`);
+      await new Promise(resolve => setTimeout(resolve, retryDelayMs));
+    }
   }
 };
 
