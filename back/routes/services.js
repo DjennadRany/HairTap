@@ -1,23 +1,89 @@
 import express from 'express';
 import multer from 'multer';
+import path from 'path';
+import { promises as fsPromises } from 'fs';
+import { createReadStream, createWriteStream } from 'fs';
+import { pipeline } from 'stream/promises';
+import { randomUUID } from 'crypto';
 import Service from '../models/Service.js';
 import { auth } from '../middleware/auth.js';
 // photoService removed - simplified photo system
 
 const router = express.Router();
 
-// Configuration multer simple
-const storage = multer.memoryStorage();
+const { mkdir, access, unlink } = fsPromises;
+
+const ensureDirExists = async (dirPath) => {
+  try {
+    await access(dirPath);
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      await mkdir(dirPath, { recursive: true });
+    } else {
+      throw error;
+    }
+  }
+};
+
+const slugify = (value) => {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .toLowerCase() || 'media';
+};
+
+const getExtension = (filename) => path.extname(filename || '').toLowerCase();
+
+const buildFileName = (originalName) => {
+  const extension = getExtension(originalName);
+  const baseName = path.basename(originalName, extension);
+  const slug = slugify(baseName);
+  return `${slug}-${randomUUID()}${extension}`;
+};
+
+const IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp']);
+const VIDEO_EXTENSIONS = new Set(['.mp4', '.mov', '.avi', '.mkv', '.webm', '.m4v']);
+const ALLOWED_MEDIA_EXTENSIONS = new Set([...IMAGE_EXTENSIONS, ...VIDEO_EXTENSIONS]);
+
+const TEMP_UPLOAD_DIR = path.join(process.cwd(), 'uploads', 'tmp');
+
+const storage = multer.diskStorage({
+  destination: async (req, file, cb) => {
+    try {
+      await ensureDirExists(TEMP_UPLOAD_DIR);
+      cb(null, TEMP_UPLOAD_DIR);
+    } catch (error) {
+      cb(error);
+    }
+  },
+  filename: (req, file, cb) => {
+    const extension = getExtension(file.originalname);
+    cb(null, `${randomUUID()}${extension}`);
+  }
+});
+
 const upload = multer({
   storage,
-  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB max pour les vidéos
+  limits: { fileSize: 50 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
-    // Autoriser les images et les vidéos
-    if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) {
-      cb(null, true);
-    } else {
-      cb(new Error('Seuls les fichiers image et vidéo sont autorisés'), false);
+    const extension = getExtension(file.originalname);
+    const mimetype = file.mimetype;
+
+    if (!ALLOWED_MEDIA_EXTENSIONS.has(extension)) {
+      return cb(new Error("Extension de fichier non autorisée"));
     }
+
+    if (IMAGE_EXTENSIONS.has(extension) && !mimetype.startsWith('image/')) {
+      return cb(new Error("Type MIME invalide pour une image"));
+    }
+
+    if (VIDEO_EXTENSIONS.has(extension) && !mimetype.startsWith('video/')) {
+      return cb(new Error("Type MIME invalide pour une vidéo"));
+    }
+
+    cb(null, true);
   }
 });
 
@@ -124,9 +190,12 @@ router.delete('/:id', auth, async (req, res) => {
 
 // Upload de média (photo ou vidéo) de service
 router.post('/:id/media', auth, upload.single('media'), async (req, res) => {
+  let tempFilePath;
+  let finalFilePath;
+
   try {
     const { id } = req.params;
-    
+
     const service = await Service.findById(id);
     if (!service) {
       return res.status(404).json({ success: false, message: 'Service non trouvé' });
@@ -140,30 +209,43 @@ router.post('/:id/media', auth, upload.single('media'), async (req, res) => {
       return res.status(400).json({ success: false, message: 'Aucun fichier fourni' });
     }
 
-    // Déterminer le type de média
-    const isVideo = req.file.mimetype.startsWith('video/');
-    const mediaType = isVideo ? 'video' : 'image';
-    const fileExtension = req.file.originalname.split('.').pop();
-    
-    // Upload du fichier
-    const fileName = `service-${id}-${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExtension}`;
-    const filePath = `uploads/services/${fileName}`;
+    tempFilePath = req.file.path;
 
-    // Sauvegarder le fichier
-    const fs = await import('fs');
-    const path = await import('path');
-    
-    const uploadDir = path.join(process.cwd(), 'uploads', 'services');
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
+    const extension = getExtension(req.file.originalname);
+    if (!ALLOWED_MEDIA_EXTENSIONS.has(extension)) {
+      return res.status(400).json({ success: false, message: 'Extension de fichier non autorisée' });
     }
 
-    fs.writeFileSync(path.join(uploadDir, fileName), req.file.buffer);
+    const isImage = IMAGE_EXTENSIONS.has(extension);
+    const isVideo = VIDEO_EXTENSIONS.has(extension);
 
-    // Ajouter le média à la galerie du service
+    if (isImage && !req.file.mimetype.startsWith('image/')) {
+      return res.status(400).json({ success: false, message: 'Type MIME invalide pour une image' });
+    }
+
+    if (isVideo && !req.file.mimetype.startsWith('video/')) {
+      return res.status(400).json({ success: false, message: 'Type MIME invalide pour une vidéo' });
+    }
+
+    if (req.file.size > 50 * 1024 * 1024) {
+      return res.status(400).json({ success: false, message: 'Fichier trop volumineux (max 50MB)' });
+    }
+
+    const uploadDir = path.join(process.cwd(), 'uploads', 'services');
+    await ensureDirExists(uploadDir);
+
+    const fileName = buildFileName(req.file.originalname);
+    finalFilePath = path.join(uploadDir, fileName);
+
+    await pipeline(createReadStream(tempFilePath), createWriteStream(finalFilePath));
+
+    const relativePath = `/uploads/services/${fileName}`;
+
+    const mediaType = isVideo ? 'video' : 'image';
+
     const mediaData = {
-      mediaUrl: `/${filePath}`,
-      mediaType: mediaType,
+      mediaUrl: relativePath,
+      mediaType,
       caption: '',
       tags: [],
       likes: 0,
@@ -175,30 +257,43 @@ router.post('/:id/media', auth, upload.single('media'), async (req, res) => {
     }
     service.gallery.push(mediaData);
 
-    // Aussi ajouter à examplePhotos pour la compatibilité
     if (!service.examplePhotos) {
       service.examplePhotos = [];
     }
-    service.examplePhotos.push(`/${filePath}`);
+    service.examplePhotos.push(relativePath);
 
     await service.save();
 
     res.json({
       success: true,
       message: `${mediaType === 'video' ? 'Vidéo' : 'Photo'} ajoutée au service`,
-      media: { 
-        url: `/${filePath}`,
+      media: {
+        url: relativePath,
         type: mediaType
       }
     });
   } catch (error) {
     console.error('Upload service media error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: error.message || 'Erreur lors de l\'upload' 
+
+    if (finalFilePath) {
+      await unlink(finalFilePath).catch(() => {});
+    }
+
+    if (error instanceof multer.MulterError && error.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ success: false, message: 'Fichier trop volumineux (max 50MB)' });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: error.message || "Erreur lors de l'upload"
     });
+  } finally {
+    if (tempFilePath) {
+      await unlink(tempFilePath).catch(() => {});
+    }
   }
 });
+
 
 // Route de compatibilité pour les photos (ancienne route)
 router.post('/:id/photo', auth, upload.single('photo'), async (req, res) => {
