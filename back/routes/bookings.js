@@ -99,7 +99,10 @@ router.post('/', auth, async (req, res) => {
       price,
       mode,
       address,
-      notes
+      notes,
+      acceptedTermsAt,
+      acceptedCancellationPolicyAt,
+      acceptedPaymentConsentAt
     } = req.body;
 
     if (!serviceId || !coiffeurId || !mode) {
@@ -123,9 +126,31 @@ router.post('/', auth, async (req, res) => {
       });
     }
 
+    if (!acceptedTermsAt || !acceptedCancellationPolicyAt || !acceptedPaymentConsentAt) {
+      return res.status(400).json({
+        success: false,
+        message: 'Les consentements obligatoires doivent être acceptés'
+      });
+    }
+
     const bookingDate = new Date(`${date}T${time}`);
     if (Number.isNaN(bookingDate.getTime())) {
       return res.status(400).json({ success: false, message: 'Format de date ou d\'heure invalide' });
+    }
+
+    const termsDate = new Date(acceptedTermsAt);
+    const cancellationDate = new Date(acceptedCancellationPolicyAt);
+    const paymentConsentDate = new Date(acceptedPaymentConsentAt);
+
+    if (
+      Number.isNaN(termsDate.getTime()) ||
+      Number.isNaN(cancellationDate.getTime()) ||
+      Number.isNaN(paymentConsentDate.getTime())
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: 'Format de date invalide pour les consentements'
+      });
     }
 
     const coiffeur = await User.findById(coiffeurId).select('role workingMode name');
@@ -241,6 +266,9 @@ router.post('/', auth, async (req, res) => {
       mode,
       address: normalizedAddress,
       notes,
+      acceptedTermsAt: termsDate,
+      acceptedCancellationPolicyAt: cancellationDate,
+      acceptedPaymentConsentAt: paymentConsentDate,
       status: 'pending',
       paymentStatus: 'initiated'
     });
