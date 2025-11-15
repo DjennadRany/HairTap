@@ -11,6 +11,14 @@ const bookingSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
+  serviceId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Service'
+  },
+  slotId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'WorkingSlot'
+  },
   service: {
     type: String,
     required: true
@@ -18,6 +26,10 @@ const bookingSchema = new mongoose.Schema({
   date: {
     type: Date,
     required: true
+  },
+  time: {
+    type: String,
+    trim: true
   },
   duration: {
     type: Number,
@@ -128,6 +140,8 @@ bookingSchema.index({ 'coiffeur': 1 });
 bookingSchema.index({ 'date': 1 });
 bookingSchema.index({ 'status': 1 });
 bookingSchema.index({ 'paymentStatus': 1 });
+bookingSchema.index({ slotId: 1 });
+bookingSchema.index({ serviceId: 1 });
 
 // Méthode pour vérifier si la réservation peut être annulée
 bookingSchema.methods.canBeCancelled = function() {

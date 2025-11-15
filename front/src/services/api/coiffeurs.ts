@@ -3,6 +3,30 @@ import { User } from '../../types/models';
 
 const API_URL = '/coiffeurs';
 
+export type CoiffeurSlotMode = 'salon' | 'domicile';
+
+export interface CoiffeurSlotDTO {
+  id: string;
+  slotId: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  durationMinutes: number;
+  supportedModes: CoiffeurSlotMode[];
+  maxCapacity: number;
+  remainingCapacity: number;
+  isRecurring: boolean;
+  status: string;
+  dayOfWeek: number;
+  serviceTypes: string[];
+}
+
+export interface GetCoiffeurSlotsOptions {
+  startDate?: string;
+  endDate?: string;
+  mode?: CoiffeurSlotMode;
+}
+
 export interface SearchQuery {
   service?: string;
   speciality?: string[];
@@ -143,6 +167,36 @@ export const coiffeurService = {
   async getCoiffeurServices(coiffeurId: string): Promise<any[]> {
     const response = await api.get(`/coiffeurs/${coiffeurId}/services`);
     return response.data;
+  },
+
+  async getCoiffeurSlots(coiffeurId: string, options: GetCoiffeurSlotsOptions = {}): Promise<CoiffeurSlotDTO[]> {
+    const params: Record<string, string> = {};
+
+    if (options.startDate) {
+      params.startDate = options.startDate;
+    }
+    if (options.endDate) {
+      params.endDate = options.endDate;
+    }
+    if (options.mode) {
+      params.mode = options.mode;
+    }
+
+    const response = await api.get(`/coiffeurs/${coiffeurId}/slots`, {
+      params,
+    });
+
+    const payload = response.data;
+
+    if (payload?.success && Array.isArray(payload.data)) {
+      return payload.data as CoiffeurSlotDTO[];
+    }
+
+    if (Array.isArray(payload)) {
+      return payload as CoiffeurSlotDTO[];
+    }
+
+    return [];
   },
 
   // Ajouter un service à un coiffeur

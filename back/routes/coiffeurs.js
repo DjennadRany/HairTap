@@ -2,8 +2,8 @@ import express from 'express';
 import User from '../models/User.js';
 import Service from '../models/Service.js';
 import { auth } from '../middleware/auth.js';
-import mongoose from 'mongoose';
 import multer from 'multer';
+import { getCoiffeurAvailableSlots } from '../services/slotService.js';
 // photoService removed - simplified photo system
 
 const router = express.Router();
@@ -260,6 +260,56 @@ router.get('/:id/services', async (req, res) => {
   } catch (error) {
     console.error('Get coiffeur services error:', error);
     res.status(500).json({ message: 'Erreur lors de la récupération des services' });
+  }
+});
+
+// Récupérer les créneaux disponibles d'un coiffeur
+router.get('/:id/slots', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { startDate, endDate, mode } = req.query;
+
+    const parsedStart = startDate ? new Date(startDate) : undefined;
+    if (parsedStart && Number.isNaN(parsedStart.getTime())) {
+      return res.status(400).json({
+        success: false,
+        message: 'Format de date de début invalide'
+      });
+    }
+
+    const parsedEnd = endDate ? new Date(endDate) : undefined;
+    if (parsedEnd && Number.isNaN(parsedEnd.getTime())) {
+      return res.status(400).json({
+        success: false,
+        message: 'Format de date de fin invalide'
+      });
+    }
+
+    if (mode && !['salon', 'domicile'].includes(mode)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Mode invalide. Utilisez "salon" ou "domicile".'
+      });
+    }
+
+    const slots = await getCoiffeurAvailableSlots(id, {
+      startDate: parsedStart,
+      endDate: parsedEnd,
+      mode,
+    });
+
+    res.json({
+      success: true,
+      data: slots,
+      count: slots.length,
+    });
+  } catch (error) {
+    console.error('Get coiffeur slots error:', error);
+    const status = error.status || 500;
+    res.status(status).json({
+      success: false,
+      message: error.message || 'Erreur lors de la récupération des créneaux'
+    });
   }
 });
 

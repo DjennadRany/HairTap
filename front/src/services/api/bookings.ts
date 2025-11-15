@@ -6,6 +6,7 @@ export interface Booking {
   coiffeur: string | any; // Peut être ObjectId ou objet User
   service: string;
   serviceId?: string;
+  slotId?: string;
   coiffeurId?: string;
   clientId?: string;
   date: string;
@@ -39,15 +40,19 @@ export interface Booking {
 export interface CreateBookingData {
   serviceId: string;
   coiffeurId: string;
+  slotId?: string;
   date: string;
   time: string;
+  duration: number;
+  price: number;
+  mode: 'salon' | 'domicile';
   notes?: string;
   address?: {
     street: string;
     streetNumber?: string;
     city: string;
     postalCode: string;
-    country: string;
+    country?: string;
     coordinates?: {
       lat: number;
       lng: number;
