@@ -3,6 +3,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { selectCurrentUser, setUser } from '../store/slices/authSlice';
 import { Navigate } from 'react-router-dom';
 import { userService } from '../services/api/users';
+import { APP_BASE_URL } from '../config/api';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/Button';
 import RichTextEditor from '../components/RichTextEditor';
@@ -100,9 +101,9 @@ const CoiffeurProfileEditPage = () => {
   // NOUVEAU : Fonction pour construire l'URL complète de la photo
   const getFullPhotoUrl = (photoUrl: string) => {
     if (!photoUrl) return '';
-    return photoUrl.startsWith('http') 
-      ? photoUrl 
-      : `http://localhost:5000${photoUrl}`;
+    return photoUrl.startsWith('http')
+      ? photoUrl
+      : `${APP_BASE_URL}${photoUrl}`;
   };
 
   if (!user || user.role !== 'coiffeur') {

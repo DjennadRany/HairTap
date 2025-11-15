@@ -1,4 +1,4 @@
-import api from './axios';
+import api from '../../api/httpClient';
 import { User } from '../../types/models';
 
 export interface LoginCredentials {

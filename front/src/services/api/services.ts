@@ -1,4 +1,4 @@
-import api from './axios';
+import api from '../../api/httpClient';
 import { Service } from '../../types/models';
 
 export const serviceService = {

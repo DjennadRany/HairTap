@@ -1,4 +1,4 @@
-import api from './axios';
+import api from '../../api/httpClient';
 import type { User } from '../../types/models';
 
 const API_URL = '/users';

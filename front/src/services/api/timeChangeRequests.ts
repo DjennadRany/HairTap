@@ -1,4 +1,4 @@
-import { api } from './api';
+import api from '../../api/httpClient';
 
 export interface TimeChangeRequest {
   _id: string;

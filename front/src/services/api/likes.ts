@@ -1,6 +1,4 @@
-import axios from 'axios';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+import api from '../../api/httpClient';
 
 // Interface pour les réponses de like
 interface LikeResponse {
@@ -37,20 +35,16 @@ class LikeService {
       const token = localStorage.getItem('token');
       console.log('🔍 [LikeService] Toggle like request:', {
         serviceId,
-        url: `${API_BASE_URL}/services/${serviceId}/like`,
+        endpoint: `/services/${serviceId}/like`,
         token: token ? 'Present' : 'Missing',
-        tokenValue: token ? token.substring(0, 20) + '...' : 'None'
+        tokenValue: token ? `${token.substring(0, 20)}...` : 'None'
       });
 
       if (!token) {
         throw new Error('Token d\'authentification manquant');
       }
 
-      const response = await axios.post(`${API_BASE_URL}/services/${serviceId}/like`, {}, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await api.post(`/services/${serviceId}/like`, {});
 
       console.log('✅ [LikeService] Response:', response.data);
 
@@ -84,11 +78,7 @@ class LikeService {
    */
   async toggleProductLike(coiffeurId: string, productId: string, options: LikeOptions = {}): Promise<LikeResponse> {
     try {
-      const response = await axios.post(`${API_BASE_URL}/products/${coiffeurId}/${productId}/like`, {}, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await api.post(`/products/${coiffeurId}/${productId}/like`, {});
 
       const result: LikeResponse = {
         success: true,
@@ -120,11 +110,7 @@ class LikeService {
    */
   async toggleCommentLike(commentId: string, options: LikeOptions = {}): Promise<LikeResponse> {
     try {
-      const response = await axios.post(`${API_BASE_URL}/comments/${commentId}/like`, {}, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await api.post(`/comments/${commentId}/like`, {});
 
       const result: LikeResponse = {
         success: true,
@@ -156,11 +142,7 @@ class LikeService {
    */
   async toggleReplyLike(commentId: string, replyIndex: number, options: LikeOptions = {}): Promise<LikeResponse> {
     try {
-      const response = await axios.post(`${API_BASE_URL}/comments/${commentId}/replies/${replyIndex}/like`, {}, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await api.post(`/comments/${commentId}/replies/${replyIndex}/like`, {});
 
       const result: LikeResponse = {
         success: true,

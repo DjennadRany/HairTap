@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { FaCamera, FaTimes } from 'react-icons/fa';
 import { userService } from '../services/api/users';
+import { APP_BASE_URL } from '../config/api';
 
 interface SimplePhotoUploadProps {
   userId: string;
@@ -18,9 +19,9 @@ const SimplePhotoUpload: React.FC<SimplePhotoUploadProps> = ({
   // CORRIGER : Construire l'URL complète pour l'initialisation
   const getFullPhotoUrl = (photoUrl: string) => {
     if (!photoUrl) return '';
-    return photoUrl.startsWith('http') 
-      ? photoUrl 
-      : `http://localhost:5000${photoUrl}`;
+    return photoUrl.startsWith('http')
+      ? photoUrl
+      : `${APP_BASE_URL}${photoUrl}`;
   };
   
   const [previewUrl, setPreviewUrl] = useState<string>(getFullPhotoUrl(currentPhoto));
@@ -52,9 +53,9 @@ const SimplePhotoUpload: React.FC<SimplePhotoUploadProps> = ({
         console.log('✅ Photo uploadée avec succès:', response.photo);
         
         // CORRIGER : Construire l'URL complète
-        const fullPhotoUrl = response.photo.startsWith('http') 
-          ? response.photo 
-          : `http://localhost:5000${response.photo}`;
+        const fullPhotoUrl = response.photo.startsWith('http')
+          ? response.photo
+          : `${APP_BASE_URL}${response.photo}`;
         
         console.log('🌐 URL complète de la photo:', fullPhotoUrl);
         
