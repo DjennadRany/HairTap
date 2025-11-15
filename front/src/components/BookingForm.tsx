@@ -1,19 +1,15 @@
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { selectCurrentUser } from '../store/slices/authSlice';
 import { Card } from './ui/card';
-import { Button } from './ui/Button';
 import { format, addDays } from 'date-fns';
-import { fr } from 'date-fns/locale';
 import {
-  FaCalendarAlt,
   FaMapMarkerAlt,
-  FaClock,
-  FaEuroSign,
   FaUser,
   FaExclamationTriangle,
-  FaRedo
+  FaRedo,
+  FaClock
 } from 'react-icons/fa';
 import { bookingService, type CreateBookingData } from '../services/api/bookings';
 import { userService } from '../services/api/users';
@@ -23,6 +19,11 @@ import type { User } from '../types/models';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { useBookingValidation } from '../hooks/useBookingValidation';
 import { setPaymentStatus as setGlobalPaymentStatus, type PaymentStatus } from '../store/slices/paymentSlice';
+import BookingSlotList from './booking/BookingSlotList';
+import BookingSummary from './booking/BookingSummary';
+import BookingActionBar from './booking/BookingActionBar';
+import { useNotification } from './ui/NotificationManager';
+import { cn } from '../lib/utils';
 
 // Type étendu pour les adresses
 interface UserWithAddresses extends User {
@@ -73,6 +74,8 @@ const BookingForm: React.FC<BookingFormProps> = ({
   const navigate = useNavigate();
   const user = useAppSelector(selectCurrentUser) as UserWithAddresses;
   const dispatch = useAppDispatch();
+  const { showNotification } = useNotification();
+  const errorRef = useRef<HTMLDivElement>(null);
   
   // Debug: Vérifier les données reçues
   console.log('🔍 [BookingForm] Données reçues:', {
@@ -278,6 +281,16 @@ const BookingForm: React.FC<BookingFormProps> = ({
   const availableDates = useMemo(() => Object.keys(slotsByDate).sort(), [slotsByDate]);
   const slotsForSelectedDate = selectedDate ? slotsByDate[selectedDate] || [] : [];
 
+  const getSlotValidation = useCallback(
+    (slot: CoiffeurSlotDTO) => {
+      if (!selectedService) {
+        return { isValid: false, errors: ['Sélectionnez un service'] };
+      }
+      return canUseSlot(slot, bookingMode, selectedService.duration || 0);
+    },
+    [bookingMode, canUseSlot, selectedService]
+  );
+
   const { validateBooking, canUseSlot } = useBookingValidation({
     existingBookings: coiffeurBookings,
     coiffeurModes,
@@ -301,39 +314,55 @@ const BookingForm: React.FC<BookingFormProps> = ({
     fetchCoiffeurBookings();
   }, [coiffeur._id]);
 
-  useEffect(() => {
-    const loadSlots = async () => {
-      if (!coiffeur._id) {
-        return;
-      }
+  const fetchSlots = useCallback(async () => {
+    if (!coiffeur._id) {
+      return;
+    }
 
-      setSlotsLoading(true);
-      setSlotsError(null);
+    setSlotsLoading(true);
+    setSlotsError(null);
 
-      try {
-        const start = format(new Date(), 'yyyy-MM-dd');
-        const end = format(addDays(new Date(), 13), 'yyyy-MM-dd');
-        const slots = await coiffeurService.getCoiffeurSlots(coiffeur._id, {
-          startDate: start,
-          endDate: end,
-        });
-        setAvailableSlots(slots);
-      } catch (err) {
-        console.error('❌ [BookingForm] Erreur lors du chargement des créneaux:', err);
-        setSlotsError('Impossible de récupérer les créneaux disponibles pour le moment.');
-      } finally {
-        setSlotsLoading(false);
-      }
-    };
-
-    loadSlots();
+    try {
+      const start = format(new Date(), 'yyyy-MM-dd');
+      const end = format(addDays(new Date(), 13), 'yyyy-MM-dd');
+      const slots = await coiffeurService.getCoiffeurSlots(coiffeur._id, {
+        startDate: start,
+        endDate: end,
+      });
+      setAvailableSlots(slots);
+    } catch (err) {
+      console.error('❌ [BookingForm] Erreur lors du chargement des créneaux:', err);
+      setSlotsError('Impossible de récupérer les créneaux disponibles pour le moment.');
+    } finally {
+      setSlotsLoading(false);
+    }
   }, [coiffeur._id]);
+
+  useEffect(() => {
+    fetchSlots();
+  }, [fetchSlots]);
 
   useEffect(() => {
     if (!selectedDate && availableDates.length > 0) {
       setSelectedDate(availableDates[0]);
     }
   }, [availableDates, selectedDate]);
+
+  useEffect(() => {
+    if (slotsError) {
+      showNotification({
+        type: 'error',
+        title: 'Créneaux indisponibles',
+        message: slotsError,
+      });
+    }
+  }, [slotsError, showNotification]);
+
+  useEffect(() => {
+    if (error && errorRef.current) {
+      errorRef.current.focus();
+    }
+  }, [error]);
 
   const handleDateSelect = (dateValue: string) => {
     setSelectedDate(dateValue);
@@ -412,7 +441,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
 
       // Créer la réservation
       const booking = await bookingService.createBooking(bookingPayload);
-      
+
       // Sauvegarder l'adresse de réservation si c'est un domicile
       if (bookingMode === 'domicile' && user._id) {
         try {
@@ -438,6 +467,12 @@ const BookingForm: React.FC<BookingFormProps> = ({
 
         console.log('✅ [BookingForm] Réservation créée avec succès:', bookingId);
 
+        showNotification({
+          type: 'success',
+          title: 'Créneau réservé',
+          message: 'Finalisez le paiement pour confirmer votre réservation.',
+        });
+
         // Afficher le modal de paiement Stripe
         setCreatedBooking(bookingData);
         setLocalPaymentStatus('initiated');
@@ -451,15 +486,25 @@ const BookingForm: React.FC<BookingFormProps> = ({
         } else {
           navigate('/client/bookings');
         }
+        showNotification({
+          type: 'success',
+          title: 'Réservation confirmée',
+          message: 'Votre rendez-vous a bien été enregistré.',
+        });
       }
     } catch (error: any) {
       console.error('Error creating booking:', error);
-      
+
       if (error.response?.status === 409) {
         setError('Ce créneau n\'est plus disponible. Veuillez choisir un autre horaire.');
       } else {
         setError(error.response?.data?.message || 'Erreur lors de la création de la réservation');
       }
+      showNotification({
+        type: 'error',
+        title: 'Erreur de réservation',
+        message: error.response?.data?.message || 'Impossible de créer la réservation. Veuillez réessayer.',
+      });
     } finally {
       setLoading(false);
     }
@@ -470,6 +515,11 @@ const BookingForm: React.FC<BookingFormProps> = ({
     await handlePaymentStatusChange('confirmed');
     setShowPaymentModal(false);
     setShowRecoveryScreen(false);
+    showNotification({
+      type: 'success',
+      title: 'Paiement confirmé',
+      message: 'Votre réservation est validée.',
+    });
     if (onSuccess) {
       onSuccess();
     } else {
@@ -497,9 +547,19 @@ const BookingForm: React.FC<BookingFormProps> = ({
     await handlePaymentStatusChange('initiated');
     setShowRecoveryScreen(false);
     setShowPaymentModal(true);
+    showNotification({
+      type: 'info',
+      title: 'Paiement relancé',
+      message: 'Vous pouvez finaliser le règlement de votre réservation.',
+    });
   };
 
   const handleDeferPayment = () => {
+    showNotification({
+      type: 'warning',
+      title: 'Paiement différé',
+      message: 'Vous pourrez reprendre le paiement depuis vos réservations client.',
+    });
     if (onCancel) {
       onCancel();
     } else {
@@ -507,12 +567,15 @@ const BookingForm: React.FC<BookingFormProps> = ({
     }
   };
 
+
+
   const isPaymentPending = paymentStatus === 'pending';
   const bookingIdentifier = resolveCreatedBookingId();
+  const secondaryAction = onCancel ?? onClose;
+  const isPrimaryDisabled = !selectedService || !selectedDate || !selectedTime;
 
   return (
-    <div className="max-w-4xl mx-auto">
-      {/* Modal de paiement Stripe */}
+    <div className="mx-auto max-w-4xl space-y-8">
       {showPaymentModal && createdBooking && selectedService && bookingIdentifier && (
         <StripePaymentModal
           isOpen={showPaymentModal}
@@ -527,194 +590,104 @@ const BookingForm: React.FC<BookingFormProps> = ({
       )}
 
       {showRecoveryScreen && createdBooking && !showPaymentModal && (
-        <div className="mb-6">
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 shadow-sm">
-            <div className="flex items-start gap-3">
-              <FaExclamationTriangle className="mt-1 text-amber-500 text-xl" />
-              <div>
-                <h3 className="text-base font-semibold text-amber-900">
-                  {isPaymentPending ? 'Paiement en cours de validation' : 'Paiement à finaliser'}
-                </h3>
-                <p className="text-sm text-amber-800 mt-1">
-                  {isPaymentPending
-                    ? 'Nous avons bien enregistré votre réservation. Le paiement est toujours en attente de validation par votre banque.'
-                    : 'Nous avons bien enregistré votre réservation mais le paiement n’a pas été finalisé.'}
-                </p>
-                <p className="text-xs text-amber-700 mt-2">
-                  Vous pouvez reprendre le paiement immédiatement ou depuis l’historique de vos réservations.
-                </p>
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 shadow-sm">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-3">
+            <FaExclamationTriangle className="text-xl text-amber-500" aria-hidden="true" />
+            <div className="space-y-2">
+              <h3 className="text-base font-semibold text-amber-900">
+                {isPaymentPending ? 'Paiement en cours de validation' : 'Paiement à finaliser'}
+              </h3>
+              <p className="text-sm text-amber-800">
+                {isPaymentPending
+                  ? 'Nous avons bien enregistré votre réservation. Le paiement est toujours en attente de validation par votre banque.'
+                  : 'Nous avons bien enregistré votre réservation mais le paiement n’a pas été finalisé.'}
+              </p>
+              <p className="text-xs text-amber-700">
+                Vous pouvez reprendre le paiement immédiatement ou depuis l’historique de vos réservations.
+              </p>
+              <div className="flex flex-col gap-3 pt-2 sm:flex-row">
+                <button
+                  type="button"
+                  onClick={handleResumePayment}
+                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-gray-900"
+                >
+                  <FaRedo aria-hidden="true" /> Reprendre le paiement
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeferPayment}
+                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-amber-400 px-4 py-2 text-sm font-semibold text-amber-700 transition-colors hover:bg-amber-100"
+                >
+                  Continuer plus tard
+                </button>
               </div>
-            </div>
-            <div className="flex flex-wrap gap-3 mt-4">
-              <button
-                type="button"
-                onClick={handleResumePayment}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-900 transition-colors"
-              >
-                <FaRedo /> Reprendre le paiement
-              </button>
-              <button
-                type="button"
-                onClick={handleDeferPayment}
-                className="inline-flex items-center gap-2 px-4 py-2 border border-amber-400 text-amber-700 rounded-lg hover:bg-amber-100 transition-colors"
-              >
-                Continuer plus tard
-              </button>
             </div>
           </div>
         </div>
       )}
-      {/* En-tête avec informations du coiffeur */}
-      <div className="mb-8">
-        <div className="flex items-center gap-4 mb-4">
-          <div className="w-16 h-16 bg-fashion-gray-200 rounded-full flex items-center justify-center">
-            <FaUser className="text-2xl text-fashion-gray-600" />
+
+      <header className="flex flex-col gap-4 rounded-2xl border border-fashion-gray-200 bg-white p-6 shadow-sm">
+        <div className="flex items-start gap-4">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-fashion-gray-200">
+            <FaUser className="text-2xl text-fashion-gray-600" aria-hidden="true" />
           </div>
-          <div>
+          <div className="space-y-1">
             <h2 className="text-2xl font-bold text-fashion-black">Réserver avec {coiffeur.name}</h2>
-            <p className="text-fashion-gray-600">{coiffeur.email}</p>
+            <p className="text-sm text-fashion-gray-600">{coiffeur.email}</p>
           </div>
         </div>
-        
         {selectedService && (
-          <div className="bg-fashion-gray-50 p-6 rounded-xl border border-fashion-gray-200">
-            <h3 className="font-semibold text-fashion-black mb-2 flex items-center gap-2">
-              <FaEuroSign className="text-fashion-black" />
-              Service sélectionné
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <span className="text-fashion-gray-600">Service</span>
-                <p className="font-medium text-fashion-black">{selectedService.name || 'Non défini'}</p>
-              </div>
-              <div>
-                <span className="text-fashion-gray-600">Prix</span>
-                <p className="font-medium text-fashion-black">{selectedService.price || 0}€</p>
-              </div>
-              <div>
-                <span className="text-fashion-gray-600">Durée</span>
-                <p className="font-medium text-fashion-black">{selectedService.duration || 0} min</p>
-              </div>
-            </div>
-          </div>
+          <p className="text-sm text-fashion-gray-600">
+            Vous avez sélectionné <span className="font-medium text-fashion-black">{selectedService.name}</span>.
+          </p>
         )}
-      </div>
+      </header>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-xl mb-6">
-          <div className="flex items-center gap-2">
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-            </svg>
-            {error}
-          </div>
+        <div
+          ref={errorRef}
+          role="alert"
+          tabIndex={-1}
+          className="rounded-xl border border-red-200 bg-red-50 px-6 py-4 text-sm text-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+        >
+          {error}
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Sélection date et heure */}
-        <Card className="p-6">
-          <h3 className="text-xl font-semibold mb-6 flex items-center gap-2 text-fashion-black">
-            <FaCalendarAlt className="text-fashion-black" />
-            Date et heure
-          </h3>
-          
-          {/* Sélection de la date */}
-          <div className="mb-6">
-            <label className="block text-sm font-medium mb-3 text-fashion-gray-700">Date</label>
-            {slotsLoading ? (
-              <div className="text-sm text-fashion-gray-600">Chargement des créneaux...</div>
-            ) : availableDates.length === 0 ? (
-              <p className="text-sm text-fashion-gray-600">Aucun créneau disponible pour le moment.</p>
-            ) : (
-              <div className="grid grid-cols-7 gap-2">
-                {availableDates.map((dateValue) => (
-                  <button
-                    key={dateValue}
-                    onClick={() => handleDateSelect(dateValue)}
-                    className={`p-3 text-sm rounded-lg transition-all duration-200 font-medium ${
-                      selectedDate === dateValue
-                        ? 'bg-fashion-black text-white shadow-lg'
-                        : 'bg-fashion-gray-100 hover:bg-fashion-gray-200 text-fashion-gray-700'
-                    }`}
-                  >
-                    {format(new Date(dateValue), 'dd/MM', { locale: fr })}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {slotsError && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm">
-              {slotsError}
-            </div>
-          )}
-
-          {/* Sélection de l'heure */}
-          {selectedDate && !slotsLoading && (
-            <div className="mb-6">
-              <label className="block text-sm font-medium mb-3 text-fashion-gray-700">Heure</label>
-              {slotsForSelectedDate.length === 0 ? (
-                <p className="text-sm text-fashion-gray-600">Aucun créneau disponible ce jour-là.</p>
-              ) : (
-                <div className="grid grid-cols-3 gap-2">
-                  {slotsForSelectedDate.map((slot) => {
-                    const validation = selectedService
-                      ? canUseSlot(slot, bookingMode, selectedService.duration || 0)
-                      : { isValid: false, errors: ['Sélectionnez un service'] };
-                    const isAvailable = validation.isValid;
-                    const isSelected = selectedSlot?.id === slot.id && selectedTime === slot.startTime;
-
-                    return (
-                      <button
-                        key={slot.id}
-                        onClick={() => isAvailable && handleTimeSelect(slot)}
-                        disabled={!isAvailable || loading}
-                        className={`p-3 text-sm rounded-lg transition-all duration-200 font-medium ${
-                          isSelected
-                            ? 'bg-fashion-black text-white shadow-lg'
-                            : isAvailable
-                            ? 'bg-fashion-gray-100 hover:bg-fashion-gray-200 text-fashion-gray-700'
-                            : 'bg-fashion-gray-300 text-fashion-gray-500 cursor-not-allowed'
-                        }`}
-                      >
-                        <span>{slot.startTime}</span>
-                        {!isAvailable && (
-                          <span className="text-xs block mt-1">{validation.errors[0] ?? 'Indisponible'}</span>
-                        )}
-                        {isAvailable && slot.remainingCapacity <= 1 && (
-                          <span className="text-xs block mt-1 text-fashion-gray-600">
-                            {slot.remainingCapacity === 1 ? 'Dernière place' : `Plus que ${slot.remainingCapacity} places`}
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-        </Card>
-
-        {/* Mode de réservation et informations */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.6fr,1fr]">
         <div className="space-y-6">
-          {/* Mode de réservation */}
-          <Card className="p-6">
-            <h3 className="text-xl font-semibold mb-6 flex items-center gap-2 text-fashion-black">
-              <FaMapMarkerAlt className="text-fashion-black" />
-              Mode de réservation
-            </h3>
-            <div className="flex gap-4">
+          <BookingSlotList
+            dates={availableDates}
+            selectedDate={selectedDate}
+            onDateSelect={handleDateSelect}
+            slots={slotsForSelectedDate}
+            onSlotSelect={handleTimeSelect}
+            selectedSlot={selectedSlot}
+            getSlotState={getSlotValidation}
+            loading={slotsLoading}
+            error={slotsError}
+            onRetry={fetchSlots}
+            disabled={loading}
+          />
+
+          <Card className="space-y-4 p-6">
+            <div className="flex items-center gap-2">
+              <FaMapMarkerAlt className="text-fashion-black" aria-hidden="true" />
+              <h3 className="text-lg font-semibold text-fashion-black">Mode de réservation</h3>
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row">
               {coiffeurModes.map((mode: string) => (
                 <button
                   key={mode}
+                  type="button"
                   onClick={() => setBookingMode(mode as 'salon' | 'domicile')}
-                  className={`flex-1 px-6 py-4 rounded-lg transition-all duration-200 font-medium ${
+                  aria-pressed={bookingMode === mode}
+                  className={cn(
+                    'flex-1 rounded-lg border px-4 py-3 text-sm font-semibold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-fashion-black focus-visible:ring-offset-2',
                     bookingMode === mode
-                      ? 'bg-fashion-black text-white shadow-lg'
-                      : 'bg-fashion-gray-100 hover:bg-fashion-gray-200 text-fashion-gray-700'
-                  }`}
+                      ? 'border-fashion-black bg-fashion-black text-white shadow-lg'
+                      : 'border-fashion-gray-200 bg-fashion-gray-50 text-fashion-gray-700 hover:border-fashion-black/40 hover:bg-white'
+                  )}
                 >
                   {mode === 'salon' ? 'En salon' : 'À domicile'}
                 </button>
@@ -722,230 +695,243 @@ const BookingForm: React.FC<BookingFormProps> = ({
             </div>
           </Card>
 
-          {/* Adresse pour domicile */}
           {bookingMode === 'domicile' && (
-            <Card className="p-6">
-              <h3 className="text-lg font-semibold mb-4 text-fashion-black">Adresse de prestation</h3>
-              
-              {/* Options d'adresse - UX-Pro Simple */}
-              <div className="mb-4">
-                <label className="block text-sm font-medium mb-2 text-fashion-gray-700">Type d'adresse</label>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setAddressType('home')}
-                    className={`px-4 py-2 rounded-lg transition-colors ${
-                      addressType === 'home' 
-                        ? 'bg-fashion-black text-white' 
-                        : 'bg-fashion-gray-100 text-fashion-gray-700 hover:bg-fashion-gray-200'
-                    }`}
-                  >
-                    🏠 Domicile
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setAddressType('office')}
-                    className={`px-4 py-2 rounded-lg transition-colors ${
-                      addressType === 'office' 
-                        ? 'bg-fashion-black text-white' 
-                        : 'bg-fashion-gray-100 text-fashion-gray-700 hover:bg-fashion-gray-200'
-                    }`}
-                  >
-                    🏢 Bureau
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setAddressType('other')}
-                    className={`px-4 py-2 rounded-lg transition-colors ${
-                      addressType === 'other' 
-                        ? 'bg-fashion-black text-white' 
-                        : 'bg-fashion-gray-100 text-fashion-gray-700 hover:bg-fashion-gray-200'
-                    }`}
-                  >
-                    📍 Autre lieu
-                  </button>
-                </div>
-                
-                {/* Géolocalisation pour "Autre lieu" */}
-                {addressType === 'other' && (
-                  <div className="mt-2">
+            <Card className="space-y-4 p-6">
+              <div className="space-y-2">
+                <h3 className="text-lg font-semibold text-fashion-black">Adresse de prestation</h3>
+                <p className="text-sm text-fashion-gray-600">
+                  Indiquez le lieu exact pour votre rendez-vous à domicile.
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <span className="text-sm font-medium text-fashion-gray-700">Type d'adresse</span>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  {(
+                    [
+                      { type: 'home', label: '🏠 Domicile' },
+                      { type: 'office', label: '🏢 Bureau' },
+                      { type: 'other', label: '📍 Autre lieu' },
+                    ] as const
+                  ).map((option) => (
                     <button
+                      key={option.type}
                       type="button"
-                      onClick={async () => {
-                        if (navigator.geolocation) {
-                          try {
-                            const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-                              navigator.geolocation.getCurrentPosition(resolve, reject, {
-                                enableHighAccuracy: true,
-                                timeout: 10000,
-                                maximumAge: 60000
-                              });
-                            });
-                            
-                            const { latitude, longitude } = position.coords;
-                            const response = await fetch(
-                              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1&zoom=18`
-                            );
-                            const data = await response.json();
-                            
-                            if (data.address) {
-                              const address = data.address;
-                              setClientAddress({
-                                ...clientAddress,
-                                streetNumber: address.house_number || '',
-                                street: address.road || '',
-                                postalCode: address.postcode || '',
-                                city: address.city || address.town || address.village || '',
-                                additionalInfo: `Géolocalisé: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
-                              });
-                            }
-                          } catch (error) {
-                            console.error('Erreur géolocalisation:', error);
-                            alert('Impossible de récupérer votre position.');
-                          }
-                        } else {
-                          alert('La géolocalisation n\'est pas supportée.');
-                        }
-                      }}
-                      className="flex items-center gap-2 px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700 transition-colors"
+                      onClick={() => setAddressType(option.type)}
+                      aria-pressed={addressType === option.type}
+                      className={cn(
+                        'rounded-lg border px-4 py-2 text-sm font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-fashion-black focus-visible:ring-offset-2',
+                        addressType === option.type
+                          ? 'border-fashion-black bg-fashion-black text-white'
+                          : 'border-fashion-gray-200 bg-fashion-gray-50 text-fashion-gray-700 hover:border-fashion-black/40 hover:bg-white'
+                      )}
                     >
-                      📍 Utiliser ma position actuelle
+                      {option.label}
                     </button>
-                  </div>
+                  ))}
+                </div>
+
+                {addressType === 'other' && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (navigator.geolocation) {
+                        try {
+                          const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+                            navigator.geolocation.getCurrentPosition(resolve, reject, {
+                              enableHighAccuracy: true,
+                              timeout: 10000,
+                              maximumAge: 60000,
+                            });
+                          });
+
+                          const { latitude, longitude } = position.coords;
+                          const response = await fetch(
+                            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1&zoom=18`
+                          );
+                          const data = await response.json();
+
+                          if (data.address) {
+                            const address = data.address;
+                            setClientAddress({
+                              ...clientAddress,
+                              streetNumber: address.house_number || '',
+                              street: address.road || '',
+                              postalCode: address.postcode || '',
+                              city: address.city || address.town || address.village || '',
+                              additionalInfo: `Géolocalisé: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`,
+                            });
+                          }
+                        } catch (geoError) {
+                          console.error('Erreur géolocalisation:', geoError);
+                          alert('Impossible de récupérer votre position.');
+                        }
+                      } else {
+                        alert('La géolocalisation n\'est pas supportée.');
+                      }
+                    }}
+                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-green-700"
+                    aria-label="Utiliser ma position actuelle"
+                  >
+                    📍 Utiliser ma position actuelle
+                  </button>
                 )}
               </div>
-              {/* Affichage conditionnel selon si l'adresse est sauvegardée */}
-              {(user?.addresses && (user.addresses.home || user.addresses.office) || (user?.address && addressType === 'home')) && addressType !== 'other' ? (
-                // Affichage en lecture seule pour les adresses sauvegardées
-                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                  <div className="flex justify-between items-center mb-4">
-                    <h4 className="font-medium text-gray-900">
+
+              {(user?.addresses && (user.addresses.home || user.addresses.office) || (user?.address && addressType === 'home')) &&
+              addressType !== 'other' ? (
+                <div className="rounded-lg border border-fashion-gray-200 bg-fashion-gray-50 p-4" aria-live="polite">
+                  <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <h4 className="font-medium text-fashion-black">
                       Adresse {addressType === 'home' ? 'domicile' : 'bureau'} sauvegardée
                     </h4>
                     <button
                       type="button"
                       onClick={() => setAddressType('other')}
-                      className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                      className="text-sm font-semibold text-accent hover:underline"
                     >
                       Utiliser une autre adresse
                     </button>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  <dl className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
                     <div>
-                      <span className="text-gray-600">Numéro de rue:</span>
-                      <p className="font-medium">{clientAddress.streetNumber || '-'}</p>
+                      <dt className="text-fashion-gray-600">Numéro de rue</dt>
+                      <dd className="font-medium text-fashion-black">{clientAddress.streetNumber || '-'}</dd>
                     </div>
                     <div>
-                      <span className="text-gray-600">Rue:</span>
-                      <p className="font-medium">{clientAddress.street || '-'}</p>
+                      <dt className="text-fashion-gray-600">Rue</dt>
+                      <dd className="font-medium text-fashion-black">{clientAddress.street || '-'}</dd>
                     </div>
                     <div>
-                      <span className="text-gray-600">Code postal:</span>
-                      <p className="font-medium">{clientAddress.postalCode || '-'}</p>
+                      <dt className="text-fashion-gray-600">Code postal</dt>
+                      <dd className="font-medium text-fashion-black">{clientAddress.postalCode || '-'}</dd>
                     </div>
                     <div>
-                      <span className="text-gray-600">Ville:</span>
-                      <p className="font-medium">{clientAddress.city || '-'}</p>
+                      <dt className="text-fashion-gray-600">Ville</dt>
+                      <dd className="font-medium text-fashion-black">{clientAddress.city || '-'}</dd>
                     </div>
                     <div>
-                      <span className="text-gray-600">Étage:</span>
-                      <p className="font-medium">{clientAddress.floor || '-'}</p>
+                      <dt className="text-fashion-gray-600">Étage</dt>
+                      <dd className="font-medium text-fashion-black">{clientAddress.floor || '-'}</dd>
                     </div>
                     <div>
-                      <span className="text-gray-600">Appartement:</span>
-                      <p className="font-medium">{clientAddress.apartment || '-'}</p>
+                      <dt className="text-fashion-gray-600">Appartement</dt>
+                      <dd className="font-medium text-fashion-black">{clientAddress.apartment || '-'}</dd>
                     </div>
                     <div>
-                      <span className="text-gray-600">Code d'entrée:</span>
-                      <p className="font-medium">{clientAddress.buildingCode || '-'}</p>
+                      <dt className="text-fashion-gray-600">Code d'entrée</dt>
+                      <dd className="font-medium text-fashion-black">{clientAddress.buildingCode || '-'}</dd>
                     </div>
                     <div className="md:col-span-2">
-                      <span className="text-gray-600">Informations complémentaires:</span>
-                      <p className="font-medium">{clientAddress.additionalInfo || '-'}</p>
+                      <dt className="text-fashion-gray-600">Informations complémentaires</dt>
+                      <dd className="font-medium text-fashion-black">{clientAddress.additionalInfo || '-'}</dd>
                     </div>
-                  </div>
+                  </dl>
                 </div>
               ) : (
-                // Formulaire d'édition pour nouvelle adresse
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div>
-                    <label className="block text-sm font-medium mb-2 text-fashion-gray-700">Numéro de rue</label>
+                    <label className="mb-2 block text-sm font-medium text-fashion-gray-700" htmlFor={`${coiffeur._id}-street-number`}>
+                      Numéro de rue
+                    </label>
                     <input
+                      id={`${coiffeur._id}-street-number`}
                       type="text"
                       value={clientAddress.streetNumber}
-                      onChange={(e) => setClientAddress({...clientAddress, streetNumber: e.target.value})}
+                      onChange={(e) => setClientAddress({ ...clientAddress, streetNumber: e.target.value })}
                       placeholder="123"
-                      className="w-full p-3 border border-fashion-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-fashion-black focus:border-transparent"
+                      className="w-full rounded-lg border border-fashion-gray-300 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-fashion-black focus:border-transparent"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-2 text-fashion-gray-700">Rue</label>
+                    <label className="mb-2 block text-sm font-medium text-fashion-gray-700" htmlFor={`${coiffeur._id}-street`}>
+                      Rue
+                    </label>
                     <input
+                      id={`${coiffeur._id}-street`}
                       type="text"
                       value={clientAddress.street}
-                      onChange={(e) => setClientAddress({...clientAddress, street: e.target.value})}
+                      onChange={(e) => setClientAddress({ ...clientAddress, street: e.target.value })}
                       placeholder="Rue de la Paix"
-                      className="w-full p-3 border border-fashion-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-fashion-black focus:border-transparent"
+                      className="w-full rounded-lg border border-fashion-gray-300 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-fashion-black focus:border-transparent"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-2 text-fashion-gray-700">Code postal</label>
+                    <label className="mb-2 block text-sm font-medium text-fashion-gray-700" htmlFor={`${coiffeur._id}-postal`}>
+                      Code postal
+                    </label>
                     <input
+                      id={`${coiffeur._id}-postal`}
                       type="text"
                       value={clientAddress.postalCode}
-                      onChange={(e) => setClientAddress({...clientAddress, postalCode: e.target.value})}
+                      onChange={(e) => setClientAddress({ ...clientAddress, postalCode: e.target.value })}
                       placeholder="75001"
-                      className="w-full p-3 border border-fashion-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-fashion-black focus:border-transparent"
+                      className="w-full rounded-lg border border-fashion-gray-300 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-fashion-black focus:border-transparent"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-2 text-fashion-gray-700">Ville</label>
+                    <label className="mb-2 block text-sm font-medium text-fashion-gray-700" htmlFor={`${coiffeur._id}-city`}>
+                      Ville
+                    </label>
                     <input
+                      id={`${coiffeur._id}-city`}
                       type="text"
                       value={clientAddress.city}
-                      onChange={(e) => setClientAddress({...clientAddress, city: e.target.value})}
+                      onChange={(e) => setClientAddress({ ...clientAddress, city: e.target.value })}
                       placeholder="Paris"
-                      className="w-full p-3 border border-fashion-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-fashion-black focus:border-transparent"
+                      className="w-full rounded-lg border border-fashion-gray-300 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-fashion-black focus:border-transparent"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-2 text-fashion-gray-700">Étage</label>
+                    <label className="mb-2 block text-sm font-medium text-fashion-gray-700" htmlFor={`${coiffeur._id}-floor`}>
+                      Étage
+                    </label>
                     <input
+                      id={`${coiffeur._id}-floor`}
                       type="text"
                       value={clientAddress.floor}
-                      onChange={(e) => setClientAddress({...clientAddress, floor: e.target.value})}
+                      onChange={(e) => setClientAddress({ ...clientAddress, floor: e.target.value })}
                       placeholder="2ème étage"
-                      className="w-full p-3 border border-fashion-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-fashion-black focus:border-transparent"
+                      className="w-full rounded-lg border border-fashion-gray-300 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-fashion-black focus:border-transparent"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-2 text-fashion-gray-700">Appartement</label>
+                    <label className="mb-2 block text-sm font-medium text-fashion-gray-700" htmlFor={`${coiffeur._id}-apartment`}>
+                      Appartement
+                    </label>
                     <input
+                      id={`${coiffeur._id}-apartment`}
                       type="text"
                       value={clientAddress.apartment}
-                      onChange={(e) => setClientAddress({...clientAddress, apartment: e.target.value})}
+                      onChange={(e) => setClientAddress({ ...clientAddress, apartment: e.target.value })}
                       placeholder="Apt 4B"
-                      className="w-full p-3 border border-fashion-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-fashion-black focus:border-transparent"
+                      className="w-full rounded-lg border border-fashion-gray-300 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-fashion-black focus:border-transparent"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-2 text-fashion-gray-700">Code d'entrée</label>
-              <input
-                type="text"
+                    <label className="mb-2 block text-sm font-medium text-fashion-gray-700" htmlFor={`${coiffeur._id}-code`}>
+                      Code d'entrée
+                    </label>
+                    <input
+                      id={`${coiffeur._id}-code`}
+                      type="text"
                       value={clientAddress.buildingCode}
-                      onChange={(e) => setClientAddress({...clientAddress, buildingCode: e.target.value})}
+                      onChange={(e) => setClientAddress({ ...clientAddress, buildingCode: e.target.value })}
                       placeholder="1234"
-                      className="w-full p-3 border border-fashion-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-fashion-black focus:border-transparent"
+                      className="w-full rounded-lg border border-fashion-gray-300 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-fashion-black focus:border-transparent"
                     />
                   </div>
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium mb-2 text-fashion-gray-700">Informations complémentaires</label>
+                    <label className="mb-2 block text-sm font-medium text-fashion-gray-700" htmlFor={`${coiffeur._id}-additional`}>
+                      Informations complémentaires
+                    </label>
                     <textarea
+                      id={`${coiffeur._id}-additional`}
                       value={clientAddress.additionalInfo}
-                      onChange={(e) => setClientAddress({...clientAddress, additionalInfo: e.target.value})}
+                      onChange={(e) => setClientAddress({ ...clientAddress, additionalInfo: e.target.value })}
                       placeholder="Instructions d'accès, interphone, etc."
                       rows={3}
-                      className="w-full p-3 border border-fashion-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-fashion-black focus:border-transparent"
+                      className="w-full rounded-lg border border-fashion-gray-300 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-fashion-black focus:border-transparent"
                     />
                   </div>
                 </div>
@@ -953,17 +939,16 @@ const BookingForm: React.FC<BookingFormProps> = ({
             </Card>
           )}
 
-          {/* Informations importantes */}
-          <Card className="p-6 bg-fashion-gray-50">
-            <h3 className="text-lg font-semibold mb-4 text-fashion-black">Informations importantes</h3>
-            <div className="space-y-3 text-sm text-fashion-gray-700">
+          <Card className="space-y-3 bg-fashion-gray-50 p-6">
+            <h3 className="text-lg font-semibold text-fashion-black">Informations importantes</h3>
+            <div className="space-y-2 text-sm text-fashion-gray-700">
               <div className="flex items-start gap-2">
-                <FaClock className="text-fashion-black mt-0.5" />
-                <span>Politique d'annulation : Annulation gratuite jusqu'à 24h avant le rendez-vous.</span>
+                <FaClock className="mt-1 text-fashion-black" aria-hidden="true" />
+                <span>Annulation gratuite jusqu'à 24h avant le rendez-vous.</span>
               </div>
               <div className="flex items-start gap-2">
-                <FaUser className="text-fashion-black mt-0.5" />
-                <span>Contact : {coiffeur.phone || coiffeur.email}</span>
+                <FaUser className="mt-1 text-fashion-black" aria-hidden="true" />
+                <span>Contact direct : {coiffeur.phone || coiffeur.email}</span>
               </div>
             </div>
           </Card>
@@ -1037,36 +1022,28 @@ const BookingForm: React.FC<BookingFormProps> = ({
             </p>
           </Card>
         </div>
+
+        <div className="space-y-6">
+          <BookingSummary
+            coiffeur={coiffeur}
+            service={selectedService}
+            bookingMode={bookingMode}
+            selectedDate={selectedDate}
+            selectedSlot={selectedSlot}
+          />
+        </div>
       </div>
 
-      {/* Boutons d'action */}
-      <div className="flex gap-4 mt-8">
-        <Button
-          onClick={handleSubmit}
-          disabled={!selectedService || !selectedDate || !selectedTime || loading || !acceptedTerms || !acceptedCancellationPolicy || !acceptedPaymentConsent}
-          className="flex-1 bg-fashion-black text-white hover:bg-fashion-gray-800 py-4 text-lg font-medium"
-        >
-          {loading ? (
-            <div className="flex items-center gap-2">
-              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-              Création en cours...
-            </div>
-          ) : (
-            'Confirmer la réservation'
-          )}
-        </Button>
-        {(onCancel || onClose) && (
-          <Button
-            onClick={onCancel || onClose}
-            variant="outline"
-            className="flex-1 py-4 text-lg font-medium"
-          >
-            Annuler
-          </Button>
-        )}
-      </div>
+      <BookingActionBar
+        primaryLabel="Confirmer ma réservation"
+        onPrimaryAction={handleSubmit}
+        primaryDisabled={isPrimaryDisabled}
+        primaryLoading={loading}
+        secondaryLabel={secondaryAction ? 'Annuler' : undefined}
+        onSecondaryAction={secondaryAction}
+      />
     </div>
   );
 };
 
-export default BookingForm; 
+export default BookingForm;

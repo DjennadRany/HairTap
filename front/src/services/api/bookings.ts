@@ -149,9 +149,19 @@ class BookingService {
   }
 
   // Marquer une réservation comme terminée
-  async completeBooking(bookingId: string): Promise<BookingResponse> {
+  async completeBooking(
+    bookingId: string,
+    payload?: {
+      notes?: string;
+      geolocation?: {
+        latitude: number;
+        longitude: number;
+        accuracy?: number;
+      };
+    }
+  ): Promise<BookingResponse> {
     try {
-      const response = await api.put(`/bookings/${bookingId}/complete`);
+      const response = await api.put(`/bookings/${bookingId}/complete`, payload ?? {});
       return response.data;
     } catch (error: any) {
       console.error('Erreur lors de la finalisation de la réservation:', error);
