@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useSelector } from 'react-redux';
 import { selectCurrentUser } from '../store/slices/authSlice';
 import { userService } from '../services/api/users';
 import type { User } from '../types/models';
 import { FaStar, FaMapMarkerAlt, FaClock, FaPhone, FaEnvelope, FaArrowLeft } from 'react-icons/fa';
 import { MdVerified } from 'react-icons/md';
 import ServicesSection from '../components/ServicesSection';
+import { useAppSelector } from '../store/hooks';
 
 const ClientServicesPage = () => {
   const { coiffeurId } = useParams();
   const navigate = useNavigate();
-  const user = useSelector(selectCurrentUser) as User | null;
+  const user = useAppSelector(selectCurrentUser) as User | null;
   const [coiffeur, setCoiffeur] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 

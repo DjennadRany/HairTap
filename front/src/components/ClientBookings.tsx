@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useSelector } from 'react-redux';
 import { selectCurrentUser } from '../store/slices/authSlice';
 import { Card } from './ui/card';
 import { Button } from './ui/Button';
@@ -11,6 +10,7 @@ import ReviewForm from './ReviewForm';
 import Modal from './ui/Modal';
 import { getImageUrl, handleImageError, DEFAULT_USER_IMAGE } from '../utils/imageUtils';
 import type { User } from '../types/models';
+import { useAppSelector } from '../store/hooks';
 
 interface Booking {
   _id: string;
@@ -37,7 +37,7 @@ interface Booking {
 }
 
 const ClientBookings: React.FC = () => {
-  const user = useSelector(selectCurrentUser) as User | null;
+  const user = useAppSelector(selectCurrentUser) as User | null;
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

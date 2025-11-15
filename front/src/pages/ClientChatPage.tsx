@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { useSelector } from "react-redux";
 import { useSearchParams, useNavigate } from "react-router-dom";
+import { useAppSelector } from '../store/hooks';
 import { selectCurrentUser } from "../store/slices/authSlice";
 import { selectProfile } from "../store/slices/profileSlice";
 import ChatWindow from "../components/ChatWindow";
@@ -14,8 +14,8 @@ import { getImageUrl, handleImageError, DEFAULT_USER_IMAGE } from '../utils/imag
 import { useConnectionStatus } from '../hooks/useConnectionStatus';
 
 export const ClientChatPage: React.FC = () => {
-  const user = useSelector(selectCurrentUser);
-  const profile = useSelector(selectProfile);
+  const user = useAppSelector(selectCurrentUser);
+  const profile = useAppSelector(selectProfile);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [selectedCoiffeurId, setSelectedCoiffeurId] = useState<string | null>(null);

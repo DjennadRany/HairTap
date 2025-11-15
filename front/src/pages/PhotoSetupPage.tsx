@@ -1,14 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
 import { FaCamera, FaTimes, FaCheck, FaArrowRight } from 'react-icons/fa';
-import { RootState } from '../store';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { setUser } from '../store/slices/authSlice';
 
 const PhotoSetupPage: React.FC = () => {
   const navigate = useNavigate();
-  const dispatch = useDispatch();
-  const user = useSelector((state: RootState) => state.auth.user);
+  const dispatch = useAppDispatch();
+  const user = useAppSelector((state) => state.auth.user);
   
   const [photo, setPhoto] = useState<string>('');
   const [isUploading, setIsUploading] = useState(false);

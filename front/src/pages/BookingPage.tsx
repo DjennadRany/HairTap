@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useSelector } from 'react-redux';
 import { selectCurrentUser } from '../store/slices/authSlice';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/Button';
@@ -9,11 +8,12 @@ import { coiffeurService } from '../services/api/coiffeurs';
 import BookingForm from '../components/BookingForm';
 import ServiceCard from '../components/ServiceCard';
 import type { User } from '../types/models';
+import { useAppSelector } from '../store/hooks';
 
 const BookingPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const user = useSelector(selectCurrentUser);
+  const user = useAppSelector(selectCurrentUser);
   const [loading, setLoading] = useState(true);
   const [coiffeur, setCoiffeur] = useState<User | null>(null);
   const [services, setServices] = useState<any[]>([]);

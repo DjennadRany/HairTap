@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { useSelector } from 'react-redux';
 import { selectCurrentUser } from '../store/slices/authSlice';
 import ChatWindow from '../components/ChatWindow';
 import { getConversations } from '../hooks/useChat';
 import { userService } from '../services/api/users';
 import { User } from '../types/models';
 import { getImageUrl, handleImageError, DEFAULT_USER_IMAGE } from '../utils/imageUtils';
+import { useAppSelector } from '../store/hooks';
 
 export const CoiffeurChatPage: React.FC = () => {
-  const user = useSelector(selectCurrentUser);
+  const user = useAppSelector(selectCurrentUser);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [conversations, setConversations] = useState<any[]>([]);
   const [filteredConversations, setFilteredConversations] = useState<any[]>([]);

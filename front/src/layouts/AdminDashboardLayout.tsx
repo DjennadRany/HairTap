@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
-import { useSelector, useDispatch } from 'react-redux';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { selectCurrentUser, logout } from '../store/slices/authSlice';
 import { 
   FaChartBar, 
@@ -20,8 +20,8 @@ export const AdminDashboardLayout: React.FC<AdminDashboardLayoutProps> = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const dispatch = useDispatch();
-  const user = useSelector(selectCurrentUser);
+  const dispatch = useAppDispatch();
+  const user = useAppSelector(selectCurrentUser);
 
   const handleLogout = () => {
     dispatch(logout());

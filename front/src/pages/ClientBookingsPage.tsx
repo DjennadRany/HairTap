@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useSelector } from 'react-redux';
 import { selectCurrentUser } from '../store/slices/authSlice';
+import { useAppSelector } from '../store/hooks';
 import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/Button';
 import { FaCalendarAlt, FaClock, FaUser, FaCheck, FaTimes, FaMapMarkerAlt } from 'react-icons/fa';
@@ -36,7 +36,7 @@ interface BookingDisplay {
 }
 
 const ClientBookingsPage: React.FC = () => {
-  const user = useSelector(selectCurrentUser) as User | null;
+  const user = useAppSelector(selectCurrentUser) as User | null;
   const [bookings, setBookings] = useState<BookingDisplay[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

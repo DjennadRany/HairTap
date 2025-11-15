@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
+import { useAppDispatch } from '../store/hooks';
 import { setUser, setToken } from '../store/slices/authSlice';
 import { authService } from '../services/api/auth';
 import { FaUser, FaEnvelope, FaLock, FaPhone, FaMapMarkerAlt, FaBell, FaGlobe, FaCamera, FaTimes, FaCheck, FaCog } from 'react-icons/fa';
@@ -62,7 +62,7 @@ interface SignInData {
 
 const SignInClientPage: React.FC = () => {
   const navigate = useNavigate();
-  const dispatch = useDispatch();
+  const dispatch = useAppDispatch();
   const [currentStep, setCurrentStep] = useState(1);
   const [totalSteps] = useState(4);
   const [isLoading, setIsLoading] = useState(false);
