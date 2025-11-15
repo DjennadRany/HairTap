@@ -22,7 +22,7 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       try {
         setIsChecking(true);
         
-        // Vérifier d'abord le localStorage
+        // ✅ OPTIMISATION: Vérifier d'abord le localStorage (instantané)
         dispatch(checkAuth());
         
         const token = localStorage.getItem('token');
@@ -31,9 +31,17 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           return;
         }
 
-        // Vérifier la validité du token avec le serveur
+        // ✅ OPTIMISATION: Vérifier la validité du token avec le serveur (avec timeout)
         try {
-          const response = await authService.verifyToken();
+          // Créer un timeout pour éviter que l'app reste bloquée
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Timeout')), 5000)
+          );
+          
+          const response = await Promise.race([
+            authService.verifyToken(),
+            timeoutPromise
+          ]) as Awaited<ReturnType<typeof authService.verifyToken>>;
           
           // ✅ CORRECTION : GESTION CORRECTE DU RÔLE ADMIN
           let userRole: 'client' | 'coiffeur' | 'admin';
@@ -61,9 +69,12 @@ const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           
           dispatch(setToken(response.token));
           
-        } catch (error) {
-          console.error('Token invalide:', error);
-          // Token invalide, déconnecter l'utilisateur
+        } catch (error: any) {
+          // ✅ OPTIMISATION: Ne pas logger les timeouts comme des erreurs
+          if (error?.message !== 'Timeout') {
+            console.error('Token invalide:', error);
+          }
+          // Token invalide ou timeout, déconnecter l'utilisateur
           dispatch(logout());
           // Ne pas rediriger ici, laisser l'intercepteur axios gérer
         }

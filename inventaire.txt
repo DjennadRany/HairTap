@@ -1,0 +1,364 @@
+# INVENTAIRE COMPLET - APPLICATION TAPHAIR
+# =============================================
+
+## 📁 STRUCTURE GÉNÉRALE
+- Frontend: React + TypeScript + Vite
+- Backend: Node.js + Express + MongoDB
+- Date de création: 2024
+
+## 🎨 PAGES (TEMPLATES)
+### Pages Publiques
+- HomePage.tsx - Page d'accueil principale
+- AboutPage.tsx - Page à propos
+- ContactPage.tsx - Page de contact
+- LoginPage.tsx - Page de connexion générale
+- NotFoundPage.tsx - Page 404
+- PrivacyPage.tsx - Page de confidentialité
+- TermsPage.tsx - Page des conditions d'utilisation
+- CookiesPage.tsx - Page des cookies
+
+### Pages Client
+- SignInClientPage.tsx - Connexion client
+- OnboardingClientPage.tsx - Onboarding client
+- ClientDashboardPage.tsx - Tableau de bord client
+- ClientProfilePage.tsx - Profil client
+- ClientBookingsPage.tsx - Réservations client
+- ClientFavoritesPage.tsx - Favoris client
+- ClientServicesPage.tsx - Services client
+- ClientChatPage.tsx - Chat client
+- BookingPage.tsx - Page de réservation
+- PhotoSetupPage.tsx - Configuration photos
+
+### Pages Coiffeur
+- SignInCoiffeurPage.tsx - Connexion coiffeur
+- OnboardingProPage.tsx - Onboarding professionnel
+- CoiffeurDashboardPage.tsx - Tableau de bord coiffeur
+- CoiffeurProfilePage.tsx - Profil coiffeur
+- CoiffeurProfileEditPage.tsx - Édition profil coiffeur
+- CoiffeurReservationsPage.tsx - Réservations coiffeur
+- CoiffeurRevenuePage.tsx - Revenus coiffeur
+- CoiffeurChatPage.tsx - Chat coiffeur
+
+### Pages Admin
+- AdminDashboardPage.tsx - Tableau de bord admin
+- AdminAnalyticsPage.tsx - Analytics admin
+- AdminServicesPage.tsx - Gestion services admin
+- AdminSettingsPage.tsx - Paramètres admin
+- AdminUsersPage.tsx - Gestion utilisateurs admin
+
+### Pages Communes
+- ProfileEditPage.tsx - Édition de profil
+
+## 🧩 COMPOSANTS
+### Composants Principaux
+- AddressAutocomplete.tsx - Autocomplétion d'adresses
+- AddressDisplay.tsx - Affichage d'adresses
+- AddressForm.tsx - Formulaire d'adresses
+- AdminDebug.tsx - Debug admin
+- AdminNavigation.tsx - Navigation admin
+- ApiErrorHandler.tsx - Gestionnaire d'erreurs API
+- AuthProvider.tsx - Fournisseur d'authentification
+- AutoGeolocation.tsx - Géolocalisation automatique
+- BackgroundVideo.tsx - Vidéo de fond
+- BookingForm.tsx - Formulaire de réservation
+- BookingNotification.tsx - Notification de réservation
+- ChatStatusNotification.tsx - Notification statut chat
+- ChatSuggestions.tsx - Suggestions de chat
+- ChatWelcome.tsx - Accueil chat
+- ChatWindow.tsx - Fenêtre de chat
+- ClientBookings.tsx - Réservations client
+- CoiffeurBookings.tsx - Réservations coiffeur
+- CoiffeurCard.tsx - Carte coiffeur
+- CoiffeurInfoDisplay.tsx - Affichage infos coiffeur
+- ConnectionIndicator.tsx - Indicateur de connexion
+- ConnectionStatusManager.tsx - Gestionnaire statut connexion
+- Dashboard.tsx - Tableau de bord
+- DashboardStats.tsx - Statistiques tableau de bord
+- DragDropImageUpload.tsx - Upload d'images par glisser-déposer
+- FashionBackground.tsx - Arrière-plan mode
+- FavoriteStar.tsx - Étoile favori
+- Footer.tsx - Pied de page
+- FormattedBio.tsx - Bio formatée
+- Gallery.tsx - Galerie
+- GalleryHub.tsx - Hub galerie
+- HairSalonBackground.tsx - Arrière-plan salon
+- Header.tsx - En-tête
+- HorizontalSalonAddress.tsx - Adresse salon horizontale
+- ListCardToggle.tsx - Basculement liste/carte
+- LoadingScreen.tsx - Écran de chargement
+- LocalVideoBackground.tsx - Arrière-plan vidéo local
+- LocationSearchBar.tsx - Barre de recherche de localisation
+- MainHub.tsx - Hub principal
+- Map.tsx - Carte
+- OrdersManagement.tsx - Gestion des commandes
+- PreferencesDisplay.tsx - Affichage des préférences
+- PricingManager.tsx - Gestionnaire de prix
+- ProductCard.tsx - Carte produit
+- ProductGallery.tsx - Galerie produits
+- ProductModal.tsx - Modal produit
+- ProductOrderModal.tsx - Modal commande produit
+- ProductPaymentModal.tsx - Modal paiement produit
+- ProductsSection.tsx - Section produits
+- ProfileInfoDisplay.tsx - Affichage infos profil
+- ProtectedRoute.tsx - Route protégée
+- PushNotification.tsx - Notification push
+- ReviewForm.tsx - Formulaire d'avis
+- RichTextEditor.tsx - Éditeur de texte riche
+- SalonAddressForm.tsx - Formulaire adresse salon
+- SearchFilters.tsx - Filtres de recherche
+- ServiceCard.tsx - Carte service
+- ServiceManager.tsx - Gestionnaire de services
+- ServiceModal.tsx - Modal service
+- ServicesSection.tsx - Section services
+- SimplePhotoUpload.tsx - Upload photo simple
+- SimpleVideoTest.tsx - Test vidéo simple
+- SmartKeywordInput.tsx - Input mots-clés intelligent
+- SpecialtyManager.tsx - Gestionnaire de spécialités
+- StepIndicator.tsx - Indicateur d'étapes
+- StepNavigation.tsx - Navigation par étapes
+- TestVideo.tsx - Test vidéo
+- WorkingSlotManager.tsx - Gestionnaire créneaux
+
+### Composants Admin (16 composants)
+- AdminAnalyticsOverview.tsx - Vue d'ensemble analytics admin
+- AdminCommissionSettings.tsx - Paramètres commission admin
+- AdminConversionFunnel.tsx - Entonnoir de conversion admin
+- AdminCustomReports.tsx - Rapports personnalisés admin
+- AdminGeographicMap.tsx - Carte géographique admin
+- AdminNotificationSettings.tsx - Paramètres notifications admin
+- AdminPlatformSettings.tsx - Paramètres plateforme admin
+- AdminRealTimeMetrics.tsx - Métriques temps réel admin
+- AdminRevenueAnalytics.tsx - Analytics revenus admin
+- AdminSecuritySettings.tsx - Paramètres sécurité admin
+- AdminServiceAnalytics.tsx - Analytics services admin
+- AdminServiceFilters.tsx - Filtres services admin
+- AdminServiceModeration.tsx - Modération services admin
+- AdminServiceReports.tsx - Rapports services admin
+- AdminServicesGrid.tsx - Grille services admin
+- AdminUserBehaviorChart.tsx - Graphique comportement utilisateurs admin
+
+### Composants UI (8 composants)
+- BookingButton.tsx - Bouton de réservation
+- Button.tsx - Bouton générique
+- card.tsx - Composant carte
+- Input.tsx - Champ de saisie
+- Modal.tsx - Modal générique
+- Notification.tsx - Notification
+- NotificationManager.tsx - Gestionnaire de notifications
+- Toast.tsx - Toast notification
+
+### Composants Spécialisés
+- booking/AdvancedBookingCard.tsx - Carte réservation avancée
+- calendar/IntelligentCalendar.tsx - Calendrier intelligent
+- coiffeur/TimeChangeRequestsManager.tsx - Gestionnaire demandes changement horaire
+- modals/TimeChangeModal.tsx - Modal changement horaire
+- pricing/DynamicPricingDisplay.tsx - Affichage prix dynamique
+
+## 🏗️ LAYOUTS
+- AdminDashboardLayout.tsx - Layout tableau de bord admin
+- AdminLayout.tsx - Layout admin général
+- AuthLayout.tsx - Layout authentification
+- ClientDashboardLayout.tsx - Layout tableau de bord client
+- CoiffeurDashboardLayout.tsx - Layout tableau de bord coiffeur
+- ErrorBoundaryLayout.tsx - Layout gestion d'erreurs
+- PublicLayout.tsx - Layout public
+
+## 🔌 SERVICES API (17 services)
+- admin.ts - Services admin
+- api.ts - Services API généraux
+- auth.ts - Services authentification
+- axios.ts - Configuration Axios
+- bookings.ts - Services réservations
+- chat.ts - Services chat
+- coiffeurs.ts - Services coiffeurs
+- connection.ts - Services connexion
+- favorites.ts - Services favoris
+- images.ts - Services images
+- orders.ts - Services commandes
+- payments.ts - Services paiements
+- products.ts - Services produits
+- reviews.ts - Services avis
+- services.ts - Services généraux
+- timeChangeRequests.ts - Services demandes changement horaire
+- users.ts - Services utilisateurs
+
+## 🗄️ MODÈLES BACKEND (15 modèles)
+- Booking.js - Modèle réservation
+- Connection.js - Modèle connexion
+- Conversation.js - Modèle conversation
+- GlobalSpecialty.js - Modèle spécialité globale
+- Message.js - Modèle message
+- Notification.js - Modèle notification
+- Order.js - Modèle commande
+- Pricing.js - Modèle tarification
+- Product.js - Modèle produit
+- Review.js - Modèle avis
+- Service.js - Modèle service
+- Specialty.js - Modèle spécialité
+- TimeChangeRequest.js - Modèle demande changement horaire
+- User.js - Modèle utilisateur
+- WorkingSlot.js - Modèle créneau de travail
+
+## 🛣️ ROUTES BACKEND (18 routes)
+- admin.js - Routes admin
+- auth.js - Routes authentification
+- bookings.js - Routes réservations
+- chat.js - Routes chat
+- coiffeurs.js - Routes coiffeurs
+- connections.js - Routes connexions
+- favorites.js - Routes favoris
+- globalSpecialties.js - Routes spécialités globales
+- notifications.js - Routes notifications
+- orders.js - Routes commandes
+- pricing.js - Routes tarification
+- products.js - Routes produits
+- reviews.js - Routes avis
+- services.js - Routes services
+- specialties.js - Routes spécialités
+- time-change-requests.js - Routes demandes changement horaire
+- users.js - Routes utilisateurs
+- working-slots.js - Routes créneaux de travail
+
+## 🔧 MIDDLEWARE BACKEND (4 middlewares)
+- auth.js - Middleware authentification
+- coiffeurAuth.js - Middleware authentification coiffeur
+- errorHandler.js - Middleware gestion d'erreurs
+- validate.js - Middleware validation
+
+## 📦 DÉPENDANCES FRONTEND
+### Dépendances Principales
+- @heroicons/react: ^2.2.0 - Icônes Heroicons
+- @hookform/resolvers: ^3.10.0 - Résolveurs React Hook Form
+- @radix-ui/react-slot: ^1.0.2 - Composant Slot Radix UI
+- @react-oauth/google: ^0.11.1 - Authentification Google OAuth
+- @reduxjs/toolkit: ^2.0.1 - Toolkit Redux
+- @shadcn/ui: ^0.0.4 - Système de composants UI
+- @stripe/react-stripe-js: ^2.4.0 - Intégration Stripe React
+- @stripe/stripe-js: ^2.4.0 - SDK Stripe
+- @turf/turf: ^7.2.0 - Bibliothèque géospatiale
+- @types/axios: ^0.14.4 - Types TypeScript pour Axios
+- @types/google.maps: ^3.58.1 - Types Google Maps
+- @types/leaflet: ^1.9.18 - Types Leaflet
+- @types/leaflet-routing-machine: ^3.2.8 - Types Leaflet Routing
+- @types/leaflet.markercluster: ^1.5.5 - Types Leaflet MarkerCluster
+- axios: ^1.9.0 - Client HTTP
+- class-variance-authority: ^0.7.0 - Gestion des variantes de classes
+- clsx: ^2.1.1 - Utilitaire pour classes CSS
+- date-fns: ^4.1.0 - Manipulation de dates
+- framer-motion: ^10.18.0 - Animations
+- leaflet: ^1.9.4 - Cartes interactives
+- leaflet-routing-machine: ^3.2.12 - Routage Leaflet
+- leaflet.markercluster: ^1.5.3 - Clustering de marqueurs
+- lucide-react: ^0.294.0 - Icônes Lucide
+- react: ^18.2.0 - Framework React
+- react-dom: ^18.2.0 - DOM React
+- react-error-boundary: ^6.0.0 - Gestion d'erreurs React
+- react-hook-form: ^7.56.4 - Gestion de formulaires
+- react-icons: ^5.5.0 - Icônes React
+- react-redux: ^9.0.4 - Intégration Redux React
+- react-router-dom: ^6.20.1 - Routage React
+- redux-persist: ^6.0.0 - Persistance Redux
+- socket.io-client: ^4.8.1 - Client Socket.IO
+- tailwind-merge: ^2.6.0 - Fusion Tailwind CSS
+- tailwindcss-animate: ^1.0.7 - Animations Tailwind
+- uuid: ^11.1.0 - Génération d'UUID
+- yup: ^1.6.1 - Validation de schémas
+
+### Dépendances de Développement Frontend
+- @testing-library/jest-dom: ^6.0.0 - Utilitaires de test Jest DOM
+- @testing-library/react: ^14.0.0 - Utilitaires de test React
+- @testing-library/user-event: ^14.0.0 - Simulation d'événements utilisateur
+- @types/date-fns: ^2.6.3 - Types date-fns
+- @types/jest: ^29.0.0 - Types Jest
+- @types/node: ^20.10.4 - Types Node.js
+- @types/react: ^18.2.45 - Types React
+- @types/react-dom: ^18.2.17 - Types React DOM
+- @typescript-eslint/eslint-plugin: ^6.21.0 - Plugin ESLint TypeScript
+- @typescript-eslint/parser: ^6.21.0 - Parser ESLint TypeScript
+- @vitejs/plugin-react: ^4.2.1 - Plugin Vite React
+- autoprefixer: ^10.4.16 - Autoprefixer CSS
+- eslint: ^8.55.0 - Linter JavaScript/TypeScript
+- eslint-plugin-react-hooks: ^4.6.0 - Plugin ESLint React Hooks
+- eslint-plugin-react-refresh: ^0.4.5 - Plugin ESLint React Refresh
+- gh-pages: ^6.3.0 - Déploiement GitHub Pages
+- jest: ^29.0.0 - Framework de test
+- jest-environment-jsdom: ^30.0.4 - Environnement Jest JSDOM
+- json-server: ^0.17.4 - Serveur JSON pour tests
+- msw: ^2.0.11 - Mock Service Worker
+- postcss: ^8.4.32 - PostCSS
+- prettier: ^3.1.1 - Formateur de code
+- tailwindcss: ^3.3.6 - Framework CSS
+- ts-jest: ^29.0.0 - Preset Jest TypeScript
+- typescript: ^5.3.3 - Compilateur TypeScript
+- typescript-eslint: ^8.32.1 - ESLint TypeScript
+- vite: ^5.0.8 - Build tool Vite
+- vitest: ^1.0.4 - Framework de test Vite
+
+## 📦 DÉPENDANCES BACKEND
+### Dépendances Principales
+- bcryptjs: ^2.4.3 - Hachage de mots de passe
+- compression: ^1.7.4 - Compression de réponses
+- cors: ^2.8.5 - Cross-Origin Resource Sharing
+- dotenv: ^16.0.3 - Gestion des variables d'environnement
+- express: ^4.18.2 - Framework web Node.js
+- express-rate-limit: ^7.1.5 - Limitation de taux
+- express-validator: ^7.0.1 - Validation de données
+- google-auth-library: ^9.6.3 - Authentification Google
+- helmet: ^7.1.0 - Sécurité HTTP
+- jsonwebtoken: ^9.0.2 - Tokens JWT
+- lucide-react: ^0.540.0 - Icônes (version backend)
+- mongoose: ^8.0.3 - ODM MongoDB
+- morgan: ^1.10.0 - Logger HTTP
+- multer: ^2.0.2 - Gestion upload de fichiers
+- sharp: ^0.34.3 - Traitement d'images
+- swagger-jsdoc: ^6.2.8 - Documentation API Swagger
+- swagger-ui-express: ^5.0.0 - Interface Swagger UI
+- uuid: ^11.1.0 - Génération d'UUID
+- winston: ^3.11.0 - Système de logging
+
+### Dépendances de Développement Backend
+- @babel/cli: ^7.23.4 - CLI Babel
+- @babel/core: ^7.23.3 - Core Babel
+- @babel/preset-env: ^7.23.3 - Preset Babel environnement
+- jest: ^29.7.0 - Framework de test
+- nodemon: ^3.0.2 - Moniteur de développement
+- supertest: ^6.3.3 - Test d'API HTTP
+
+## 📊 STATISTIQUES GÉNÉRALES
+- Total Pages: 32
+- Total Composants: 80+
+- Total Layouts: 7
+- Total Services API: 17
+- Total Modèles Backend: 15
+- Total Routes Backend: 18
+- Total Middleware Backend: 4
+- Total Dépendances Frontend: 53
+- Total Dépendances Backend: 25
+
+## 🎯 FONCTIONNALITÉS PRINCIPALES
+- Système d'authentification multi-rôles (Client/Coiffeur/Admin)
+- Gestion des réservations et créneaux
+- Système de chat en temps réel
+- Géolocalisation et cartes interactives
+- Upload et gestion d'images/vidéos
+- Système de paiement Stripe
+- Analytics et reporting avancés
+- Gestion des favoris et avis
+- Notifications push
+- Interface responsive et moderne
+
+## 🔧 TECHNOLOGIES UTILISÉES
+- Frontend: React 18, TypeScript, Vite, Tailwind CSS
+- Backend: Node.js, Express, MongoDB, Mongoose
+- Cartes: Leaflet, Google Maps
+- Paiements: Stripe
+- Authentification: JWT, Google OAuth
+- Real-time: Socket.IO
+- State Management: Redux Toolkit
+- Testing: Jest, Vitest, Testing Library
+- Build Tools: Vite, Babel
+- Linting: ESLint, Prettier
+
+---
+Inventaire généré le: $(date)
+Version: 1.0

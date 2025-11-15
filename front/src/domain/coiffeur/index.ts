@@ -1,9 +1,9 @@
 // Domaine Coiffeur : logique métier spécifique aux coiffeurs (front)
 
-import axios from 'axios';
+import httpClient from '../../api/httpClient';
 
 export async function fetchCoiffeurs() {
-  const response = await axios.get('/api/coiffeurs');
+  const response = await httpClient.get('/coiffeurs');
   return response.data;
 }
 

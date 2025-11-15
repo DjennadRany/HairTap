@@ -154,3 +154,4 @@ const CoiffeurReservationsPage: React.FC = () => {
 **Version:** v0.7.19  
 **Statut:** ✅ Documentation complète
 
+

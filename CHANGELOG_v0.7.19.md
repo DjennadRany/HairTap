@@ -705,3 +705,4 @@ const CoiffeurReservationsPage: React.FC = () => {
 **Architecture utilisée:** v0.7.18  
 **Statut:** ✅ Complet et fonctionnel
 
+

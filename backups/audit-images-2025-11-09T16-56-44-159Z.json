@@ -1,0 +1,487 @@
+{
+  "timestamp": "2025-11-09T16:56:44.158Z",
+  "summary": {
+    "totalServices": 66,
+    "servicesWithGoodImages": 0,
+    "servicesWithBadImages": 59,
+    "servicesWithoutImages": 7,
+    "realImageFilesCount": 15
+  },
+  "imageUrlsByCategory": {},
+  "servicesWithBadImages": [
+    {
+      "_id": "68a0cc6d8d30c40c3be6dc49",
+      "name": "Coupe courte",
+      "coiffeur": "Julie Bernard",
+      "category": "coupe",
+      "currentImageUrl": "/default-avatar.png"
+    },
+    {
+      "_id": "68a0cc6d8d30c40c3be6dc53",
+      "name": "Coupe courte",
+      "coiffeur": "Thomas Moreau",
+      "category": "coupe",
+      "currentImageUrl": "/default-avatar.png"
+    },
+    {
+      "_id": "6910bc48decccc292bfeb185",
+      "name": "Coupe moderne",
+      "coiffeur": "Marie Dubois",
+      "category": "coupe",
+      "currentImageUrl": "/default-avatar.png"
+    },
+    {
+      "_id": "6910bc48decccc292bfeb187",
+      "name": "Coloration",
+      "coiffeur": "Marie Dubois",
+      "category": "coloration",
+      "currentImageUrl": "/default-avatar.png"
+    },
+    {
+      "_id": "6910bc48decccc292bfeb189",
+      "name": "Lissage",
+      "coiffeur": "Marie Dubois",
+      "category": "lissage",
+      "currentImageUrl": "/default-avatar.png"
+    },
+    {
+      "_id": "6910bc48decccc292bfeb18c",
+      "name": "Lissage",
+      "coiffeur": "Camille Rousseau",
+      "category": "lissage",
+      "currentImageUrl": "/default-avatar.png"
+    },
+    {
+      "_id": "6910bc48decccc292bfeb18e",
+      "name": "Brésilien",
+      "coiffeur": "Camille Rousseau",
+      "category": "lissage",
+      "currentImageUrl": "/default-avatar.png"
+    },
+    {
+      "_id": "6910bc48decccc292bfeb190",
+      "name": "Coupe",
+      "coiffeur": "Camille Rousseau",
+      "category": "coupe",
+      "currentImageUrl": "/default-avatar.png"
+    },
+    {
+      "_id": "6910bc48decccc292bfeb193",
+      "name": "Coiffures de mariage",
+      "coiffeur": "Pierre Martin",
+      "category": "autre",
+      "currentImageUrl": "/default-avatar.png"
+    },
+    {
+      "_id": "6910c22fc95611292c88b863",
+      "name": "Coupe femme",
+      "coiffeur": "Sophie Laurent",
+      "category": "coupe",
+      "currentImageUrl": "/default-avatar.png"
+    },
+    {
+      "_id": "6910c22fc95611292c88b869",
+      "name": "Coupe homme",
+      "coiffeur": "Sophie Laurent",
+      "category": "coupe",
+      "currentImageUrl": "/default-avatar.png"
+    },
+    {
+      "_id": "6910c22fc95611292c88b86d",
+      "name": "Coloration complète",
+      "coiffeur": "Sophie Laurent",
+      "category": "coloration",
+      "currentImageUrl": "/default-avatar.png"
+    },
+    {
+      "_id": "6910c22fc95611292c88b871",
+      "name": "Brushing",
+      "coiffeur": "Sophie Laurent",
+      "category": "brushing",
+      "currentImageUrl": "/default-avatar.png"
+    },
+    {
+      "_id": "6910c22fc95611292c88b875",
+      "name": "Lissage brésilien",
+      "coiffeur": "Sophie Laurent",
+      "category": "lissage",
+      "currentImageUrl": "/default-avatar.png"
+    },
+    {
+      "_id": "6910c230c95611292c88b883",
+      "name": "Coupe femme",
+      "coiffeur": "Julien Moreau",
+      "category": "coupe",
+      "currentImageUrl": "/default-avatar.png"
+    },
+    {
+      "_id": "6910c230c95611292c88b887",
+      "name": "Coupe homme",
+      "coiffeur": "Julien Moreau",
+      "category": "coupe",
+      "currentImageUrl": "/default-avatar.png"
+    },
+    {
+      "_id": "6910c230c95611292c88b88b",
+      "name": "Coloration complète",
+      "coiffeur": "Julien Moreau",
+      "category": "coloration",
+      "currentImageUrl": "/default-avatar.png"
+    },
+    {
+      "_id": "6910c230c95611292c88b88f",
+      "name": "Brushing",
+      "coiffeur": "Julien Moreau",
+      "category": "brushing",
+      "currentImageUrl": "/default-avatar.png"
+    },
+    {
+      "_id": "6910c230c95611292c88b893",
+      "name": "Lissage brésilien",
+      "coiffeur": "Julien Moreau",
+      "category": "lissage",
+      "currentImageUrl": "/default-avatar.png"
+    },
+    {
+      "_id": "6910c230c95611292c88b8a1",
+      "name": "Coupe femme",
+      "coiffeur": "Emma Bernard",
+      "category": "coupe",
+      "currentImageUrl": "/default-avatar.png"
+    },
+    {
+      "_id": "6910c230c95611292c88b8a5",
+      "name": "Coupe homme",
+      "coiffeur": "Emma Bernard",
+      "category": "coupe",
+      "currentImageUrl": "/default-avatar.png"
+    },
+    {
+      "_id": "6910c230c95611292c88b8a9",
+      "name": "Coloration complète",
+      "coiffeur": "Emma Bernard",
+      "category": "coloration",
+      "currentImageUrl": "/default-avatar.png"
+    },
+    {
+      "_id": "6910c230c95611292c88b8ad",
+      "name": "Brushing",
+      "coiffeur": "Emma Bernard",
+      "category": "brushing",
+      "currentImageUrl": "/default-avatar.png"
+    },
+    {
+      "_id": "6910c230c95611292c88b8b1",
+      "name": "Lissage brésilien",
+      "coiffeur": "Emma Bernard",
+      "category": "lissage",
+      "currentImageUrl": "/default-avatar.png"
+    },
+    {
+      "_id": "6910c230c95611292c88b8bf",
+      "name": "Coupe femme",
+      "coiffeur": "Thomas Petit",
+      "category": "coupe",
+      "currentImageUrl": "/default-avatar.png"
+    },
+    {
+      "_id": "6910c230c95611292c88b8c3",
+      "name": "Coupe homme",
+      "coiffeur": "Thomas Petit",
+      "category": "coupe",
+      "currentImageUrl": "/default-avatar.png"
+    },
+    {
+      "_id": "6910c230c95611292c88b8c7",
+      "name": "Coloration complète",
+      "coiffeur": "Thomas Petit",
+      "category": "coloration",
+      "currentImageUrl": "/default-avatar.png"
+    },
+    {
+      "_id": "6910c230c95611292c88b8cb",
+      "name": "Brushing",
+      "coiffeur": "Thomas Petit",
+      "category": "brushing",
+      "currentImageUrl": "/default-avatar.png"
+    },
+    {
+      "_id": "6910c230c95611292c88b8cf",
+      "name": "Lissage brésilien",
+      "coiffeur": "Thomas Petit",
+      "category": "lissage",
+      "currentImageUrl": "/default-avatar.png"
+    },
+    {
+      "_id": "6910c230c95611292c88b8dd",
+      "name": "Coupe femme",
+      "coiffeur": "Léa Martin",
+      "category": "coupe",
+      "currentImageUrl": "/default-avatar.png"
+    },
+    {
+      "_id": "6910c230c95611292c88b8e1",
+      "name": "Coupe homme",
+      "coiffeur": "Léa Martin",
+      "category": "coupe",
+      "currentImageUrl": "/default-avatar.png"
+    },
+    {
+      "_id": "6910c230c95611292c88b8e5",
+      "name": "Coloration complète",
+      "coiffeur": "Léa Martin",
+      "category": "coloration",
+      "currentImageUrl": "/default-avatar.png"
+    },
+    {
+      "_id": "6910c230c95611292c88b8e9",
+      "name": "Brushing",
+      "coiffeur": "Léa Martin",
+      "category": "brushing",
+      "currentImageUrl": "/default-avatar.png"
+    },
+    {
+      "_id": "6910c230c95611292c88b8ed",
+      "name": "Lissage brésilien",
+      "coiffeur": "Léa Martin",
+      "category": "lissage",
+      "currentImageUrl": "/default-avatar.png"
+    },
+    {
+      "_id": "6910c231c95611292c88b8fb",
+      "name": "Coupe femme",
+      "coiffeur": "Antoine Rousseau",
+      "category": "coupe",
+      "currentImageUrl": "/default-avatar.png"
+    },
+    {
+      "_id": "6910c231c95611292c88b8ff",
+      "name": "Coupe homme",
+      "coiffeur": "Antoine Rousseau",
+      "category": "coupe",
+      "currentImageUrl": "/default-avatar.png"
+    },
+    {
+      "_id": "6910c231c95611292c88b903",
+      "name": "Coloration complète",
+      "coiffeur": "Antoine Rousseau",
+      "category": "coloration",
+      "currentImageUrl": "/default-avatar.png"
+    },
+    {
+      "_id": "6910c231c95611292c88b907",
+      "name": "Brushing",
+      "coiffeur": "Antoine Rousseau",
+      "category": "brushing",
+      "currentImageUrl": "/default-avatar.png"
+    },
+    {
+      "_id": "6910c231c95611292c88b90b",
+      "name": "Lissage brésilien",
+      "coiffeur": "Antoine Rousseau",
+      "category": "lissage",
+      "currentImageUrl": "/default-avatar.png"
+    },
+    {
+      "_id": "6910c231c95611292c88b919",
+      "name": "Coupe femme",
+      "coiffeur": "Camille Dubois",
+      "category": "coupe",
+      "currentImageUrl": "/default-avatar.png"
+    },
+    {
+      "_id": "6910c231c95611292c88b91d",
+      "name": "Coupe homme",
+      "coiffeur": "Camille Dubois",
+      "category": "coupe",
+      "currentImageUrl": "/default-avatar.png"
+    },
+    {
+      "_id": "6910c231c95611292c88b921",
+      "name": "Coloration complète",
+      "coiffeur": "Camille Dubois",
+      "category": "coloration",
+      "currentImageUrl": "/default-avatar.png"
+    },
+    {
+      "_id": "6910c231c95611292c88b925",
+      "name": "Brushing",
+      "coiffeur": "Camille Dubois",
+      "category": "brushing",
+      "currentImageUrl": "/default-avatar.png"
+    },
+    {
+      "_id": "6910c231c95611292c88b929",
+      "name": "Lissage brésilien",
+      "coiffeur": "Camille Dubois",
+      "category": "lissage",
+      "currentImageUrl": "/default-avatar.png"
+    },
+    {
+      "_id": "6910c231c95611292c88b937",
+      "name": "Coupe femme",
+      "coiffeur": "Maxime Lefebvre",
+      "category": "coupe",
+      "currentImageUrl": "/default-avatar.png"
+    },
+    {
+      "_id": "6910c231c95611292c88b93b",
+      "name": "Coupe homme",
+      "coiffeur": "Maxime Lefebvre",
+      "category": "coupe",
+      "currentImageUrl": "/default-avatar.png"
+    },
+    {
+      "_id": "6910c231c95611292c88b93f",
+      "name": "Coloration complète",
+      "coiffeur": "Maxime Lefebvre",
+      "category": "coloration",
+      "currentImageUrl": "/default-avatar.png"
+    },
+    {
+      "_id": "6910c231c95611292c88b943",
+      "name": "Brushing",
+      "coiffeur": "Maxime Lefebvre",
+      "category": "brushing",
+      "currentImageUrl": "/default-avatar.png"
+    },
+    {
+      "_id": "6910c231c95611292c88b947",
+      "name": "Lissage brésilien",
+      "coiffeur": "Maxime Lefebvre",
+      "category": "lissage",
+      "currentImageUrl": "/default-avatar.png"
+    },
+    {
+      "_id": "6910c231c95611292c88b955",
+      "name": "Coupe femme",
+      "coiffeur": "Clara Simon",
+      "category": "coupe",
+      "currentImageUrl": "/default-avatar.png"
+    },
+    {
+      "_id": "6910c231c95611292c88b959",
+      "name": "Coupe homme",
+      "coiffeur": "Clara Simon",
+      "category": "coupe",
+      "currentImageUrl": "/default-avatar.png"
+    },
+    {
+      "_id": "6910c231c95611292c88b95d",
+      "name": "Coloration complète",
+      "coiffeur": "Clara Simon",
+      "category": "coloration",
+      "currentImageUrl": "/default-avatar.png"
+    },
+    {
+      "_id": "6910c231c95611292c88b961",
+      "name": "Brushing",
+      "coiffeur": "Clara Simon",
+      "category": "brushing",
+      "currentImageUrl": "/default-avatar.png"
+    },
+    {
+      "_id": "6910c231c95611292c88b965",
+      "name": "Lissage brésilien",
+      "coiffeur": "Clara Simon",
+      "category": "lissage",
+      "currentImageUrl": "/default-avatar.png"
+    },
+    {
+      "_id": "6910c232c95611292c88b973",
+      "name": "Coupe femme",
+      "coiffeur": "Nicolas Girard",
+      "category": "coupe",
+      "currentImageUrl": "/default-avatar.png"
+    },
+    {
+      "_id": "6910c232c95611292c88b977",
+      "name": "Coupe homme",
+      "coiffeur": "Nicolas Girard",
+      "category": "coupe",
+      "currentImageUrl": "/default-avatar.png"
+    },
+    {
+      "_id": "6910c232c95611292c88b97b",
+      "name": "Coloration complète",
+      "coiffeur": "Nicolas Girard",
+      "category": "coloration",
+      "currentImageUrl": "/default-avatar.png"
+    },
+    {
+      "_id": "6910c232c95611292c88b97f",
+      "name": "Brushing",
+      "coiffeur": "Nicolas Girard",
+      "category": "brushing",
+      "currentImageUrl": "/default-avatar.png"
+    },
+    {
+      "_id": "6910c232c95611292c88b983",
+      "name": "Lissage brésilien",
+      "coiffeur": "Nicolas Girard",
+      "category": "lissage",
+      "currentImageUrl": "/default-avatar.png"
+    }
+  ],
+  "servicesWithoutImages": [
+    {
+      "_id": "68a0be98c6b71bfecaa651c8",
+      "name": "Coloration Balayage",
+      "coiffeur": "Inconnu",
+      "category": "coloration"
+    },
+    {
+      "_id": "68a0be98c6b71bfecaa651d3",
+      "name": "Brushing Volume",
+      "coiffeur": "Inconnu",
+      "category": "brushing"
+    },
+    {
+      "_id": "68a0be98c6b71bfecaa651de",
+      "name": "Coupe Homme Classique",
+      "coiffeur": "Inconnu",
+      "category": "coupe"
+    },
+    {
+      "_id": "68a0be98c6b71bfecaa651e7",
+      "name": "Lissage Brésilien",
+      "coiffeur": "Inconnu",
+      "category": "lissage"
+    },
+    {
+      "_id": "68a0be98c6b71bfecaa651f2",
+      "name": "Extension Cheveux",
+      "coiffeur": "Inconnu",
+      "category": "autre"
+    },
+    {
+      "_id": "68a0cc6d8d30c40c3be6dc4d",
+      "name": "Service Léa Dubois",
+      "coiffeur": "Léa Dubois",
+      "category": "coupe"
+    },
+    {
+      "_id": "68a0cc6d8d30c40c3be6dc50",
+      "name": "Coupe courte",
+      "coiffeur": "Sophie Martin",
+      "category": "coupe"
+    }
+  ],
+  "realImageFiles": [
+    "service-6839ca0936ec3cfc09c649f7-1754309684774-2d47nimqhnc.jpg",
+    "service-6839ca0936ec3cfc09c649f8-1754309405962-l5ooi921qgh.jpg",
+    "service-6839ca0936ec3cfc09c649f8-1754309563571-d1aiqa2xyds.jpg",
+    "service-6839ca0936ec3cfc09c649f8-1754407986720-nsg7dffb0td.jpg",
+    "service-6839ca0936ec3cfc09c649f8-1754409907176-9sglf1moz1m.jpg",
+    "service-6839ca0936ec3cfc09c649fb-1754310042658-7749hst9mhl.jpg",
+    "service-6839ca0936ec3cfc09c649fb-1754310075656-n6ze9gjpic.jpg",
+    "service-6839ca0936ec3cfc09c649fc-1754310098383-w7hgqpo3.jpg",
+    "service-6887883e89430382f7762f50-1754402358585-ojh9vbb441.jpg",
+    "service-6887883e89430382f7762f50-1754403124920-589w3s7azou.jpg",
+    "service-689242768bb1c05a8afd57ab-1754415749110-3us2kfq0utu.jpg",
+    "service-689242c88bb1c05a8afd580c-1754415902375-9pz00kel98l.jpg",
+    "service-6892566d62872f415680d19b-1754420866182-nm8nwsgk9i.jpg",
+    "service-68f8f40d8559a314a17643d1-1761146466638-k4eiy7ptjbd.mp4",
+    "service-68f8faa6a03b6cbc0750fbab-1761152351390-sqrd0hs2fb.mp4"
+  ]
+}

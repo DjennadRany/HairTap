@@ -1,0 +1,7 @@
+﻿git : fatal: path 'front/src/components/shared/gallery/GalleryHub.tsx' exists on disk, but not in 'main'
+Au caractère C:\Users\Malik\AppData\Local\Temp\ps-script-fd531b33-84b1-4daa-a3c8-e34623c0cbc6.ps1:81 : 36
++ ... op\TapHair; git show main:front/src/components/shared/gallery/Gallery ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (fatal: path 'fr...t not in 'main':String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 

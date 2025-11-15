@@ -10,7 +10,9 @@ import paymentReducer from './slices/paymentSlice';
 const authPersistConfig = {
   key: 'auth',
   storage,
-  whitelist: ['user'],
+  whitelist: ['user'], // ✅ OPTIMISATION: Ne persister que l'utilisateur, pas le token (sécurité)
+  // ✅ OPTIMISATION: Désactiver la transformation pour améliorer les performances
+  transforms: [],
 };
 
 const redirectPersistConfig = {

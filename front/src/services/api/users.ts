@@ -4,12 +4,12 @@ import type { User } from '../../types/models';
 const API_URL = '/users';
 
 export const userService = {
-  async getUser(id: string): Promise<User> {
-    console.log('🔍 getUser appelé avec ID:', id);
+  async getUser(id: string, includeConnectionStatus: boolean = false): Promise<User> {
     const response = await api.get<User>(`${API_URL}/${id}`);
     
-    // Récupérer automatiquement le statut de connexion si c'est un coiffeur
-    if (response.data.role === 'coiffeur') {
+    // ✅ OPTIMISATION: Récupérer le statut de connexion uniquement si demandé explicitement
+    // Cela évite des appels API inutiles au chargement
+    if (includeConnectionStatus && response.data.role === 'coiffeur') {
       try {
         const connectionResponse = await api.get(`/connections/status/${id}`);
         const connectionData = connectionResponse.data;

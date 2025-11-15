@@ -1,0 +1,137 @@
+{
+  "timestamp": "2025-11-09T17:05:57.110Z",
+  "summary": {
+    "totalCoiffeurs": 17,
+    "coiffeursWithGoodPhotos": 0,
+    "coiffeursWithBadPhotos": 0,
+    "coiffeursWithoutPhotos": 17,
+    "realImageFilesCount": 20
+  },
+  "coiffeursWithBadPhotos": [],
+  "coiffeursWithoutPhotos": [
+    {
+      "_id": "6839ca0736ec3cfc09c649ec",
+      "name": "Marie Dubois",
+      "email": "marie.dubois@taphair.com",
+      "currentPhoto": "/default-avatar.png"
+    },
+    {
+      "_id": "6839ca0736ec3cfc09c649ed",
+      "name": "Pierre Martin",
+      "email": "pierre.martin@taphair.com",
+      "currentPhoto": "/default-avatar.png"
+    },
+    {
+      "_id": "68a0c26f371ebc5a109e217f",
+      "name": "Sophie Martin",
+      "email": "sophie.martin@taphair.com",
+      "currentPhoto": "/default-avatar.png"
+    },
+    {
+      "_id": "68a0c270371ebc5a109e2181",
+      "name": "Julie Bernard",
+      "email": "julie.bernard@taphair.com",
+      "currentPhoto": "/default-avatar.png"
+    },
+    {
+      "_id": "68a0c270371ebc5a109e2183",
+      "name": "Thomas Moreau",
+      "email": "thomas.moreau@taphair.com",
+      "currentPhoto": "/default-avatar.png"
+    },
+    {
+      "_id": "68a0c271371ebc5a109e2185",
+      "name": "Camille Rousseau",
+      "email": "camille.rousseau@taphair.com",
+      "currentPhoto": "/default-avatar.png"
+    },
+    {
+      "_id": "68a0c271371ebc5a109e2187",
+      "name": "Léa Dubois",
+      "email": "lea.dubois@taphair.com",
+      "currentPhoto": "/default-avatar.png"
+    },
+    {
+      "_id": "6910c22fc95611292c88b859",
+      "name": "Sophie Laurent",
+      "email": "sophie.laurent@taphair.com",
+      "currentPhoto": "/default-avatar.png"
+    },
+    {
+      "_id": "6910c22fc95611292c88b880",
+      "name": "Julien Moreau",
+      "email": "julien.moreau@taphair.com",
+      "currentPhoto": "/default-avatar.png"
+    },
+    {
+      "_id": "6910c230c95611292c88b89e",
+      "name": "Emma Bernard",
+      "email": "emma.bernard@taphair.com",
+      "currentPhoto": "/default-avatar.png"
+    },
+    {
+      "_id": "6910c230c95611292c88b8bc",
+      "name": "Thomas Petit",
+      "email": "thomas.petit@taphair.com",
+      "currentPhoto": "/default-avatar.png"
+    },
+    {
+      "_id": "6910c230c95611292c88b8da",
+      "name": "Léa Martin",
+      "email": "lea.martin@taphair.com",
+      "currentPhoto": "/default-avatar.png"
+    },
+    {
+      "_id": "6910c230c95611292c88b8f8",
+      "name": "Antoine Rousseau",
+      "email": "antoine.rousseau@taphair.com",
+      "currentPhoto": "/default-avatar.png"
+    },
+    {
+      "_id": "6910c231c95611292c88b916",
+      "name": "Camille Dubois",
+      "email": "camille.dubois@taphair.com",
+      "currentPhoto": "/default-avatar.png"
+    },
+    {
+      "_id": "6910c231c95611292c88b934",
+      "name": "Maxime Lefebvre",
+      "email": "maxime.lefebvre@taphair.com",
+      "currentPhoto": "/default-avatar.png"
+    },
+    {
+      "_id": "6910c231c95611292c88b952",
+      "name": "Clara Simon",
+      "email": "clara.simon@taphair.com",
+      "currentPhoto": "/default-avatar.png"
+    },
+    {
+      "_id": "6910c231c95611292c88b970",
+      "name": "Nicolas Girard",
+      "email": "nicolas.girard@taphair.com",
+      "currentPhoto": "/default-avatar.png"
+    }
+  ],
+  "realImageFiles": [
+    "profile-6839ca0736ec3cfc09c649ea-1753976238848-o05pokhr4v.jpg",
+    "profile-6839ca0736ec3cfc09c649ea-1753976626621-occ1xmkoan.jpg",
+    "profile-6839ca0736ec3cfc09c649ea-1753976976040-nhmgm4w4dq.jpg",
+    "profile-6839ca0736ec3cfc09c649ea-1753977579281-yzfh6lr7ta8.jpg",
+    "profile-6839ca0736ec3cfc09c649ea-1754301985619-txy6b7me6p.jpg",
+    "profile-6839ca0736ec3cfc09c649ea-1754302907993-494ct3y3z07.jpg",
+    "profile-6839ca0736ec3cfc09c649ea-1762012871665-zx5z4qks95p.png",
+    "profile-6839ca0736ec3cfc09c649ea-3d6fbf83-6767-4620-85e5-6183a047a9be.jpg",
+    "profile-6839ca0736ec3cfc09c649ec-1754302518557-i4afh60or3b.jpg",
+    "profile-6839ca0736ec3cfc09c649ec-6e4eff3f-e1a3-4085-a6db-d11dc0732855.jpg",
+    "profile-6839ca0736ec3cfc09c649ec-77a35e7c-1f0d-4690-a81b-9e7d9e6d9493.jpg",
+    "profile-6839ca0736ec3cfc09c649ec-7ed54477-f7b5-43ba-bcaa-f755fc910d82.jpg",
+    "profile-6839ca0736ec3cfc09c649ec-d297d588-1986-435d-a665-4757f32fd802.jpg",
+    "profile-6839ca0736ec3cfc09c649ec-e6719845-dbb0-4219-848a-b3a312313cbc.jpg",
+    "profile-6839ca0736ec3cfc09c649ec-f426e02b-eee2-4fc2-9611-372290884d79.jpg",
+    "profile-6839ca0736ec3cfc09c649ec-f60590c1-f055-479e-a9c0-a4c425c2674e.jpg",
+    "profile-6839ca0736ec3cfc09c649ec-fb195280-5b4f-40fa-9b6b-97dcadb7b33c.jpg",
+    "profile-6839ca0736ec3cfc09c649ed-1754309980244-6pbcngh1na3.jpg",
+    "profile-6839ca0736ec3cfc09c649ed-1754310179416-mhjy4dqcnw9.jpg",
+    "profile-689e63cc39c6c997c145edfd-1755210926513-g0i8euwwthw.jpg"
+  ]
+}

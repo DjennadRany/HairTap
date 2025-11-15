@@ -1,0 +1,52 @@
+CARTES DE TEST STRIPE — MODE TEST
+Vos clés sont en mode test (sk_test_... et pk_test_...), vous pouvez utiliser les cartes de test Stripe. Aucune vraie carte n’est nécessaire.
+CARTES DE TEST À UTILISER
+✅ Carte principale (paiement toujours réussi)
+✅ Autres cartes qui réussissent
+Numéro	Type	Note
+5555 5555 5555 4444	Mastercard	Paiement réussi
+3782 822463 10005	American Express	Paiement réussi (4 chiffres CVC)
+4000 0027 6000 3184	Visa	Avec authentification 3D Secure
+❌ Cartes pour tester les erreurs
+Numéro	Type	Résultat
+4000 0000 0000 9995	Visa	Insuffisance de fonds
+4000 0000 0000 0002	Visa	Carte refusée
+4000 0000 0000 0069	Visa	Carte expirée
+COMMENT TESTER
+Test 1 : Paiement réussi simple
+Créer une réservation dans l’application
+Le modal de paiement Stripe s’affiche
+Entrer :
+Numéro : 4242 4242 4242 4242
+Date : 12/25
+CVC : 123
+Code postal : 75001
+Cliquer "Payer"
+✅ Le paiement devrait réussir
+Test 2 : Sauvegarder une carte
+Créer une réservation
+Modal de paiement s’affiche
+Entrer : 4242 4242 4242 4242
+Cocher "Sauvegarder cette carte pour plus tard" (si disponible dans PaymentElement)
+Payer
+✅ Vérifier dans Profil → Mes méthodes de paiement que la carte apparaît
+Test 3 : Utiliser une carte sauvegardée
+Aller dans Profil → Mes méthodes de paiement
+✅ Vos cartes sauvegardées sont affichées
+Créer une nouvelle réservation
+Modal de paiement s’affiche
+✅ Les cartes sauvegardées apparaissent automatiquement dans PaymentElement
+Sélectionner une carte sauvegardée
+✅ Paiement avec une seule clique
+IMPORTANT
+Mode test uniquement : ces cartes fonctionnent uniquement avec les clés de test Stripe.
+Aucun vrai paiement : aucun argent réel ne sera débité.
+Production : en production, il faudra des vraies cartes avec les clés live (sk_live_... et pk_live_...).
+DOCUMENT COMPLET
+J'ai créé le fichier CARTES_TEST_STRIPE.md avec toutes les cartes de test Stripe, incluant :
+Cartes qui réussissent
+Cartes qui échouent (pour tester les erreurs)
+Cartes avec 3D Secure
+Virements SEPA/RIB
+Vous pouvez tester les réservations avec ces cartes. Aucune vraie carte n’est nécessaire.
+Souhaitez-vous que je crée un guide de test étape par étape pour tester tout le parcours ?
