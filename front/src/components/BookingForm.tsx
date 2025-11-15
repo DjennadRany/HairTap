@@ -281,6 +281,12 @@ const BookingForm: React.FC<BookingFormProps> = ({
   const availableDates = useMemo(() => Object.keys(slotsByDate).sort(), [slotsByDate]);
   const slotsForSelectedDate = selectedDate ? slotsByDate[selectedDate] || [] : [];
 
+  // ✅ CORRECTION: Définir useBookingValidation AVANT getSlotValidation
+  const { validateBooking, canUseSlot } = useBookingValidation({
+    existingBookings: coiffeurBookings,
+    coiffeurModes,
+  });
+
   const getSlotValidation = useCallback(
     (slot: CoiffeurSlotDTO) => {
       if (!selectedService) {
@@ -290,11 +296,6 @@ const BookingForm: React.FC<BookingFormProps> = ({
     },
     [bookingMode, canUseSlot, selectedService]
   );
-
-  const { validateBooking, canUseSlot } = useBookingValidation({
-    existingBookings: coiffeurBookings,
-    coiffeurModes,
-  });
 
   useEffect(() => {
     const fetchCoiffeurBookings = async () => {
