@@ -37,6 +37,23 @@ const CoiffeurReservationsPage: React.FC = () => {
     revenue: 0
   });
 
+  const getPaymentStatusDisplay = (status?: Booking['paymentStatus']) => {
+    switch (status) {
+      case 'confirmed':
+        return { tone: 'text-green-600', label: 'Confirmé' };
+      case 'pending':
+        return { tone: 'text-yellow-600', label: 'En attente' };
+      case 'initiated':
+        return { tone: 'text-blue-600', label: 'Initiée' };
+      case 'cancelled':
+        return { tone: 'text-rose-600', label: 'Annulé' };
+      case 'refunded':
+        return { tone: 'text-purple-600', label: 'Remboursé' };
+      default:
+        return { tone: 'text-gray-600', label: 'Non défini' };
+    }
+  };
+
   // Charger les vraies réservations depuis l'API
   useEffect(() => {
     const loadBookings = async () => {
@@ -68,7 +85,7 @@ const CoiffeurReservationsPage: React.FC = () => {
     const cancelled = bookingsData.filter(b => b.status === 'cancelled').length;
     // Calculer les revenus avec commission : utiliser coiffeurAmount si disponible, sinon price - 10%
     const revenue = bookingsData
-      .filter(b => (b.status === 'confirmed' || b.status === 'completed') && b.paymentStatus === 'paid')
+      .filter(b => (b.status === 'confirmed' || b.status === 'completed') && b.paymentStatus === 'confirmed')
       .reduce((sum, b) => {
         // Si coiffeurAmount existe (90% après commission), l'utiliser
         // Sinon, calculer 90% du prix
@@ -549,15 +566,10 @@ const CoiffeurReservationsPage: React.FC = () => {
                     <div className="mt-2 pt-2 border-t border-gray-200">
                       <div className="text-xs">
                         <span className="text-gray-600">Statut paiement: </span>
-                        <span className={`font-medium ${
-                          selectedBooking.paymentStatus === 'paid' ? 'text-green-600' :
-                          selectedBooking.paymentStatus === 'pending' ? 'text-yellow-600' :
-                          'text-red-600'
-                        }`}>
-                          {selectedBooking.paymentStatus === 'paid' ? 'Payé' :
-                           selectedBooking.paymentStatus === 'pending' ? 'En attente' :
-                           'Remboursé'}
-                        </span>
+                        {(() => {
+                          const { tone, label } = getPaymentStatusDisplay(selectedBooking.paymentStatus);
+                          return <span className={`font-medium ${tone}`}>{label}</span>;
+                        })()}
                       </div>
                     </div>
                   )}

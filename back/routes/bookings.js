@@ -5,6 +5,7 @@ import User from '../models/User.js';
 import { auth } from '../middleware/auth.js';
 import { validateBooking } from '../middleware/validate.js';
 import { fetchServiceForBooking } from '../services/slotService.js';
+import { validatePaymentStatus } from '../utils/validators.js';
 
 const router = express.Router();
 
@@ -241,7 +242,7 @@ router.post('/', auth, async (req, res) => {
       address: normalizedAddress,
       notes,
       status: 'pending',
-      paymentStatus: 'pending'
+      paymentStatus: 'initiated'
     });
 
     let slotReserved = false;
@@ -300,6 +301,39 @@ router.patch('/:id/status', auth, validateBooking, async (req, res) => {
   } catch (error) {
     console.error('Update status error:', error);
     res.status(400).json({ message: 'Erreur lors de la mise à jour du statut' });
+  }
+});
+
+// Mettre à jour le statut de paiement d'une réservation
+router.patch('/:id/payment-status', auth, async (req, res) => {
+  try {
+    const { status } = req.body;
+
+    if (!status || !validatePaymentStatus(status)) {
+      return res.status(400).json({ message: 'Statut de paiement invalide' });
+    }
+
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) {
+      return res.status(404).json({ message: 'Réservation non trouvée' });
+    }
+
+    // Seuls le client ou le coiffeur associés peuvent mettre à jour le statut
+    if (
+      booking.client.toString() !== req.user.id &&
+      booking.coiffeur.toString() !== req.user.id
+    ) {
+      return res.status(403).json({ message: 'Non autorisé' });
+    }
+
+    booking.paymentStatus = status;
+    booking.updatedAt = new Date();
+    await booking.save();
+
+    res.json({ success: true, data: booking });
+  } catch (error) {
+    console.error('Update payment status error:', error);
+    res.status(500).json({ message: 'Erreur lors de la mise à jour du statut de paiement' });
   }
 });
 

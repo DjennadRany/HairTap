@@ -13,7 +13,7 @@ export interface Booking {
   time?: string;
   duration: number;
   status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
-  paymentStatus?: 'pending' | 'paid' | 'refunded';
+  paymentStatus?: 'initiated' | 'pending' | 'confirmed' | 'cancelled' | 'refunded';
   price: number;
   mode: 'salon' | 'domicile';
   notes?: string;
@@ -168,7 +168,13 @@ class BookingService {
   }
 
   // Mettre à jour une réservation
-  async updateBooking(bookingId: string, updateData: Partial<CreateBookingData> & { status?: Booking['status'] }): Promise<BookingResponse> {
+  async updateBooking(
+    bookingId: string,
+    updateData: Partial<CreateBookingData> & {
+      status?: Booking['status'];
+      paymentStatus?: Booking['paymentStatus'];
+    }
+  ): Promise<BookingResponse> {
     try {
       const response = await api.put(`/bookings/${bookingId}`, updateData);
       return response.data;
@@ -177,6 +183,22 @@ class BookingService {
       return {
         success: false,
         message: error.response?.data?.message || 'Erreur lors de la mise à jour de la réservation'
+      };
+    }
+  }
+
+  async updatePaymentStatus(
+    bookingId: string,
+    status: NonNullable<Booking['paymentStatus']>
+  ): Promise<BookingResponse> {
+    try {
+      const response = await api.patch(`/bookings/${bookingId}/payment-status`, { status });
+      return response.data;
+    } catch (error: any) {
+      console.error('Erreur lors de la mise à jour du statut de paiement:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Erreur lors de la mise à jour du statut de paiement'
       };
     }
   }

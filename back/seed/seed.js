@@ -211,7 +211,7 @@ const seedDatabase = async () => {
         date: new Date(Date.now() + 86400000 * (i + 1)),
         duration: service.duration,
         status: 'confirmed',
-        paymentStatus: 'pending',
+        paymentStatus: 'initiated',
         price: service.price,
         mode: 'salon',
         address: client.address,
