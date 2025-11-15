@@ -1,4 +1,6 @@
+import { lazy } from 'react';
 import { Routes, Route } from 'react-router-dom';
+
 import { PublicLayout } from '../layouts/PublicLayout';
 import { AuthLayout } from '../layouts/AuthLayout';
 import { ClientDashboardLayout } from '../layouts/ClientDashboardLayout';
@@ -36,33 +38,42 @@ import PrivacyPage from '../pages/PrivacyPage';
 import TermsPage from '../pages/TermsPage';
 import CookiesPage from '../pages/CookiesPage';
 
-// ✅ PAGES ADMIN
-import AdminDashboardPage from '../pages/AdminDashboardPage';
-import AdminUsersPage from '../pages/AdminUsersPage';
-import AdminServicesPage from '../pages/AdminServicesPage';
-import AdminAnalyticsPage from '../pages/AdminAnalyticsPage';
-import AdminSettingsPage from '../pages/AdminSettingsPage';
+const authRoutes: NestedRoute[] = [
+  { path: '/login', element: <LoginPage /> },
+  { path: '/signin/client', element: <SignInClientPage /> },
+  { path: '/signin/coiffeur', element: <SignInCoiffeurPage /> },
+  { path: '/onboarding/client', element: <OnboardingClientPage /> },
+  { path: '/onboarding/pro', element: <OnboardingProPage /> },
+  { path: '/photo-setup', element: <PhotoSetupPage /> },
+  { path: '/forgot-password', element: <ForgotPasswordPage /> },
+  { path: '/reset-password', element: <ResetPasswordPage /> }
+];
 
-import NotFoundPage from '../pages/NotFoundPage';
+const publicRoutes: NestedRoute[] = [
+  { path: '/', element: <HomePage /> },
+  { path: '/hub', element: <HubPage /> },
+  { path: '/search', element: <SearchPage /> },
+  { path: '/coiffeur/:id', element: <CoiffeurProfilePage /> },
+  { path: '/coiffeur/:coiffeurId/services', element: <ClientServicesPage /> },
+  { path: '/about', element: <AboutPage /> },
+  { path: '/contact', element: <ContactPage /> },
+  { path: '/privacy', element: <PrivacyPage /> },
+  { path: '/terms', element: <TermsPage /> },
+  { path: '/cookies', element: <CookiesPage /> }
+];
 
-const AppRoutes = () => {
-	return (
-		<Routes>
-			{/* ✅ ROUTES ADMIN AVEC LAYOUT - DOIT ÊTRE EN PREMIER */}
-			<Route
-				path="/admin"
-				element={
-					<ProtectedRoute requiredRole="admin">
-						<AdminDashboardLayout />
-					</ProtectedRoute>
-				}
-			>
-				<Route index element={<AdminDashboardPage />} />
-				<Route path="users" element={<AdminUsersPage />} />
-				<Route path="services" element={<AdminServicesPage />} />
-				<Route path="analytics" element={<AdminAnalyticsPage />} />
-				<Route path="settings" element={<AdminSettingsPage />} />
-			</Route>
+const AppRoutes = () => (
+  <Routes>
+    <Route
+      path="/admin/*"
+      element={
+        <ProtectedRoute requiredRole="admin">
+          <AdminDashboardLayout />
+        </ProtectedRoute>
+      }
+    >
+      {renderNestedRoutes(adminRoutes)}
+    </Route>
 
 			{/* ✅ ROUTES COIFFEUR AVEC LAYOUT (Outlet) */}
                         <Route
@@ -127,4 +138,4 @@ const AppRoutes = () => {
 	);
 };
 
-export default AppRoutes; 
+export default AppRoutes;

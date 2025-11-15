@@ -24,6 +24,16 @@ export interface AuthResponse {
   user: User;
 }
 
+export interface ChangePasswordPayload {
+  currentPassword: string;
+  newPassword: string;
+}
+
+export interface ResetPasswordPayload {
+  token: string;
+  password: string;
+}
+
 export const authService = {
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
     const response = await api.post<AuthResponse>('/auth/login', credentials);
@@ -58,5 +68,20 @@ export const authService = {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
     }
+  },
+
+  async changePassword(payload: ChangePasswordPayload): Promise<{ message: string }> {
+    const response = await api.post<{ message: string }>('/auth/change-password', payload);
+    return response.data;
+  },
+
+  async requestPasswordReset(email: string): Promise<{ message: string }> {
+    const response = await api.post<{ message: string }>('/auth/forgot-password', { email });
+    return response.data;
+  },
+
+  async resetPassword(payload: ResetPasswordPayload): Promise<{ message: string }> {
+    const response = await api.post<{ message: string }>('/auth/reset-password', payload);
+    return response.data;
   }
-}; 
+};
