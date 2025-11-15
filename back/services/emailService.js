@@ -16,7 +16,10 @@ const loadNodemailer = () => {
     nodemailerModulePromise = import('nodemailer')
       .then((module) => module.default ?? module)
       .catch((error) => {
-        console.warn('Nodemailer non disponible, bascule vers un transport simulé.', error);
+        console.warn(
+          'Nodemailer non disponible, bascule vers un transport simulé. Installez la dépendance via "npm install" dans le dossier back pour activer l\'envoi réel.',
+          error
+        );
         return null;
       });
   }
@@ -88,6 +91,7 @@ export const sendEmail = async ({ to, subject, text, html }) => {
 
   if (activeTransporter.options?.jsonTransport) {
     console.info('📧 Email simulé (mode jsonTransport):', info.message ?? info);
+    console.info('ℹ️  Pour activer l\'envoi réel, installez et configurez Nodemailer ("npm install" dans back, puis variables SMTP).');
   }
 
   return info;
