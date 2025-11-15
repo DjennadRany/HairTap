@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
-import { 
-  ClockIcon, 
-  MapPinIcon, 
-  UserIcon, 
+import {
+  ClockIcon,
+  MapPinIcon,
+  UserIcon,
   ChatBubbleLeftIcon,
   StarIcon,
   CurrencyEuroIcon,
   CalendarIcon
 } from '@heroicons/react/24/outline';
+import BookingActionBar from './BookingActionBar';
 
 interface Service {
   id: string;
@@ -29,6 +30,16 @@ interface Coiffeur {
   location: string;
 }
 
+interface BookingPayload {
+  serviceId: string;
+  coiffeurId: string;
+  date: Date;
+  time: string;
+  price: number;
+  notes: string;
+  surge: boolean;
+}
+
 interface AdvancedBookingCardProps {
   service: Service;
   coiffeur: Coiffeur;
@@ -38,9 +49,8 @@ interface AdvancedBookingCardProps {
     price: number;
     surge: boolean;
   };
-  onConfirm: (bookingData: any) => void;
+  onConfirm: (bookingData: BookingPayload) => Promise<void> | void;
   onCancel: () => void;
-  isClient?: boolean;
 }
 
 export const AdvancedBookingCard: React.FC<AdvancedBookingCardProps> = ({
@@ -48,8 +58,7 @@ export const AdvancedBookingCard: React.FC<AdvancedBookingCardProps> = ({
   coiffeur,
   selectedSlot,
   onConfirm,
-  onCancel,
-  isClient = true
+  onCancel
 }) => {
   const [notes, setNotes] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -59,7 +68,7 @@ export const AdvancedBookingCard: React.FC<AdvancedBookingCardProps> = ({
     setIsLoading(true);
     
     try {
-      const bookingData = {
+      const bookingData: BookingPayload = {
         serviceId: service.id,
         coiffeurId: coiffeur.id,
         date: selectedSlot.date,
@@ -235,29 +244,15 @@ export const AdvancedBookingCard: React.FC<AdvancedBookingCardProps> = ({
         </div>
 
         {/* Actions */}
-        <div className="flex space-x-3">
-          <button
-            onClick={handleConfirm}
-            disabled={isLoading}
-            className="flex-1 bg-gray-800 text-white py-3 px-6 rounded-lg font-medium hover:bg-black transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isLoading ? (
-              <div className="flex items-center justify-center space-x-2">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                <span>Confirmation...</span>
-              </div>
-            ) : (
-              `Confirmer - ${formatPrice(selectedSlot.price)}`
-            )}
-          </button>
-          
-          <button
-            onClick={onCancel}
-            className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors duration-200"
-          >
-            Annuler
-          </button>
-        </div>
+        <BookingActionBar
+          primaryLabel={`Confirmer - ${formatPrice(selectedSlot.price)}`}
+          onPrimaryAction={handleConfirm}
+          primaryDisabled={isLoading}
+          primaryLoading={isLoading}
+          secondaryLabel="Annuler"
+          onSecondaryAction={onCancel}
+          className="mt-4"
+        />
 
         {/* Chat intégré */}
         <div className="mt-6 pt-6 border-t border-gray-200">
