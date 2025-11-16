@@ -320,6 +320,18 @@ router.post('/', auth, async (req, res) => {
     await booking.populate('client', 'name email');
     await booking.populate('coiffeur', 'name email');
 
+    try {
+      await sendBookingConfirmationEmail({
+        email: booking.client.email,
+        userName: booking.client.name,
+        bookingDate: new Date(booking.date).toLocaleDateString('fr-FR'),
+        bookingTime: booking.time,
+        serviceName: booking.service
+      });
+    } catch (emailError) {
+      console.error('Erreur lors de l\'envoi de l\'email de confirmation:', emailError);
+    }
+
     res.status(201).json({
       success: true,
       data: booking,
@@ -410,6 +422,20 @@ router.post('/:id/cancel', auth, async (req, res) => {
     
     // Utiliser la nouvelle méthode avec calcul des frais
     await booking.cancelWithFee(req.body.reason || 'Annulé par l\'utilisateur');
+
+    try {
+      await booking.populate('client', 'name email');
+      await sendBookingCancellationEmail({
+        email: booking.client.email,
+        userName: booking.client.name,
+        bookingDate: new Date(booking.date).toLocaleDateString('fr-FR'),
+        bookingTime: booking.time,
+        serviceName: booking.service,
+        reason: req.body.reason || 'Annulation TapHair'
+      });
+    } catch (emailError) {
+      console.error('Erreur lors de l\'envoi de l\'email d\'annulation:', emailError);
+    }
 
     res.json({
       ...booking.toObject(),

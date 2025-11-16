@@ -2,6 +2,7 @@ import express from 'express';
 import { auth } from '../middleware/auth.js';
 import TimeChangeRequest from '../models/TimeChangeRequest.js';
 import Booking from '../models/Booking.js';
+import { sendBookingReminderEmail } from '../services/emailService.js';
 
 const router = express.Router();
 
@@ -139,17 +140,32 @@ router.patch('/:id/respond', auth, async (req, res) => {
     }
 
     // Mettre à jour le statut
+    const booking = await Booking.findById(timeChangeRequest.booking);
+
     if (status === 'approved') {
       await timeChangeRequest.approve(response);
-      
+
       // Si approuvé, mettre à jour la réservation
-      const booking = await Booking.findById(timeChangeRequest.booking);
       if (booking) {
         booking.date = timeChangeRequest.requestedDate;
         await booking.save();
       }
     } else {
       await timeChangeRequest.reject(response);
+    }
+
+    try {
+      const bookingDate = timeChangeRequest.requestedDate || booking?.date;
+      await timeChangeRequest.populate('client', 'name email');
+      await sendBookingReminderEmail({
+        email: timeChangeRequest.client.email,
+        userName: timeChangeRequest.client.name,
+        bookingDate: bookingDate ? new Date(bookingDate).toLocaleDateString('fr-FR') : '',
+        bookingTime: timeChangeRequest.requestedTime,
+        serviceName: booking?.service || 'Rendez-vous TapHair'
+      });
+    } catch (emailError) {
+      console.error('Erreur lors de l\'envoi de l\'email de rappel:', emailError);
     }
 
     // Populate pour la réponse
