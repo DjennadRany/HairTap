@@ -10,14 +10,17 @@ const ResetPasswordPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [token, setToken] = useState<string | null>(null);
+  const [status, setStatus] = useState<'idle' | 'success' | 'error' | 'expired'>('idle');
 
   useEffect(() => {
     const tokenFromQuery = searchParams.get('token');
     if (tokenFromQuery) {
       setToken(tokenFromQuery);
       setError(null);
+      setStatus('idle');
     } else {
       setToken(null);
+      setStatus('expired');
       setError('Le lien de réinitialisation est invalide ou expiré.');
     }
   }, [searchParams]);
@@ -43,19 +46,31 @@ const ResetPasswordPage = () => {
     setIsSubmitting(true);
     setMessage(null);
     setError(null);
+    setStatus('idle');
 
     try {
       const response = await authService.resetPassword({ token, password });
       setMessage(response.message);
       setPassword('');
       setConfirmPassword('');
+      setStatus('success');
     } catch (err: any) {
       const apiMessage = err?.response?.data?.message;
+      const normalizedMessage = apiMessage?.toLowerCase?.() ?? '';
+      if (normalizedMessage.includes('expir')) {
+        setStatus('expired');
+      } else {
+        setStatus('error');
+      }
+
       setError(apiMessage || 'Impossible de réinitialiser le mot de passe pour le moment.');
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  const isExpired = status === 'expired';
+  const isSuccess = status === 'success';
 
   return (
     <div className="space-y-6">
@@ -75,6 +90,15 @@ const ResetPasswordPage = () => {
       {error && (
         <div className="rounded-md bg-red-50 p-4 text-sm text-red-700 border border-red-200">
           {error}
+        </div>
+      )}
+
+      {isExpired && (
+        <div className="rounded-md bg-yellow-50 p-4 text-sm text-yellow-800 border border-yellow-200">
+          <p className="mb-2">Votre lien a expiré. Vous pouvez demander un nouveau lien de réinitialisation.</p>
+          <Link to="/forgot-password" className="font-medium text-[#DE6C5C] hover:text-[#c75f51]">
+            Demander un nouveau lien
+          </Link>
         </div>
       )}
 
@@ -113,10 +137,14 @@ const ResetPasswordPage = () => {
 
         <button
           type="submit"
-          disabled={isSubmitting || !token}
+          disabled={isSubmitting || !token || isExpired || isSuccess}
           className="w-full rounded-md bg-[#DE6C5C] px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-[#c75f51] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#DE6C5C] disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {isSubmitting ? 'Réinitialisation en cours…' : 'Mettre à jour le mot de passe'}
+          {isSubmitting
+            ? 'Réinitialisation en cours…'
+            : isSuccess
+              ? 'Mot de passe mis à jour'
+              : 'Mettre à jour le mot de passe'}
         </button>
       </form>
 
