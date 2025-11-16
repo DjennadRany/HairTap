@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAppSelector } from '../../../store/hooks';
+import { useAppDispatch, useAppSelector } from '../../../store/hooks';
 import { selectCurrentUser } from '../../../store/slices/authSlice';
 import { Card } from '../../ui/card';
 import { Button } from '../../ui/Button';
@@ -23,6 +23,7 @@ import { incidentService } from '../../../services/api/incidents';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import type { User } from '../../../types/models';
+import { markBookingAlertRead, selectBookingAlerts, setBookingAlerts } from '../../../store/slices/bookingAlertSlice';
 
 // Interface pour les réservations
 interface Booking {
@@ -67,7 +68,9 @@ const ClientBookings: React.FC<ClientBookingsProps> = ({
   defaultViewMode = 'upcoming',
   defaultSortOrder = 'created-desc' // ✅ AMÉLIORATION UX: Par défaut, les plus récents en premier
 }) => {
+  const dispatch = useAppDispatch();
   const user = useAppSelector(selectCurrentUser) as User | null;
+  const alerts = useAppSelector(selectBookingAlerts);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -85,7 +88,6 @@ const ClientBookings: React.FC<ClientBookingsProps> = ({
   const [delayInfo, setDelayInfo] = useState<{ delayMinutes: number; penaltyPercentage: number; penaltyAmount: number; requiresGeolocation: boolean } | null>(null); // ✅ NOUVEAU: Informations de retard
   const [confirmationType, setConfirmationType] = useState<'service_start' | 'service_end'>('service_start');
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
-  const [alerts, setAlerts] = useState<BookingAlertType[]>([]); // ✅ NOUVEAU: Alertes pour les réservations
   const [pendingRegularizations, setPendingRegularizations] = useState<Booking[]>([]); // ✅ NOUVEAU: File d'attente pour les régularisations
   const [isProcessingRegularization, setIsProcessingRegularization] = useState(false); // ✅ NOUVEAU: Éviter les ouvertures récursives
   const [hasCheckedPastBookings, setHasCheckedPastBookings] = useState(false);
@@ -99,7 +101,7 @@ const ClientBookings: React.FC<ClientBookingsProps> = ({
         const response = await bookingValidationService.getClientAlerts(user._id);
         console.log('📢 Alertes chargées:', response);
         if (response.success && response.data) {
-          setAlerts(response.data);
+          dispatch(setBookingAlerts(response.data));
           console.log(`✅ ${response.data.length} alerte(s) chargée(s)`);
         } else {
           console.log('⚠️ Aucune alerte retournée par le backend');
@@ -729,6 +731,7 @@ const ClientBookings: React.FC<ClientBookingsProps> = ({
                 <BookingAlertsList
                   alerts={alerts}
                   onAction={async (alert) => {
+                    dispatch(markBookingAlertRead(alert.id));
                     // Trouver la réservation correspondante
                     const bookingForAlert = bookings.find(b => b._id === alert.bookingId);
                     if (!bookingForAlert) return;
@@ -888,7 +891,7 @@ const ClientBookings: React.FC<ClientBookingsProps> = ({
                 if (user) {
                   const alertsResponse = await bookingValidationService.getClientAlerts(user._id);
                   if (alertsResponse.success && alertsResponse.data) {
-                    setAlerts(alertsResponse.data);
+                    dispatch(setBookingAlerts(alertsResponse.data));
                   }
                 }
                 
@@ -1027,7 +1030,7 @@ const ClientBookings: React.FC<ClientBookingsProps> = ({
                       if (user) {
                         const alertsResponse = await bookingValidationService.getClientAlerts(user._id);
                         if (alertsResponse.success && alertsResponse.data) {
-                          setAlerts(alertsResponse.data);
+                          dispatch(setBookingAlerts(alertsResponse.data));
                         }
                       }
                       
@@ -1103,7 +1106,7 @@ const ClientBookings: React.FC<ClientBookingsProps> = ({
                 if (user) {
                   const alertsResponse = await bookingValidationService.getClientAlerts(user._id);
                   if (alertsResponse.success && alertsResponse.data) {
-                    setAlerts(alertsResponse.data);
+                    dispatch(setBookingAlerts(alertsResponse.data));
                   }
                 }
                 
@@ -1177,7 +1180,7 @@ const ClientBookings: React.FC<ClientBookingsProps> = ({
                 if (user) {
                   const alertsResponse = await bookingValidationService.getClientAlerts(user._id);
                   if (alertsResponse.success && alertsResponse.data) {
-                    setAlerts(alertsResponse.data);
+                    dispatch(setBookingAlerts(alertsResponse.data));
                   }
                 }
                 
@@ -1257,7 +1260,7 @@ const ClientBookings: React.FC<ClientBookingsProps> = ({
               if (user) {
                 const alertsResponse = await bookingValidationService.getClientAlerts(user._id);
                 if (alertsResponse.success && alertsResponse.data) {
-                  setAlerts(alertsResponse.data);
+                  dispatch(setBookingAlerts(alertsResponse.data));
                 }
               }
               

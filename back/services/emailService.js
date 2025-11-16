@@ -1,3 +1,7 @@
+import fs from 'fs/promises';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
 const {
   EMAIL_HOST,
   EMAIL_PORT,
@@ -6,11 +10,39 @@ const {
   EMAIL_FROM,
   EMAIL_SMTP_URL,
   EMAIL_SECURE,
-  EMAIL_ENABLED
+  EMAIL_ENABLED,
+  NODE_ENV
 } = process.env;
 
 let transporterPromise;
 let nodemailerModulePromise;
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const templatesDirectory = path.join(__dirname, '..', 'templates', 'emails');
+const templateCache = new Map();
+
+const templateDefinitions = {
+  passwordReset: {
+    subject: 'Réinitialisation de votre mot de passe TapHair',
+    html: 'password-reset.html',
+    text: 'password-reset.txt'
+  },
+  bookingConfirmation: {
+    subject: 'Votre réservation TapHair est confirmée',
+    html: 'booking-confirmation.html',
+    text: 'booking-confirmation.txt'
+  },
+  bookingReminder: {
+    subject: 'Rappel : votre rendez-vous TapHair',
+    html: 'booking-reminder.html',
+    text: 'booking-reminder.txt'
+  },
+  bookingCancellation: {
+    subject: 'Confirmation d\'annulation de rendez-vous',
+    html: 'booking-cancellation.html',
+    text: 'booking-cancellation.txt'
+  }
+};
 
 const createJsonTransporter = (reason) => ({
   options: { jsonTransport: true, reason },
@@ -25,22 +57,27 @@ const createJsonTransporter = (reason) => ({
       accepted: message.to ? (Array.isArray(message.to) ? message.to : [message.to]) : [],
       rejected: [],
       response: `Email service disabled (${reason})`,
-      messageId: 'simulated-message-id'
+      messageId: 'simulated-message-id',
+      message
     };
   }
 });
 
+const isExplicitlyEnabled = () => {
+  if (typeof EMAIL_ENABLED !== 'string') return false;
+  const normalized = EMAIL_ENABLED.trim().toLowerCase();
+  if (['true', '1', 'on', 'enable', 'enabled', 'yes'].includes(normalized)) return true;
+  if (['false', '0', 'off', 'disable', 'disabled', 'no'].includes(normalized)) return false;
+  return false;
+};
+
 const shouldUseRealTransport = () => {
-  if (typeof EMAIL_ENABLED === 'string') {
-    const normalized = EMAIL_ENABLED.trim().toLowerCase();
+  if (NODE_ENV === 'development' && !isExplicitlyEnabled()) {
+    return false;
+  }
 
-    if (['false', '0', 'off', 'disable', 'disabled', 'no'].includes(normalized)) {
-      return false;
-    }
-
-    if (['true', '1', 'on', 'enable', 'enabled', 'yes'].includes(normalized)) {
-      return true;
-    }
+  if (isExplicitlyEnabled()) {
+    return true;
   }
 
   return Boolean(EMAIL_SMTP_URL || (EMAIL_HOST && EMAIL_PORT));
@@ -98,6 +135,36 @@ const createTransporter = async () => {
   return transporterPromise;
 };
 
+const loadTemplateFile = async (fileName) => {
+  const filePath = path.join(templatesDirectory, fileName);
+  return fs.readFile(filePath, 'utf-8');
+};
+
+const loadTemplate = async (templateKey) => {
+  if (templateCache.has(templateKey)) {
+    return templateCache.get(templateKey);
+  }
+
+  const definition = templateDefinitions[templateKey];
+  if (!definition) {
+    throw new Error(`Template inconnu : ${templateKey}`);
+  }
+
+  const [html, text] = await Promise.all([
+    definition.html ? loadTemplateFile(definition.html) : Promise.resolve(null),
+    definition.text ? loadTemplateFile(definition.text) : Promise.resolve(null)
+  ]);
+
+  const template = { ...definition, html, text };
+  templateCache.set(templateKey, template);
+  return template;
+};
+
+const renderTemplate = (content, data) => {
+  if (!content) return null;
+  return content.replace(/{{\s*(\w+)\s*}}/g, (_, key) => (data?.[key] ?? ''));
+};
+
 export const sendEmail = async ({ to, subject, text, html }) => {
   const activeTransporter = await createTransporter();
 
@@ -116,37 +183,51 @@ export const sendEmail = async ({ to, subject, text, html }) => {
   return info;
 };
 
-export const sendPasswordResetEmail = async ({ email, resetUrl, expiresInMinutes = 60 }) => {
-  const text = `Vous avez demandé à réinitialiser votre mot de passe TapHair. Cliquez sur le lien suivant ou copiez-le dans votre navigateur : ${resetUrl}. Ce lien expirera dans ${expiresInMinutes} minutes.`;
-
-  const html = `
-    <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #1f2933;">
-      <h1 style="font-size: 20px;">Réinitialisation de votre mot de passe</h1>
-      <p>Nous avons reçu une demande de réinitialisation de mot de passe pour votre compte TapHair.</p>
-      <p>Pour choisir un nouveau mot de passe, cliquez sur le bouton ci-dessous :</p>
-      <p style="margin: 24px 0;">
-        <a
-          href="${resetUrl}"
-          style="display: inline-block; background-color: #DE6C5C; color: #ffffff; padding: 12px 24px; border-radius: 9999px; text-decoration: none; font-weight: bold;"
-        >
-          Réinitialiser mon mot de passe
-        </a>
-      </p>
-      <p>Ce lien expirera dans ${expiresInMinutes} minutes.</p>
-      <p style="font-size: 12px; color: #6b7280;">Si vous n'êtes pas à l'origine de cette demande, vous pouvez ignorer cet email.</p>
-      <p style="margin-top: 32px;">À très vite,<br />L'équipe TapHair</p>
-    </div>
-  `;
-
+const sendTemplateEmail = async (templateKey, { to, data }) => {
+  const template = await loadTemplate(templateKey);
   return sendEmail({
+    to,
+    subject: renderTemplate(template.subject, data),
+    text: renderTemplate(template.text, data),
+    html: renderTemplate(template.html, data)
+  });
+};
+
+export const sendPasswordResetEmail = async ({ email, resetUrl, expiresInMinutes = 60 }) => {
+  return sendTemplateEmail('passwordReset', {
     to: email,
-    subject: 'Réinitialisation de votre mot de passe TapHair',
-    text,
-    html
+    data: {
+      resetUrl,
+      expiresInMinutes
+    }
+  });
+};
+
+export const sendBookingConfirmationEmail = async ({ email, userName, bookingDate, bookingTime, serviceName }) => {
+  return sendTemplateEmail('bookingConfirmation', {
+    to: email,
+    data: { userName, bookingDate, bookingTime, serviceName }
+  });
+};
+
+export const sendBookingReminderEmail = async ({ email, userName, bookingDate, bookingTime, serviceName }) => {
+  return sendTemplateEmail('bookingReminder', {
+    to: email,
+    data: { userName, bookingDate, bookingTime, serviceName }
+  });
+};
+
+export const sendBookingCancellationEmail = async ({ email, userName, bookingDate, bookingTime, serviceName, reason }) => {
+  return sendTemplateEmail('bookingCancellation', {
+    to: email,
+    data: { userName, bookingDate, bookingTime, serviceName, reason }
   });
 };
 
 export default {
   sendEmail,
-  sendPasswordResetEmail
+  sendPasswordResetEmail,
+  sendBookingConfirmationEmail,
+  sendBookingReminderEmail,
+  sendBookingCancellationEmail
 };

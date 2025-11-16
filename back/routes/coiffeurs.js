@@ -3,8 +3,7 @@ import User from '../models/User.js';
 import Service from '../models/Service.js';
 import { auth } from '../middleware/auth.js';
 import multer from 'multer';
-import { getCoiffeurAvailableSlots } from '../services/slotService.js';
-import { aggregateGalleryFromServices } from '../utils/galleryUtils.js';
+import { getAvailabilityWithBookings, getCoiffeurAvailableSlots } from '../services/slotService.js';
 // photoService removed - simplified photo system
 
 const router = express.Router();
@@ -303,6 +302,29 @@ router.get('/', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Erreur lors de la récupération des coiffeurs'
+    });
+  }
+});
+
+// Récupérer les disponibilités (créneaux + réservations) d'un coiffeur
+router.get('/:id/availability', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { startDate, endDate, mode } = req.query;
+
+    const availability = await getAvailabilityWithBookings(id, {
+      startDate: startDate ? new Date(startDate) : undefined,
+      endDate: endDate ? new Date(endDate) : undefined,
+      mode,
+    });
+
+    res.json({ success: true, data: availability });
+  } catch (error) {
+    console.error('Get coiffeur availability error:', error);
+    const status = error.status || error.statusCode || 500;
+    res.status(status).json({
+      success: false,
+      message: error.message || 'Erreur lors de la récupération des disponibilités',
     });
   }
 });
