@@ -306,6 +306,93 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Synchroniser la galerie d'un coiffeur à partir de ses services (gallery + examplePhotos)
+router.get('/:id/gallery-sync', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const services = await Service.find({ coiffeur: id, isActive: true }).select(
+      'name price duration category description gallery examplePhotos'
+    );
+
+    if (!services.length) {
+      return res.json({
+        success: true,
+        coiffeurId: id,
+        count: 0,
+        deduplicatedFrom: 0,
+        items: []
+      });
+    }
+
+    const aggregatedItems = services.flatMap((service) => {
+      const baseInfo = {
+        serviceId: service._id,
+        serviceName: service.name,
+        servicePrice: service.price,
+        serviceDuration: service.duration,
+        serviceCategory: service.category,
+        serviceDescription: service.description
+      };
+
+      const galleryItems = (service.gallery || []).map((media, index) => ({
+        id: `${service._id}-gallery-${index}`,
+        origin: 'gallery',
+        mediaUrl: media.mediaUrl,
+        mediaType: media.mediaType,
+        caption: media.caption,
+        tags: media.tags,
+        likes: media.likes,
+        createdAt: media.createdAt,
+        ...baseInfo
+      }));
+
+      const examplePhotoItems = (service.examplePhotos || []).map((photoUrl, index) => ({
+        id: `${service._id}-example-${index}`,
+        origin: 'examplePhotos',
+        mediaUrl: photoUrl,
+        mediaType: 'image',
+        caption: baseInfo.serviceDescription,
+        tags: [],
+        likes: 0,
+        createdAt: service.createdAt,
+        ...baseInfo
+      }));
+
+      return [...galleryItems, ...examplePhotoItems];
+    });
+
+    const seen = new Set();
+    const dedupedItems = aggregatedItems.filter((item) => {
+      if (!item.mediaUrl) {
+        return false;
+      }
+
+      const key = `${item.mediaUrl}`;
+      if (seen.has(key)) {
+        return false;
+      }
+
+      seen.add(key);
+      return true;
+    });
+
+    return res.json({
+      success: true,
+      coiffeurId: id,
+      count: dedupedItems.length,
+      deduplicatedFrom: aggregatedItems.length,
+      items: dedupedItems
+    });
+  } catch (error) {
+    console.error('Erreur lors de la synchronisation de la galerie coiffeur :', error);
+    res.status(500).json({
+      success: false,
+      message: "Impossible de synchroniser la galerie pour ce coiffeur pour le moment"
+    });
+  }
+});
+
 // Récupérer un coiffeur par ID
 router.get('/:id', async (req, res) => {
   try {
