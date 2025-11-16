@@ -63,6 +63,10 @@ const serviceSchema = new mongoose.Schema({
     enum: ['homme', 'femme', 'enfant', 'adolescent', 'senior'],
     default: 'femme'
   }],
+  images: {
+    type: [String],
+    default: []
+  },
   examplePhotos: {
     type: [String],
     default: []

@@ -15,6 +15,7 @@ interface ServiceCardProps {
     images?: string[];
     likes?: number;
     isLiked?: boolean;
+    isEditable?: boolean;
   };
   isOwner?: boolean;
   showBookButton?: boolean;
@@ -112,7 +113,7 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
       <div className="flex gap-2">
         {isOwner ? (
           <>
-            {onEdit && (
+            {onEdit && service.isEditable !== false && (
               <button
                 onClick={() => onEdit(service._id)}
                 className="flex-1 bg-gray-600 text-white px-3 py-2 rounded text-sm hover:bg-black transition-colors"
@@ -120,7 +121,7 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
                 Modifier
               </button>
             )}
-            {onDelete && (
+            {onDelete && service.isEditable !== false && (
               <button
                 onClick={() => onDelete(service._id)}
                 className="flex-1 bg-red-500 text-white px-3 py-2 rounded text-sm hover:bg-red-600 transition-colors"
@@ -128,6 +129,11 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
                 Supprimer
               </button>
               )}
+            {service.isEditable === false && (
+              <span className="flex-1 text-center text-xs text-gray-500 bg-gray-100 px-3 py-2 rounded">
+                Service système
+              </span>
+            )}
           </>
         ) : (
           <>
