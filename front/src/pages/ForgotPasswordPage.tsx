@@ -7,6 +7,9 @@ const ForgotPasswordPage = () => {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
+
+  const hasSuccess = status === 'success';
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -21,13 +24,16 @@ const ForgotPasswordPage = () => {
     setIsSubmitting(true);
     setMessage(null);
     setError(null);
+    setStatus('idle');
 
     try {
       const response = await authService.requestPasswordReset(sanitizedEmail);
       setMessage(response.message);
+      setStatus('success');
     } catch (err: any) {
       const apiMessage = err?.response?.data?.message;
       setError(apiMessage || 'Impossible d\'envoyer le lien de réinitialisation pour le moment.');
+      setStatus('error');
     } finally {
       setIsSubmitting(false);
     }
@@ -72,10 +78,10 @@ const ForgotPasswordPage = () => {
 
         <button
           type="submit"
-          disabled={isSubmitting || !email}
+          disabled={isSubmitting || !email || hasSuccess}
           className="w-full rounded-md bg-[#DE6C5C] px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-[#c75f51] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#DE6C5C] disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {isSubmitting ? 'Envoi en cours…' : 'Envoyer le lien de réinitialisation'}
+          {isSubmitting ? 'Envoi en cours…' : hasSuccess ? 'Lien envoyé' : 'Envoyer le lien de réinitialisation'}
         </button>
       </form>
 

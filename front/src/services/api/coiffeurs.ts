@@ -43,7 +43,7 @@ export interface SearchQuery {
 
 export interface SyncedGalleryItem {
   id?: string;
-  origin?: 'gallery' | 'examplePhotos';
+  origin?: 'gallery' | 'examplePhotos' | 'images';
   mediaUrl: string;
   mediaType?: 'image' | 'video';
   caption?: string;

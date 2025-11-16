@@ -1,0 +1,7 @@
+Bonjour {{userName}},
+
+Votre réservation TapHair est confirmée.
+Prestation : {{serviceName}}
+Date : {{bookingDate}} à {{bookingTime}}
+
+Nous avons hâte de vous voir ! Si vous devez modifier ou annuler ce rendez-vous, rendez-vous dans votre espace client.

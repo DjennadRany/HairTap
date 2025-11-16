@@ -10,7 +10,11 @@ import ReviewForm from './ReviewForm';
 import Modal from './ui/Modal';
 import { getImageUrl, handleImageError, DEFAULT_USER_IMAGE } from '../utils/imageUtils';
 import type { User } from '../types/models';
-import { useAppSelector } from '../store/hooks';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import bookingValidationService from '../services/api/bookingValidations';
+import { BookingAlertsList } from './booking/BookingAlert';
+import { selectBookingAlerts, setBookingAlerts } from '../store/slices/bookingAlertSlice';
+import { ToastContainer } from 'react-toastify';
 
 interface Booking {
   _id: string;
@@ -40,7 +44,9 @@ interface Booking {
 }
 
 const ClientBookings: React.FC = () => {
+  const dispatch = useAppDispatch();
   const user = useAppSelector(selectCurrentUser) as User | null;
+  const alerts = useAppSelector(selectBookingAlerts);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -67,6 +73,18 @@ const ClientBookings: React.FC = () => {
 
     fetchBookings();
   }, [user]);
+
+  useEffect(() => {
+    const fetchAlerts = async () => {
+      if (!user) return;
+      const response = await bookingValidationService.getClientAlerts(user._id);
+      if (response.success && response.data) {
+        dispatch(setBookingAlerts(response.data));
+      }
+    };
+
+    fetchAlerts();
+  }, [dispatch, user]);
 
   const handleCancelBooking = async (bookingId: string) => {
     if (window.confirm('Êtes-vous sûr de vouloir annuler cette réservation ?')) {
@@ -204,6 +222,11 @@ const ClientBookings: React.FC = () => {
           Terminées ({bookings.filter(b => b.status === 'completed').length})
         </button>
       </div>
+
+      <Card className="p-4">
+        <h3 className="text-lg font-semibold mb-3">Alertes de réservation</h3>
+        <BookingAlertsList alerts={alerts} maxAlerts={5} />
+      </Card>
 
       {/* Notifications de validation - Version compacte et flottante */}
       {bookings.filter(b => b.status === 'confirmed' || b.status === 'cancelled' || b.status === 'completed').length > 0 && (
@@ -414,6 +437,8 @@ const ClientBookings: React.FC = () => {
           />
         </Modal>
       )}
+
+      <ToastContainer position="bottom-right" />
     </div>
   );
 };

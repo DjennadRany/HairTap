@@ -39,12 +39,20 @@ interface Service {
     likes: number;
     createdAt: Date;
   }>;
+  images?: string[];
   likes: number;
   views: number;
   popularityScore: number;
   style: string;
   targetAudience: string[];
 }
+
+const hasConsistentMedia = (service: Service) => {
+  const hasGallery = Array.isArray(service.gallery) && service.gallery.some((item) => item?.mediaUrl);
+  const hasImages = Array.isArray(service.images) && service.images.some((url) => Boolean(url));
+  const hasExamples = Array.isArray(service.examplePhotos) && service.examplePhotos.some((url) => Boolean(url));
+  return hasGallery || hasImages || hasExamples;
+};
 
 interface GalleryHubProps {
   className?: string;
@@ -183,10 +191,12 @@ export const GalleryHub: React.FC<GalleryHubProps> = ({ className = "" }) => {
         }
       });
       
+      const mediaReadyServices = allServices.filter(hasConsistentMedia);
+
       if (append) {
-        setServices(prev => [...prev, ...allServices]);
+        setServices(prev => [...prev, ...mediaReadyServices]);
       } else {
-        setServices(allServices);
+        setServices(mediaReadyServices);
       }
       
       // Simuler la fin des données après quelques pages

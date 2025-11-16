@@ -1,0 +1,7 @@
+Bonjour {{userName}},
+
+Rappel de votre rendez-vous TapHair :
+Prestation : {{serviceName}}
+Date : {{bookingDate}} à {{bookingTime}}
+
+Si cet horaire ne vous convient plus, vous pouvez soumettre une demande de modification.

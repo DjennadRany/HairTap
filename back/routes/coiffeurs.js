@@ -3,7 +3,7 @@ import User from '../models/User.js';
 import Service from '../models/Service.js';
 import { auth } from '../middleware/auth.js';
 import multer from 'multer';
-import { getCoiffeurAvailableSlots } from '../services/slotService.js';
+import { getAvailabilityWithBookings, getCoiffeurAvailableSlots } from '../services/slotService.js';
 // photoService removed - simplified photo system
 
 const router = express.Router();
@@ -306,83 +306,46 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Récupérer les disponibilités (créneaux + réservations) d'un coiffeur
+router.get('/:id/availability', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { startDate, endDate, mode } = req.query;
+
+    const availability = await getAvailabilityWithBookings(id, {
+      startDate: startDate ? new Date(startDate) : undefined,
+      endDate: endDate ? new Date(endDate) : undefined,
+      mode,
+    });
+
+    res.json({ success: true, data: availability });
+  } catch (error) {
+    console.error('Get coiffeur availability error:', error);
+    const status = error.status || error.statusCode || 500;
+    res.status(status).json({
+      success: false,
+      message: error.message || 'Erreur lors de la récupération des disponibilités',
+    });
+  }
+});
+
 // Synchroniser la galerie d'un coiffeur à partir de ses services (gallery + examplePhotos)
 router.get('/:id/gallery-sync', async (req, res) => {
   try {
     const { id } = req.params;
 
     const services = await Service.find({ coiffeur: id, isActive: true }).select(
-      'name price duration category description gallery examplePhotos'
+      'name price duration category description gallery examplePhotos images createdAt'
     );
 
-    if (!services.length) {
-      return res.json({
-        success: true,
-        coiffeurId: id,
-        count: 0,
-        deduplicatedFrom: 0,
-        items: []
-      });
-    }
-
-    const aggregatedItems = services.flatMap((service) => {
-      const baseInfo = {
-        serviceId: service._id,
-        serviceName: service.name,
-        servicePrice: service.price,
-        serviceDuration: service.duration,
-        serviceCategory: service.category,
-        serviceDescription: service.description
-      };
-
-      const galleryItems = (service.gallery || []).map((media, index) => ({
-        id: `${service._id}-gallery-${index}`,
-        origin: 'gallery',
-        mediaUrl: media.mediaUrl,
-        mediaType: media.mediaType,
-        caption: media.caption,
-        tags: media.tags,
-        likes: media.likes,
-        createdAt: media.createdAt,
-        ...baseInfo
-      }));
-
-      const examplePhotoItems = (service.examplePhotos || []).map((photoUrl, index) => ({
-        id: `${service._id}-example-${index}`,
-        origin: 'examplePhotos',
-        mediaUrl: photoUrl,
-        mediaType: 'image',
-        caption: baseInfo.serviceDescription,
-        tags: [],
-        likes: 0,
-        createdAt: service.createdAt,
-        ...baseInfo
-      }));
-
-      return [...galleryItems, ...examplePhotoItems];
-    });
-
-    const seen = new Set();
-    const dedupedItems = aggregatedItems.filter((item) => {
-      if (!item.mediaUrl) {
-        return false;
-      }
-
-      const key = `${item.mediaUrl}`;
-      if (seen.has(key)) {
-        return false;
-      }
-
-      seen.add(key);
-      return true;
-    });
+    const aggregated = aggregateGalleryFromServices(services);
 
     return res.json({
       success: true,
       coiffeurId: id,
-      count: dedupedItems.length,
-      deduplicatedFrom: aggregatedItems.length,
-      items: dedupedItems
+      count: aggregated.count,
+      deduplicatedFrom: aggregated.deduplicatedFrom,
+      items: aggregated.items
     });
   } catch (error) {
     console.error('Erreur lors de la synchronisation de la galerie coiffeur :', error);
