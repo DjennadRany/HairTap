@@ -157,6 +157,11 @@ workingSlotSchema.methods.releaseSlot = async function() {
   return this;
 };
 
+// Capacité restante calculée dynamiquement
+workingSlotSchema.methods.getRemainingCapacity = function() {
+  return Math.max(0, (this.maxBookings ?? 1) - (this.currentBookings ?? 0));
+};
+
 // Méthode pour mettre en maintenance
 workingSlotSchema.methods.setMaintenance = async function(reason) {
   this.status = 'maintenance';

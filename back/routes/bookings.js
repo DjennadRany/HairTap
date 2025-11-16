@@ -4,10 +4,36 @@ import WorkingSlot from '../models/WorkingSlot.js';
 import User from '../models/User.js';
 import { auth } from '../middleware/auth.js';
 import { validateBooking } from '../middleware/validate.js';
-import { fetchServiceForBooking } from '../services/slotService.js';
+import { fetchServiceForBooking, getAvailabilityWithBookings } from '../services/slotService.js';
 import { validatePaymentStatus } from '../utils/validators.js';
 
 const router = express.Router();
+
+// Récupérer la disponibilité combinée (créneaux + réservations) pour un coiffeur
+router.get('/availability', async (req, res) => {
+  try {
+    const { coiffeurId, startDate, endDate, mode } = req.query;
+
+    if (!coiffeurId) {
+      return res.status(400).json({ success: false, message: 'coiffeurId est requis' });
+    }
+
+    const availability = await getAvailabilityWithBookings(coiffeurId, {
+      startDate: startDate ? new Date(startDate) : undefined,
+      endDate: endDate ? new Date(endDate) : undefined,
+      mode,
+    });
+
+    res.json({ success: true, data: availability });
+  } catch (error) {
+    console.error('Get availability error:', error);
+    const status = error.status || error.statusCode || 500;
+    res.status(status).json({
+      success: false,
+      message: error.message || 'Erreur lors de la récupération des disponibilités',
+    });
+  }
+});
 
 // Récupérer toutes les réservations d'un client
 router.get('/client', auth, async (req, res) => {
