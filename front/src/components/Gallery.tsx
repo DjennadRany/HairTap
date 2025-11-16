@@ -27,9 +27,19 @@ interface GalleryImage {
   isLiked?: boolean;
 }
 
-const mapSyncedItemsToGalleryImages = (items: SyncedGalleryItem[]): GalleryImage[] =>
-  items
+const mapSyncedItemsToGalleryImages = (items: SyncedGalleryItem[]): GalleryImage[] => {
+  const seen = new Set<string>();
+
+  return items
     .filter((item) => Boolean(item.mediaUrl))
+    .filter((item) => {
+      const key = item.mediaUrl?.trim();
+      if (!key || seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    })
     .map((item, index) => ({
       _id: item.id ?? `${item.serviceId ?? 'service'}-${index}`,
       url: item.mediaUrl,
@@ -43,6 +53,7 @@ const mapSyncedItemsToGalleryImages = (items: SyncedGalleryItem[]): GalleryImage
       likes: item.likes,
       isLiked: false
     }));
+};
 
 const Gallery: React.FC<GalleryProps> = ({ coiffeurId, isOwner = false, onServiceBook }) => {
   const isMobile = useIsMobile();
@@ -136,6 +147,7 @@ const Gallery: React.FC<GalleryProps> = ({ coiffeurId, isOwner = false, onServic
       console.log('✅ Services récupérés:', services.length);
       
       const galleryImages: GalleryImage[] = [];
+      const seen = new Set<string>();
       
         // Ajouter UNIQUEMENT les images des services
         services.forEach(service => {
@@ -163,7 +175,9 @@ const Gallery: React.FC<GalleryProps> = ({ coiffeurId, isOwner = false, onServic
           
           if (serviceImages && serviceImages.length > 0) {
             serviceImages.forEach((media: any) => {
-              if (media.url && media.url !== 'undefined' && media.url.trim() !== '') {
+              const key = media.url?.trim();
+              if (key && key !== 'undefined' && !seen.has(key)) {
+                seen.add(key);
                 galleryImages.push({
                   _id: `${service._id}_${media.url}`,
                   url: media.url,

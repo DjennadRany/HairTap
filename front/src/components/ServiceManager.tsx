@@ -18,10 +18,14 @@ interface Service {
   category: string;
   keywords: string[];
   examplePhotos: string[];
+  images?: string[];
+  gallery?: any[];
   likes: number;
   isLiked?: boolean;
   coiffeur: string;
   isActive: boolean;
+  isSystemService?: boolean;
+  isEditable?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -58,13 +62,20 @@ const ServiceManager: React.FC<ServiceManagerProps> = ({
       setLoading(true);
       const servicesData = await coiffeurService.getCoiffeurServices(coiffeurId);
       // Convertir les données pour inclure les propriétés par défaut
-      const enrichedServices = servicesData.map(service => ({
-        ...service,
-        keywords: service.keywords || [],
-        examplePhotos: service.examplePhotos || [],
-        likes: service.likes || 0,
-        isLiked: service.isLiked || false
-      }));
+      const enrichedServices = servicesData.map(service => {
+        const isSystem = (service as any).isSystemService || (service as any).isSystem;
+        return {
+          ...service,
+          keywords: service.keywords || [],
+          examplePhotos: service.examplePhotos || [],
+          images: (service as any).images || [],
+          gallery: (service as any).gallery || [],
+          likes: service.likes || 0,
+          isLiked: service.isLiked || false,
+          isSystemService: isSystem,
+          isEditable: (service as any).isEditable ?? !isSystem
+        } as Service;
+      });
       setServices(enrichedServices);
     } catch (error) {
       console.error('Error fetching services:', error);
@@ -90,6 +101,12 @@ const ServiceManager: React.FC<ServiceManagerProps> = ({
         await coiffeurService.deleteService(coiffeurId, serviceId);
         setServices(services.filter(s => s._id !== serviceId));
         setSuccessMessage('Service supprimé avec succès !');
+        try {
+          await coiffeurService.syncGallery(coiffeurId);
+          await fetchServices();
+        } catch (error) {
+          console.error('Error syncing gallery after delete:', error);
+        }
         setTimeout(() => setSuccessMessage(null), 3000);
       } catch (error) {
         console.error('Error deleting service:', error);
@@ -110,13 +127,12 @@ const ServiceManager: React.FC<ServiceManagerProps> = ({
         setSuccessMessage('Service ajouté avec succès !');
       }
 
-      // Synchroniser la galerie avec les nouvelles images
-      if (serviceData.examplePhotos && serviceData.examplePhotos.length > 0) {
-        try {
-          await coiffeurService.syncGallery(coiffeurId);
-        } catch (error) {
-          console.error('Error syncing gallery:', error);
-        }
+      // Synchroniser la galerie après toute modification
+      try {
+        await coiffeurService.syncGallery(coiffeurId);
+        await fetchServices();
+      } catch (error) {
+        console.error('Error syncing gallery:', error);
       }
 
       // Fermer le modal et réinitialiser
@@ -137,6 +153,9 @@ const ServiceManager: React.FC<ServiceManagerProps> = ({
                          service.keywords?.some(keyword => keyword.toLowerCase().includes(searchTerm.toLowerCase()));
     return matchesCategory && matchesSearch;
   });
+
+  const editableServices = filteredServices.filter(service => service.isEditable !== false);
+  const systemServices = filteredServices.filter(service => service.isEditable === false || service.isSystemService);
 
   const categories = [
     { value: 'all', label: 'Toutes les catégories' },
@@ -231,14 +250,14 @@ const ServiceManager: React.FC<ServiceManagerProps> = ({
       </div>
 
       {/* Liste des services */}
-      {filteredServices.length === 0 ? (
+      {editableServices.length === 0 && systemServices.length === 0 ? (
         <div className="text-center py-12 bg-fashion-light-gray rounded-xl shadow-lg">
           <div className="text-gray-400 text-6xl mb-4">✂️</div>
           <h3 className="text-xl font-semibold text-gray-700 mb-2">
             {isOwner ? 'Aucun service disponible' : 'Aucun service trouvé'}
           </h3>
           <p className="text-gray-500 mb-6">
-            {isOwner 
+            {isOwner
               ? 'Commencez par ajouter votre premier service pour attirer des clients !'
               : 'Aucun service ne correspond à vos critères de recherche.'
             }
@@ -253,19 +272,50 @@ const ServiceManager: React.FC<ServiceManagerProps> = ({
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-          {filteredServices.map((service) => (
-            <ServiceCard
-              key={service._id}
-              service={service}
-              isOwner={isOwner}
-              onEdit={() => handleEditService(service)}
-              onDelete={() => handleDeleteService(service._id)}
-              onBook={onServiceBook ? () => onServiceBook(service._id) : undefined}
-              onLike={onServiceLike ? () => onServiceLike(service._id) : undefined}
-              showBookButton={onServiceBook !== undefined}
-            />
-          ))}
+        <div className="space-y-10">
+          {editableServices.length > 0 && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-gray-800">Services éditables</h3>
+                <span className="text-sm text-gray-500">{editableServices.length} service(s)</span>
+              </div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                {editableServices.map((service) => (
+                  <ServiceCard
+                    key={service._id}
+                    service={service}
+                    isOwner={isOwner}
+                    onEdit={service.isEditable === false ? undefined : () => handleEditService(service)}
+                    onDelete={service.isEditable === false ? undefined : () => handleDeleteService(service._id)}
+                    onBook={onServiceBook ? () => onServiceBook(service._id) : undefined}
+                    onLike={onServiceLike ? () => onServiceLike(service._id) : undefined}
+                    showBookButton={onServiceBook !== undefined}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {systemServices.length > 0 && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-gray-800">Services système</h3>
+                <span className="text-sm text-gray-500">Lecture seule</span>
+              </div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                {systemServices.map((service) => (
+                  <ServiceCard
+                    key={service._id}
+                    service={{ ...service, isEditable: false }}
+                    isOwner={isOwner}
+                    onBook={onServiceBook ? () => onServiceBook(service._id) : undefined}
+                    onLike={onServiceLike ? () => onServiceLike(service._id) : undefined}
+                    showBookButton={onServiceBook !== undefined}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
