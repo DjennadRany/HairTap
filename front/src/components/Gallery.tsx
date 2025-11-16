@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FaImage, FaChevronLeft, FaChevronRight, FaHeart, FaShoppingCart, FaCalendarAlt, FaComment } from 'react-icons/fa';
-import { coiffeurService } from '../services/api/coiffeurs';
+import { coiffeurService, type SyncedGalleryItem } from '../services/api/coiffeurs';
 import { getImageUrl, handleImageError, DEFAULT_SERVICE_IMAGE } from '../utils/imageUtils';
 import { useIsMobile } from '../hooks/useIsMobile';
 import InstagramGallery from './InstagramGallery'; // Instagram-like gallery
@@ -26,6 +26,23 @@ interface GalleryImage {
   likes?: number;
   isLiked?: boolean;
 }
+
+const mapSyncedItemsToGalleryImages = (items: SyncedGalleryItem[]): GalleryImage[] =>
+  items
+    .filter((item) => Boolean(item.mediaUrl))
+    .map((item, index) => ({
+      _id: item.id ?? `${item.serviceId ?? 'service'}-${index}`,
+      url: item.mediaUrl,
+      mediaType: item.mediaType === 'video' ? 'video' : 'image',
+      serviceName: item.serviceName ?? 'Service',
+      servicePrice: item.servicePrice ?? 0,
+      serviceDuration: item.serviceDuration ?? 0,
+      serviceId: item.serviceId ?? '',
+      serviceDescription: item.caption ?? item.serviceDescription ?? '',
+      serviceCategory: item.serviceCategory,
+      likes: item.likes,
+      isLiked: false
+    }));
 
 const Gallery: React.FC<GalleryProps> = ({ coiffeurId, isOwner = false, onServiceBook }) => {
   const isMobile = useIsMobile();
@@ -95,15 +112,27 @@ const Gallery: React.FC<GalleryProps> = ({ coiffeurId, isOwner = false, onServic
     try {
       setLoading(true);
       // Fetching gallery images for coiffeurId
-      
+
       if (!coiffeurId) {
         // coiffeurId est undefined ou null
         return;
       }
-      
+
+      try {
+        const syncedGallery = await coiffeurService.syncGallery(coiffeurId);
+        const syncedImages = mapSyncedItemsToGalleryImages(syncedGallery?.items ?? []);
+
+        if (syncedImages.length > 0) {
+          setImages(syncedImages);
+          return;
+        }
+      } catch (syncError) {
+        console.warn('⚠️ Synchronisation de galerie indisponible, bascule sur le flux existant', syncError);
+      }
+
       // Récupérer UNIQUEMENT les services (pas les produits)
       const services = await coiffeurService.getCoiffeurServices(coiffeurId);
-      
+
       console.log('✅ Services récupérés:', services.length);
       
       const galleryImages: GalleryImage[] = [];

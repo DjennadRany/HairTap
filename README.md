@@ -2,6 +2,13 @@
 
 Application de réservation de services de coiffure à domicile ou en salon.
 
+## 📋 DOCUMENTATION VERSION
+
+**Version actuelle:** v0.7.19  
+**📄 Documentation complète:** [CHANGELOG_v0.7.19.md](./CHANGELOG_v0.7.19.md)  
+**⚡ Référence rapide:** [V0.7.19_REFERENCE_RAPIDE.md](./V0.7.19_REFERENCE_RAPIDE.md)  
+**📊 Inventaire v0.7.17:** [INVENTAIRE_COMPLET_V0.7.17_AVEC_ARCHI_0.7.18.md](./INVENTAIRE_COMPLET_V0.7.17_AVEC_ARCHI_0.7.18.md)
+
 ## 🎯 À propos
 
 TapHair est une application innovante qui connecte les clients avec des coiffeurs professionnels pour des services de coiffure à domicile ou en salon. Notre plateforme simplifie le processus de réservation et offre une expérience utilisateur fluide et intuitive.

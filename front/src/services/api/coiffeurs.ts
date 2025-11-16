@@ -29,10 +29,33 @@ export interface GetCoiffeurSlotsOptions {
 
 export interface SearchQuery {
   service?: string;
-  speciality?: string[];
-  priceRange?: string[];
+  specialities?: string[];
+  modes?: CoiffeurSlotMode[];
+  priceMin?: number;
+  priceMax?: number;
   city?: string;
   date?: string;
+  rating?: number;
+  maxDistance?: number;
+  latitude?: number;
+  longitude?: number;
+}
+
+export interface SyncedGalleryItem {
+  id?: string;
+  origin?: 'gallery' | 'examplePhotos';
+  mediaUrl: string;
+  mediaType?: 'image' | 'video';
+  caption?: string;
+  tags?: string[];
+  likes?: number;
+  createdAt?: string;
+  serviceId?: string;
+  serviceName?: string;
+  servicePrice?: number;
+  serviceDuration?: number;
+  serviceCategory?: string;
+  serviceDescription?: string;
 }
 
 export const coiffeurService = {
@@ -66,12 +89,37 @@ export const coiffeurService = {
   async searchCoiffeurs(query: SearchQuery): Promise<User[]> {
     const params = new URLSearchParams();
     if (query.service) params.append('service', query.service);
-    if (query.speciality) query.speciality.forEach(s => params.append('speciality', s));
-    if (query.priceRange) query.priceRange.forEach(p => params.append('priceRange', p));
+    if (query.specialities) {
+      query.specialities.forEach((speciality) => params.append('specialities', speciality));
+    }
+    if (query.modes) {
+      query.modes.forEach((mode) => params.append('mode', mode));
+    }
+    if (typeof query.priceMin === 'number') {
+      params.append('priceMin', query.priceMin.toString());
+    }
+    if (typeof query.priceMax === 'number') {
+      params.append('priceMax', query.priceMax.toString());
+    }
     if (query.city) params.append('city', query.city);
     if (query.date) params.append('date', query.date);
+    if (typeof query.rating === 'number') {
+      params.append('rating', query.rating.toString());
+    }
+    if (
+      typeof query.maxDistance === 'number' &&
+      typeof query.latitude === 'number' &&
+      typeof query.longitude === 'number'
+    ) {
+      params.append('maxDistance', query.maxDistance.toString());
+      params.append('latitude', query.latitude.toString());
+      params.append('longitude', query.longitude.toString());
+    }
 
-    const response = await api.get<{ success: boolean; data: User[]; count: number }>(`/coiffeurs?${params.toString()}`);
+    const queryString = params.toString();
+    const response = await api.get<{ success: boolean; data: User[]; count: number }>(
+      `${API_URL}${queryString ? `?${queryString}` : ''}`
+    );
     
     // Extraire les données du nouveau format de réponse
     const coiffeurs = response.data.success ? response.data.data : [];
@@ -166,6 +214,17 @@ export const coiffeurService = {
   // Récupérer les services d'un coiffeur
   async getCoiffeurServices(coiffeurId: string): Promise<any[]> {
     const response = await api.get(`/coiffeurs/${coiffeurId}/services`);
+    return response.data;
+  },
+
+  async syncGallery(coiffeurId: string): Promise<{
+    success: boolean;
+    coiffeurId: string;
+    items: SyncedGalleryItem[];
+    count: number;
+    deduplicatedFrom: number;
+  }> {
+    const response = await api.get(`/coiffeurs/${coiffeurId}/gallery-sync`);
     return response.data;
   },
 

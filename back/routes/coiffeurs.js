@@ -8,6 +8,35 @@ import { getCoiffeurAvailableSlots } from '../services/slotService.js';
 
 const router = express.Router();
 
+const toArrayParam = (value) => {
+  if (value === undefined) {
+    return [];
+  }
+
+  return Array.isArray(value) ? value : [value];
+};
+
+const toNumberOrUndefined = (value) => {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+};
+
+const calculateDistanceInKm = (lat1, lon1, lat2, lon2) => {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+};
+
 // Configuration multer pour l'upload de fichiers
 const storage = multer.memoryStorage();
 const upload = multer({
@@ -141,42 +170,128 @@ router.post('/:id/photo', auth, upload.single('photo'), handleUploadError, async
 // Récupérer tous les coiffeurs
 router.get('/', async (req, res) => {
   try {
-    const { service, speciality, priceRange, city, date } = req.query;
-    let query = { role: 'coiffeur' };
+    const {
+      service,
+      speciality,
+      specialities,
+      city,
+      priceMin,
+      priceMax,
+      rating,
+      mode,
+      modes,
+      maxDistance,
+      latitude,
+      longitude
+    } = req.query;
 
-    // Filtres de recherche
-    if (service) {
-      // Rechercher dans les services des coiffeurs
-      const servicesWithName = await Service.find({
-        name: { $regex: service, $options: 'i' },
-        isActive: true
-      }).distinct('coiffeur');
-      
-      if (servicesWithName.length > 0) {
-        query._id = { $in: servicesWithName };
+    const query = { role: 'coiffeur' };
+    let allowedCoiffeurIds = null;
+
+    const registerAllowedIds = (ids) => {
+      const normalizedIds = ids.map((id) => id.toString());
+      if (!allowedCoiffeurIds) {
+        allowedCoiffeurIds = new Set(normalizedIds);
       } else {
-        // Si aucun service trouvé, retourner un tableau vide
-        return res.json({
-          success: true,
-          data: [],
-          count: 0
-        });
+        allowedCoiffeurIds = new Set(normalizedIds.filter((id) => allowedCoiffeurIds.has(id)));
+      }
+      return allowedCoiffeurIds;
+    };
+
+    const minimumPrice = toNumberOrUndefined(priceMin);
+    const maximumPrice = toNumberOrUndefined(priceMax);
+
+    if (service || minimumPrice !== undefined || maximumPrice !== undefined) {
+      const serviceFilter = { isActive: true };
+
+      if (service) {
+        serviceFilter.name = { $regex: service, $options: 'i' };
+      }
+
+      if (minimumPrice !== undefined || maximumPrice !== undefined) {
+        serviceFilter.price = {};
+        if (minimumPrice !== undefined) {
+          serviceFilter.price.$gte = minimumPrice;
+        }
+        if (maximumPrice !== undefined) {
+          serviceFilter.price.$lte = maximumPrice;
+        }
+      }
+
+      const servicesWithFilters = await Service.find(serviceFilter).distinct('coiffeur');
+      const mergedIds = registerAllowedIds(servicesWithFilters);
+
+      if (mergedIds && mergedIds.size === 0) {
+        return res.json({ success: true, data: [], count: 0 });
       }
     }
-    
-    if (speciality) {
-      query.specialities = { $in: Array.isArray(speciality) ? speciality : [speciality] };
+
+    const specialityFilters = [
+      ...toArrayParam(speciality),
+      ...toArrayParam(specialities)
+    ];
+
+    if (specialityFilters.length > 0) {
+      query.specialities = { $in: specialityFilters };
     }
-    
+
+    const modeFilters = [...new Set(toArrayParam(mode).concat(toArrayParam(modes)))];
+    if (modeFilters.length > 0) {
+      query.$or = [
+        { workingMode: { $in: modeFilters } },
+        { workingMode: 'both' }
+      ];
+    }
+
+    if (allowedCoiffeurIds && allowedCoiffeurIds.size > 0) {
+      query._id = { $in: Array.from(allowedCoiffeurIds) };
+    }
+
     if (city) {
       query['address.city'] = { $regex: city, $options: 'i' };
     }
 
-    const coiffeurs = await User.find(query)
+    let coiffeurs = await User.find(query)
       .select('-password')
-      .sort({ rating: -1, totalRatings: -1 }); // Trier par note et nombre d'avis
+      .sort({ rating: -1, totalRatings: -1 });
 
-    // Format de réponse cohérent
+    const minimumRating = toNumberOrUndefined(rating);
+    if (minimumRating !== undefined) {
+      coiffeurs = coiffeurs.filter((coiffeur) => (coiffeur.rating ?? 0) >= minimumRating);
+    }
+
+    const distanceLimit = toNumberOrUndefined(maxDistance);
+    const latitudeValue = toNumberOrUndefined(latitude);
+    const longitudeValue = toNumberOrUndefined(longitude);
+
+    if (
+      distanceLimit !== undefined &&
+      latitudeValue !== undefined &&
+      longitudeValue !== undefined
+    ) {
+      coiffeurs = coiffeurs.filter((coiffeur) => {
+        const coordinates =
+          coiffeur?.address?.coordinates &&
+          typeof coiffeur.address.coordinates.lat === 'number' &&
+          typeof coiffeur.address.coordinates.lng === 'number'
+            ? coiffeur.address.coordinates
+            : coiffeur?.salonAddress?.coordinates;
+
+        if (!coordinates || typeof coordinates.lat !== 'number' || typeof coordinates.lng !== 'number') {
+          return false;
+        }
+
+        const distance = calculateDistanceInKm(
+          latitudeValue,
+          longitudeValue,
+          coordinates.lat,
+          coordinates.lng
+        );
+
+        return distance <= distanceLimit;
+      });
+    }
+
     res.json({
       success: true,
       data: coiffeurs,
@@ -184,9 +299,96 @@ router.get('/', async (req, res) => {
     });
   } catch (error) {
     console.error('Get coiffeurs error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: 'Erreur lors de la récupération des coiffeurs' 
+      message: 'Erreur lors de la récupération des coiffeurs'
+    });
+  }
+});
+
+// Synchroniser la galerie d'un coiffeur à partir de ses services (gallery + examplePhotos)
+router.get('/:id/gallery-sync', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const services = await Service.find({ coiffeur: id, isActive: true }).select(
+      'name price duration category description gallery examplePhotos'
+    );
+
+    if (!services.length) {
+      return res.json({
+        success: true,
+        coiffeurId: id,
+        count: 0,
+        deduplicatedFrom: 0,
+        items: []
+      });
+    }
+
+    const aggregatedItems = services.flatMap((service) => {
+      const baseInfo = {
+        serviceId: service._id,
+        serviceName: service.name,
+        servicePrice: service.price,
+        serviceDuration: service.duration,
+        serviceCategory: service.category,
+        serviceDescription: service.description
+      };
+
+      const galleryItems = (service.gallery || []).map((media, index) => ({
+        id: `${service._id}-gallery-${index}`,
+        origin: 'gallery',
+        mediaUrl: media.mediaUrl,
+        mediaType: media.mediaType,
+        caption: media.caption,
+        tags: media.tags,
+        likes: media.likes,
+        createdAt: media.createdAt,
+        ...baseInfo
+      }));
+
+      const examplePhotoItems = (service.examplePhotos || []).map((photoUrl, index) => ({
+        id: `${service._id}-example-${index}`,
+        origin: 'examplePhotos',
+        mediaUrl: photoUrl,
+        mediaType: 'image',
+        caption: baseInfo.serviceDescription,
+        tags: [],
+        likes: 0,
+        createdAt: service.createdAt,
+        ...baseInfo
+      }));
+
+      return [...galleryItems, ...examplePhotoItems];
+    });
+
+    const seen = new Set();
+    const dedupedItems = aggregatedItems.filter((item) => {
+      if (!item.mediaUrl) {
+        return false;
+      }
+
+      const key = `${item.mediaUrl}`;
+      if (seen.has(key)) {
+        return false;
+      }
+
+      seen.add(key);
+      return true;
+    });
+
+    return res.json({
+      success: true,
+      coiffeurId: id,
+      count: dedupedItems.length,
+      deduplicatedFrom: aggregatedItems.length,
+      items: dedupedItems
+    });
+  } catch (error) {
+    console.error('Erreur lors de la synchronisation de la galerie coiffeur :', error);
+    res.status(500).json({
+      success: false,
+      message: "Impossible de synchroniser la galerie pour ce coiffeur pour le moment"
     });
   }
 });

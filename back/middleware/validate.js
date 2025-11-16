@@ -1,7 +1,7 @@
-import { 
-  validateEmail, 
-  validateName, 
-  validatePhone, 
+import {
+  validateEmail,
+  validateName,
+  validatePhone,
   validateAddress,
   validateUserRole,
   validatePassword,
@@ -10,7 +10,8 @@ import {
   validateDescription,
   validateServiceMode,
   validateBookingStatus,
-  validatePaymentStatus
+  validatePaymentStatus,
+  validateDate
 } from '../utils/validators.js';
 import { body, validationResult } from 'express-validator';
 

@@ -95,6 +95,15 @@ const bookingSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  acceptedTermsAt: {
+    type: Date
+  },
+  acceptedCancellationPolicyAt: {
+    type: Date
+  },
+  acceptedPaymentConsentAt: {
+    type: Date
+  },
   cancellationReason: {
     type: String,
     trim: true

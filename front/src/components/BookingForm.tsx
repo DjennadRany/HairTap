@@ -111,6 +111,12 @@ const BookingForm: React.FC<BookingFormProps> = ({
     buildingCode: '',
     additionalInfo: ''
   });
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [acceptedCancellationPolicy, setAcceptedCancellationPolicy] = useState(false);
+  const [acceptedPaymentConsent, setAcceptedPaymentConsent] = useState(false);
+  const [acceptedTermsAt, setAcceptedTermsAt] = useState<string | null>(null);
+  const [acceptedCancellationPolicyAt, setAcceptedCancellationPolicyAt] = useState<string | null>(null);
+  const [acceptedPaymentConsentAt, setAcceptedPaymentConsentAt] = useState<string | null>(null);
 
   // Charger les données complètes de l'utilisateur
   useEffect(() => {
@@ -275,6 +281,12 @@ const BookingForm: React.FC<BookingFormProps> = ({
   const availableDates = useMemo(() => Object.keys(slotsByDate).sort(), [slotsByDate]);
   const slotsForSelectedDate = selectedDate ? slotsByDate[selectedDate] || [] : [];
 
+  // ✅ CORRECTION: Définir useBookingValidation AVANT getSlotValidation
+  const { validateBooking, canUseSlot } = useBookingValidation({
+    existingBookings: coiffeurBookings,
+    coiffeurModes,
+  });
+
   const getSlotValidation = useCallback(
     (slot: CoiffeurSlotDTO) => {
       if (!selectedService) {
@@ -284,11 +296,6 @@ const BookingForm: React.FC<BookingFormProps> = ({
     },
     [bookingMode, canUseSlot, selectedService]
   );
-
-  const { validateBooking, canUseSlot } = useBookingValidation({
-    existingBookings: coiffeurBookings,
-    coiffeurModes,
-  });
 
   useEffect(() => {
     const fetchCoiffeurBookings = async () => {
@@ -407,10 +414,16 @@ const BookingForm: React.FC<BookingFormProps> = ({
       return;
     }
 
+    if (!acceptedTerms || !acceptedCancellationPolicy || !acceptedPaymentConsent) {
+      setError('Vous devez accepter les CGV, la politique d’annulation et le consentement de paiement pour continuer.');
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
     try {
+      const nowIso = new Date().toISOString();
       const bookingPayload: CreateBookingData = {
         serviceId: selectedService._id,
         coiffeurId: coiffeur._id,
@@ -421,7 +434,10 @@ const BookingForm: React.FC<BookingFormProps> = ({
         price: selectedService.price,
         mode: bookingMode,
         address: bookingMode === 'domicile' ? clientAddress : undefined,
-        notes: `Réservation pour ${selectedService.name}`
+        notes: `Réservation pour ${selectedService.name}`,
+        acceptedTermsAt: acceptedTermsAt ?? nowIso,
+        acceptedCancellationPolicyAt: acceptedCancellationPolicyAt ?? nowIso,
+        acceptedPaymentConsentAt: acceptedPaymentConsentAt ?? nowIso
       };
 
       // Créer la réservation
@@ -936,6 +952,75 @@ const BookingForm: React.FC<BookingFormProps> = ({
                 <span>Contact direct : {coiffeur.phone || coiffeur.email}</span>
               </div>
             </div>
+          </Card>
+
+          {/* Consentements obligatoires */}
+          <Card className="p-6 border border-fashion-gray-200">
+            <h3 className="text-lg font-semibold mb-4 text-fashion-black">Consentements nécessaires</h3>
+            <div className="space-y-4">
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={acceptedTerms}
+                  onChange={(event) => {
+                    const checked = event.target.checked;
+                    setAcceptedTerms(checked);
+                    setAcceptedTermsAt(checked ? new Date().toISOString() : null);
+                    if (checked && acceptedCancellationPolicy && acceptedPaymentConsent) {
+                      setError(null);
+                    }
+                  }}
+                  className="mt-1 h-5 w-5 rounded border-fashion-gray-300 text-fashion-black focus:ring-fashion-black"
+                  required
+                />
+                <span className="text-sm text-fashion-gray-700">
+                  J'ai lu et j'accepte les <a href="/conditions-generales" target="_blank" rel="noopener noreferrer" className="text-fashion-black underline">Conditions Générales de Vente</a>.
+                </span>
+              </label>
+
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={acceptedCancellationPolicy}
+                  onChange={(event) => {
+                    const checked = event.target.checked;
+                    setAcceptedCancellationPolicy(checked);
+                    setAcceptedCancellationPolicyAt(checked ? new Date().toISOString() : null);
+                    if (checked && acceptedTerms && acceptedPaymentConsent) {
+                      setError(null);
+                    }
+                  }}
+                  className="mt-1 h-5 w-5 rounded border-fashion-gray-300 text-fashion-black focus:ring-fashion-black"
+                  required
+                />
+                <span className="text-sm text-fashion-gray-700">
+                  Je reconnais avoir été informé(e) de la <a href="/politique-annulation" target="_blank" rel="noopener noreferrer" className="text-fashion-black underline">politique d'annulation</a> et l'accepte.
+                </span>
+              </label>
+
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={acceptedPaymentConsent}
+                  onChange={(event) => {
+                    const checked = event.target.checked;
+                    setAcceptedPaymentConsent(checked);
+                    setAcceptedPaymentConsentAt(checked ? new Date().toISOString() : null);
+                    if (checked && acceptedTerms && acceptedCancellationPolicy) {
+                      setError(null);
+                    }
+                  }}
+                  className="mt-1 h-5 w-5 rounded border-fashion-gray-300 text-fashion-black focus:ring-fashion-black"
+                  required
+                />
+                <span className="text-sm text-fashion-gray-700">
+                  J'autorise le prélèvement du montant indiqué pour cette réservation si le professionnel confirme la prestation.
+                </span>
+              </label>
+            </div>
+            <p className="text-xs text-fashion-gray-500 mt-4">
+              Ces consentements sont indispensables pour garantir la traçabilité et la conformité de votre réservation.
+            </p>
           </Card>
         </div>
 
