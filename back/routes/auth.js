@@ -4,9 +4,10 @@ import jwt from 'jsonwebtoken';
 import { OAuth2Client } from 'google-auth-library';
 import { auth } from '../middleware/auth.js';
 import { validateAuth } from '../middleware/validate.js';
-import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { sendPasswordResetEmail } from '../services/emailService.js';
+import { v4 as uuidv4 } from 'uuid';
+import PasswordResetToken from '../models/PasswordResetToken.js';
 
 const router = express.Router();
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -102,8 +103,6 @@ router.post('/register', validateAuth, async (req, res) => {
       services
     } = req.body;
 
-    console.log('📥 Données reçues lors de l\'inscription:', req.body);
-
     // SUPPRIMÉ : Contrôle d'email de fin - cause de problèmes
 
     // Créer le nouvel utilisateur avec TOUTES les données
@@ -137,20 +136,8 @@ router.post('/register', validateAuth, async (req, res) => {
       userData.preferences = preferences;
     }
 
-    console.log('📝 Données utilisateur à sauvegarder:', userData);
-
     const user = new User(userData);
     await user.save();
-    
-    console.log('✅ Utilisateur créé avec succès:', {
-      id: user._id,
-      name: user.name,
-      email: user.email,
-      phone: user.phone,
-      bio: user.bio,
-      addresses: user.addresses,
-      preferences: user.preferences
-    });
 
     // Créer le token JWT
     const token = jwt.sign(
@@ -241,12 +228,12 @@ router.post('/google', async (req, res) => {
     let user = await User.findOne({ email });
     if (!user) {
       // Créer un nouvel utilisateur
-      const tempPassword = Math.random().toString(36).slice(-8);
+      const tempPassword = crypto.randomBytes(32).toString('hex');
 
       user = new User({
         name,
         email,
-        password: tempPassword, // Stockage en clair pour les tests
+        password: tempPassword,
         photo: picture,
         role: 'client',
         googleId: ticket.getPayload().sub
@@ -366,21 +353,39 @@ router.post('/forgot-password', async (req, res) => {
       return res.json({ message: 'Si un compte existe pour cet email, un lien de réinitialisation a été envoyé.' });
     }
 
-    const resetToken = user.createPasswordResetToken();
-    await user.save({ validateBeforeSave: false });
+    await PasswordResetToken.deleteMany({ user: user._id });
+
+    const tokenId = uuidv4();
+    const tokenHash = crypto.createHash('sha256').update(tokenId).digest('hex');
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+
+    const jwtResetToken = jwt.sign(
+      {
+        tokenId,
+        sub: user._id.toString(),
+        type: 'password_reset'
+      },
+      JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+
+    await PasswordResetToken.create({
+      user: user._id,
+      tokenHash,
+      expiresAt
+    });
 
     const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-    const resetUrl = `${baseUrl.replace(/\/$/, '')}/reset-password?token=${resetToken}`;
+    const resetUrl = `${baseUrl.replace(/\/$/, '')}/reset-password?token=${jwtResetToken}`;
 
     try {
       await sendPasswordResetEmail({
         email: user.email,
-        resetUrl
+        resetUrl,
+        expiresInMinutes: 60
       });
     } catch (emailError) {
-      user.passwordResetToken = undefined;
-      user.passwordResetExpires = undefined;
-      await user.save({ validateBeforeSave: false });
+      await PasswordResetToken.deleteMany({ user: user._id, tokenHash });
       throw emailError;
     }
 
@@ -399,21 +404,46 @@ router.post('/reset-password', async (req, res) => {
       return res.status(400).json({ message: 'Token et nouveau mot de passe requis' });
     }
 
-    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+    let decodedToken;
 
-    const user = await User.findOne({
-      passwordResetToken: hashedToken,
-      passwordResetExpires: { $gt: Date.now() }
-    }).select('+password');
+    try {
+      decodedToken = jwt.verify(token, JWT_SECRET);
+    } catch (verificationError) {
+      if (verificationError.name === 'TokenExpiredError') {
+        return res.status(400).json({ message: 'Lien de réinitialisation expiré' });
+      }
 
-    if (!user) {
+      return res.status(400).json({ message: 'Lien de réinitialisation invalide' });
+    }
+
+    if (!decodedToken?.tokenId || decodedToken.type !== 'password_reset') {
+      return res.status(400).json({ message: 'Lien de réinitialisation invalide' });
+    }
+
+    const tokenHash = crypto.createHash('sha256').update(decodedToken.tokenId).digest('hex');
+
+    const resetToken = await PasswordResetToken.findOne({
+      user: decodedToken.sub,
+      tokenHash,
+      expiresAt: { $gt: new Date() },
+      consumedAt: { $exists: false }
+    });
+
+    if (!resetToken) {
       return res.status(400).json({ message: 'Lien de réinitialisation invalide ou expiré' });
     }
 
+    const user = await User.findById(decodedToken.sub).select('+password');
+    if (!user) {
+      return res.status(404).json({ message: 'Utilisateur non trouvé' });
+    }
+
     user.password = password;
-    user.passwordResetToken = undefined;
-    user.passwordResetExpires = undefined;
     await user.save();
+
+    resetToken.consumedAt = new Date();
+    await resetToken.save();
+    await PasswordResetToken.deleteMany({ user: user._id, _id: { $ne: resetToken._id } });
 
     res.json({ message: 'Mot de passe réinitialisé avec succès' });
   } catch (error) {
@@ -498,4 +528,4 @@ router.post('/firebase-sync', async (req, res) => {
   }
 });
 
-export default router; 
+export default router;
