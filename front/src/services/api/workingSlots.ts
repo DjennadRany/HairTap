@@ -5,6 +5,7 @@ export interface WorkingSlot {
   dayOfWeek: number;
   startTime: number;
   endTime: number;
+  availableAt?: 'salon' | 'domicile' | 'both';
   status: 'available' | 'booked' | 'maintenance' | 'unavailable';
   maxBookings?: number;
   currentBookings?: number;

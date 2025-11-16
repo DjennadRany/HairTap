@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronLeftIcon, ChevronRightIcon, CalendarIcon, ClockIcon } from '@heroicons/react/24/outline';
 import workingSlotsService, { type WorkingSlot } from '../../services/api/workingSlots';
+import { bookingService, type Booking } from '../../services/api/bookings';
 
 interface TimeSlot {
   id: string;
@@ -21,22 +22,72 @@ interface DayData {
 interface IntelligentCalendarProps {
   coiffeurId?: string;
   isClient?: boolean;
+  mode?: 'salon' | 'domicile' | 'both';
+  coiffeur?: {
+    salonAddress?: string;
+    homeServiceAddress?: string;
+  };
   onSlotSelect?: (slot: TimeSlot, date: Date) => void;
   onDateSelect?: (date: Date) => void;
 }
 
 const startOfDay = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
 
-function buildDayData(date: Date, slots: WorkingSlot[], today: Date): DayData {
-  const slotsForDay = slots.filter((slot) => slot.dayOfWeek === date.getDay());
+function parseHourFromTime(time?: string | null): number | null {
+  if (!time) return null;
+
+  const [hoursPart] = time.split(':');
+  const parsed = Number.parseInt(hoursPart, 10);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
+function slotMatchesMode(slot: WorkingSlot, mode: IntelligentCalendarProps['mode']): boolean {
+  if (!mode || mode === 'both' || !slot.availableAt) return true;
+
+  if (mode === 'salon') {
+    return slot.availableAt === 'salon' || slot.availableAt === 'both';
+  }
+
+  if (mode === 'domicile') {
+    return slot.availableAt === 'domicile' || slot.availableAt === 'both';
+  }
+
+  return true;
+}
+
+function buildDayData(
+  date: Date,
+  slots: WorkingSlot[],
+  bookings: Booking[],
+  today: Date,
+  mode: IntelligentCalendarProps['mode']
+): DayData {
+  const slotsForDay = slots.filter((slot) => slot.dayOfWeek === date.getDay() && slotMatchesMode(slot, mode));
   const daySlots: TimeSlot[] = [];
   let totalBookings = 0;
+
+  const bookingsForDay = bookings.filter((booking) => {
+    const bookingDate = new Date(booking.date);
+    return bookingDate.toDateString() === date.toDateString() && booking.status !== 'cancelled';
+  });
 
   const isPastDay = startOfDay(date) < today;
 
   slotsForDay.forEach((slot) => {
     const maxBookings = slot.maxBookings ?? 1;
-    const currentBookings = slot.currentBookings ?? 0;
+
+    const bookingsForSlot = bookingsForDay.filter((booking) => {
+      if (booking.slotId && booking.slotId === slot._id) {
+        return true;
+      }
+
+      const bookingHour = parseHourFromTime(booking.time);
+      if (bookingHour === null) return false;
+
+      return bookingHour >= slot.startTime && bookingHour < slot.endTime;
+    });
+
+    const currentBookings = bookingsForSlot.length || slot.currentBookings || 0;
     totalBookings += currentBookings;
 
     const isBooked = slot.status === 'booked' || currentBookings >= maxBookings;
@@ -65,7 +116,9 @@ function buildDayData(date: Date, slots: WorkingSlot[], today: Date): DayData {
 function buildCalendarData(
   referenceDate: Date,
   viewMode: 'week' | 'month',
-  slots: WorkingSlot[]
+  slots: WorkingSlot[],
+  bookings: Booking[],
+  mode: IntelligentCalendarProps['mode']
 ): DayData[] {
   if (!slots || slots.length === 0) {
     return [];
@@ -81,7 +134,7 @@ function buildCalendarData(
     for (let i = 0; i < 7; i++) {
       const date = new Date(startDate);
       date.setDate(startDate.getDate() + i);
-      data.push(buildDayData(date, slots, today));
+      data.push(buildDayData(date, slots, bookings, today, mode));
     }
   } else {
     const year = startDate.getFullYear();
@@ -90,7 +143,7 @@ function buildCalendarData(
 
     for (let day = 1; day <= daysInMonth; day++) {
       const date = new Date(year, month, day);
-      data.push(buildDayData(date, slots, today));
+      data.push(buildDayData(date, slots, bookings, today, mode));
     }
   }
 
@@ -100,6 +153,7 @@ function buildCalendarData(
 export const IntelligentCalendar: React.FC<IntelligentCalendarProps> = ({
   coiffeurId,
   isClient = false,
+  mode = 'both',
   onSlotSelect,
   onDateSelect
 }) => {
@@ -108,6 +162,7 @@ export const IntelligentCalendar: React.FC<IntelligentCalendarProps> = ({
   const [viewMode, setViewMode] = useState<'week' | 'month'>('week');
   const [calendarData, setCalendarData] = useState<DayData[]>([]);
   const [slots, setSlots] = useState<WorkingSlot[]>([]);
+  const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -122,22 +177,51 @@ export const IntelligentCalendar: React.FC<IntelligentCalendarProps> = ({
 
       if (!coiffeurId) {
         setSlots([]);
+        setBookings([]);
         setLoading(false);
         return;
       }
 
-      const response = await workingSlotsService.getCoiffeurSlots(coiffeurId);
+      try {
+        const [slotsResult, bookingsResult] = await Promise.allSettled([
+          workingSlotsService.getCoiffeurSlots(coiffeurId),
+          bookingService.getCoiffeurBookings(coiffeurId)
+        ]);
 
-      if (!isSubscribed) return;
+        if (!isSubscribed) return;
 
-      if (response.success && response.data) {
-        setSlots(response.data);
-      } else {
+        if (slotsResult.status === 'fulfilled' && slotsResult.value.success && slotsResult.value.data) {
+          setSlots(slotsResult.value.data);
+        } else {
+          setSlots([]);
+          const message =
+            slotsResult.status === 'fulfilled'
+              ? slotsResult.value.message
+              : slotsResult.reason?.message;
+          setError(message ?? 'Impossible de récupérer les créneaux');
+        }
+
+        if (bookingsResult.status === 'fulfilled') {
+          const data = Array.isArray(bookingsResult.value)
+            ? bookingsResult.value
+            : Array.isArray((bookingsResult.value as any)?.data)
+              ? (bookingsResult.value as any).data
+              : [];
+          setBookings(data);
+        } else {
+          setBookings([]);
+          setError((current) => current ?? 'Impossible de récupérer les réservations');
+        }
+      } catch (err: any) {
+        if (!isSubscribed) return;
         setSlots([]);
-        setError(response.message ?? 'Impossible de récupérer les créneaux');
+        setBookings([]);
+        setError(err?.message ?? 'Erreur inattendue lors du chargement du calendrier');
+      } finally {
+        if (isSubscribed) {
+          setLoading(false);
+        }
       }
-
-      setLoading(false);
     };
 
     loadSlots();
@@ -148,8 +232,8 @@ export const IntelligentCalendar: React.FC<IntelligentCalendarProps> = ({
   }, [coiffeurId]);
 
   useEffect(() => {
-    setCalendarData(buildCalendarData(currentDate, viewMode, slots));
-  }, [currentDate, viewMode, slots]);
+    setCalendarData(buildCalendarData(currentDate, viewMode, slots, bookings, mode));
+  }, [currentDate, viewMode, slots, bookings, mode]);
 
   const navigateDate = (direction: 'prev' | 'next') => {
     const newDate = new Date(currentDate);
@@ -357,7 +441,11 @@ const WeekView: React.FC<{
                       )}
                     </div>
                     <div className="text-sm">
-                      {slot.booked ? 'Réservé' : `${slot.price}€`}
+                      {slot.booked
+                        ? 'Réservé'
+                        : slot.price !== undefined && slot.price !== null
+                          ? `${slot.price}€`
+                          : 'Disponible'}
                     </div>
                   </button>
                 ))}

@@ -41,6 +41,23 @@ export interface SearchQuery {
   longitude?: number;
 }
 
+export interface SyncedGalleryItem {
+  id?: string;
+  origin?: 'gallery' | 'examplePhotos';
+  mediaUrl: string;
+  mediaType?: 'image' | 'video';
+  caption?: string;
+  tags?: string[];
+  likes?: number;
+  createdAt?: string;
+  serviceId?: string;
+  serviceName?: string;
+  servicePrice?: number;
+  serviceDuration?: number;
+  serviceCategory?: string;
+  serviceDescription?: string;
+}
+
 export const coiffeurService = {
   async getCoiffeurs(): Promise<User[]> {
     const response = await api.get<User[]>('/coiffeurs');
@@ -197,6 +214,17 @@ export const coiffeurService = {
   // Récupérer les services d'un coiffeur
   async getCoiffeurServices(coiffeurId: string): Promise<any[]> {
     const response = await api.get(`/coiffeurs/${coiffeurId}/services`);
+    return response.data;
+  },
+
+  async syncGallery(coiffeurId: string): Promise<{
+    success: boolean;
+    coiffeurId: string;
+    items: SyncedGalleryItem[];
+    count: number;
+    deduplicatedFrom: number;
+  }> {
+    const response = await api.get(`/coiffeurs/${coiffeurId}/gallery-sync`);
     return response.data;
   },
 
