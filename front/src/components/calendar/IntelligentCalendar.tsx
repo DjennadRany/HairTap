@@ -1,7 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ChevronLeftIcon, ChevronRightIcon, CalendarIcon, ClockIcon } from '@heroicons/react/24/outline';
-import workingSlotsService, { type WorkingSlot } from '../../services/api/workingSlots';
-import { bookingService, type Booking } from '../../services/api/bookings';
+import availabilityService, {
+  type AvailabilitySlot,
+  type AvailabilityState,
+} from '../../services/api/availability';
 
 interface TimeSlot {
   id: string;
@@ -10,6 +12,8 @@ interface TimeSlot {
   price?: number;
   surge: boolean;
   booked: boolean;
+  state: AvailabilityState;
+  conflict?: boolean;
 }
 
 interface DayData {
@@ -31,124 +35,84 @@ interface IntelligentCalendarProps {
   onDateSelect?: (date: Date) => void;
 }
 
-const startOfDay = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
-
-function parseHourFromTime(time?: string | null): number | null {
-  if (!time) return null;
-
-  const [hoursPart] = time.split(':');
-  const parsed = Number.parseInt(hoursPart, 10);
-  return Number.isNaN(parsed) ? null : parsed;
-}
-
-function slotMatchesMode(slot: WorkingSlot, mode: IntelligentCalendarProps['mode']): boolean {
-  if (!mode || mode === 'both' || !slot.availableAt) return true;
-
-  if (mode === 'salon') {
-    return slot.availableAt === 'salon' || slot.availableAt === 'both';
-  }
-
-  if (mode === 'domicile') {
-    return slot.availableAt === 'domicile' || slot.availableAt === 'both';
-  }
-
-  return true;
-}
-
-function buildDayData(
-  date: Date,
-  slots: WorkingSlot[],
-  bookings: Booking[],
-  today: Date,
-  mode: IntelligentCalendarProps['mode']
-): DayData {
-  const slotsForDay = slots.filter((slot) => slot.dayOfWeek === date.getDay() && slotMatchesMode(slot, mode));
-  const daySlots: TimeSlot[] = [];
-  let totalBookings = 0;
-
-  const bookingsForDay = bookings.filter((booking) => {
-    const bookingDate = new Date(booking.date);
-    return bookingDate.toDateString() === date.toDateString() && booking.status !== 'cancelled';
-  });
-
-  const isPastDay = startOfDay(date) < today;
-
-  slotsForDay.forEach((slot) => {
-    const maxBookings = slot.maxBookings ?? 1;
-
-    const bookingsForSlot = bookingsForDay.filter((booking) => {
-      if (booking.slotId && booking.slotId === slot._id) {
-        return true;
-      }
-
-      const bookingHour = parseHourFromTime(booking.time);
-      if (bookingHour === null) return false;
-
-      return bookingHour >= slot.startTime && bookingHour < slot.endTime;
-    });
-
-    const currentBookings = bookingsForSlot.length || slot.currentBookings || 0;
-    totalBookings += currentBookings;
-
-    const isBooked = slot.status === 'booked' || currentBookings >= maxBookings;
-    const isAvailable = !isPastDay && slot.status === 'available' && !isBooked;
-
-    for (let hour = slot.startTime; hour < slot.endTime; hour++) {
-      const time = `${hour.toString().padStart(2, '0')}:00`;
-      daySlots.push({
-        id: `${slot._id}-${date.toISOString()}-${hour}`,
-        time,
-        available: isAvailable,
-        surge: false,
-        booked: isBooked
-      });
-    }
-  });
-
-  return {
-    date,
-    slots: daySlots,
-    totalBookings,
-    revenue: 0
-  };
-}
-
-function buildCalendarData(
-  referenceDate: Date,
-  viewMode: 'week' | 'month',
-  slots: WorkingSlot[],
-  bookings: Booking[],
-  mode: IntelligentCalendarProps['mode']
-): DayData[] {
-  if (!slots || slots.length === 0) {
-    return [];
-  }
-
-  const data: DayData[] = [];
-  const startDate = new Date(referenceDate);
-  const today = startOfDay(new Date());
+const toDateRange = (referenceDate: Date, viewMode: 'week' | 'month') => {
+  const start = new Date(referenceDate);
+  let end: Date;
 
   if (viewMode === 'week') {
-    startDate.setDate(startDate.getDate() - startDate.getDay());
-
-    for (let i = 0; i < 7; i++) {
-      const date = new Date(startDate);
-      date.setDate(startDate.getDate() + i);
-      data.push(buildDayData(date, slots, bookings, today, mode));
-    }
+    start.setDate(start.getDate() - start.getDay());
+    end = new Date(start);
+    end.setDate(start.getDate() + 6);
   } else {
-    const year = startDate.getFullYear();
-    const month = startDate.getMonth();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    start.setDate(1);
+    end = new Date(start.getFullYear(), start.getMonth() + 1, 0);
+  }
 
-    for (let day = 1; day <= daysInMonth; day++) {
-      const date = new Date(year, month, day);
-      data.push(buildDayData(date, slots, bookings, today, mode));
+  return { start, end };
+};
+
+const groupAvailabilityByDate = (
+  availability: AvailabilitySlot[],
+  rangeStart: Date,
+  rangeEnd: Date
+): Record<string, AvailabilitySlot[]> => {
+  return availability.reduce<Record<string, AvailabilitySlot[]>>((acc, slot) => {
+    const slotDate = new Date(slot.date);
+    if (slotDate < rangeStart || slotDate > rangeEnd) {
+      return acc;
     }
+
+    const key = slotDate.toDateString();
+    if (!acc[key]) {
+      acc[key] = [];
+    }
+    acc[key].push(slot);
+    return acc;
+  }, {});
+};
+
+const buildCalendarDataFromAvailability = (
+  availability: AvailabilitySlot[],
+  referenceDate: Date,
+  viewMode: 'week' | 'month'
+): DayData[] => {
+  if (!availability || availability.length === 0) return [];
+
+  const { start, end } = toDateRange(referenceDate, viewMode);
+  const grouped = groupAvailabilityByDate(availability, start, end);
+  const data: DayData[] = [];
+
+  for (
+    const cursor = new Date(start.getTime());
+    cursor.getTime() <= end.getTime();
+    cursor.setDate(cursor.getDate() + 1)
+  ) {
+    const slotsForDay = grouped[cursor.toDateString()] ?? [];
+    const timeSlots: TimeSlot[] = slotsForDay.map((slot) => ({
+      id: slot.id,
+      time: slot.startTime,
+      available: slot.availability === 'free',
+      surge: false,
+      booked: slot.availability === 'occupied',
+      state: slot.availability,
+      conflict: slot.conflict,
+    }));
+
+    const totalBookings = slotsForDay.reduce(
+      (total, slot) => total + (slot.overlappingBookings?.length ?? 0),
+      0
+    );
+
+    data.push({
+      date: new Date(cursor),
+      slots: timeSlots,
+      totalBookings,
+      revenue: 0,
+    });
   }
 
   return data;
-}
+};
 
 export const IntelligentCalendar: React.FC<IntelligentCalendarProps> = ({
   coiffeurId,
@@ -161,79 +125,55 @@ export const IntelligentCalendar: React.FC<IntelligentCalendarProps> = ({
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [viewMode, setViewMode] = useState<'week' | 'month'>('week');
   const [calendarData, setCalendarData] = useState<DayData[]>([]);
-  const [slots, setSlots] = useState<WorkingSlot[]>([]);
-  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [availability, setAvailability] = useState<AvailabilitySlot[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   const calendarRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    let isSubscribed = true;
+  const fetchAvailability = useCallback(async () => {
+    if (!coiffeurId) {
+      setAvailability([]);
+      setLoading(false);
+      return;
+    }
 
-    const loadSlots = async () => {
-      setLoading(true);
-      setError(null);
+    setLoading(true);
+    setError(null);
 
-      if (!coiffeurId) {
-        setSlots([]);
-        setBookings([]);
-        setLoading(false);
-        return;
+    const { start, end } = toDateRange(currentDate, viewMode);
+
+    try {
+      const response = await availabilityService.fetchAvailability(coiffeurId, {
+        startDate: start.toISOString(),
+        endDate: end.toISOString(),
+        mode,
+      });
+
+      if (response.success && Array.isArray(response.data)) {
+        setAvailability(response.data);
+      } else {
+        setAvailability([]);
+        setError(response.message ?? 'Impossible de récupérer les disponibilités');
       }
-
-      try {
-        const [slotsResult, bookingsResult] = await Promise.allSettled([
-          workingSlotsService.getCoiffeurSlots(coiffeurId),
-          bookingService.getCoiffeurBookings(coiffeurId)
-        ]);
-
-        if (!isSubscribed) return;
-
-        if (slotsResult.status === 'fulfilled' && slotsResult.value.success && slotsResult.value.data) {
-          setSlots(slotsResult.value.data);
-        } else {
-          setSlots([]);
-          const message =
-            slotsResult.status === 'fulfilled'
-              ? slotsResult.value.message
-              : slotsResult.reason?.message;
-          setError(message ?? 'Impossible de récupérer les créneaux');
-        }
-
-        if (bookingsResult.status === 'fulfilled') {
-          const data = Array.isArray(bookingsResult.value)
-            ? bookingsResult.value
-            : Array.isArray((bookingsResult.value as any)?.data)
-              ? (bookingsResult.value as any).data
-              : [];
-          setBookings(data);
-        } else {
-          setBookings([]);
-          setError((current) => current ?? 'Impossible de récupérer les réservations');
-        }
-      } catch (err: any) {
-        if (!isSubscribed) return;
-        setSlots([]);
-        setBookings([]);
-        setError(err?.message ?? 'Erreur inattendue lors du chargement du calendrier');
-      } finally {
-        if (isSubscribed) {
-          setLoading(false);
-        }
-      }
-    };
-
-    loadSlots();
-
-    return () => {
-      isSubscribed = false;
-    };
-  }, [coiffeurId]);
+    } catch (err: any) {
+      setAvailability([]);
+      setError(err?.message ?? 'Erreur lors de la récupération des disponibilités');
+    } finally {
+      setLoading(false);
+    }
+  }, [coiffeurId, currentDate, viewMode, mode]);
 
   useEffect(() => {
-    setCalendarData(buildCalendarData(currentDate, viewMode, slots, bookings, mode));
-  }, [currentDate, viewMode, slots, bookings, mode]);
+    fetchAvailability();
+    const interval = setInterval(fetchAvailability, 20000);
+
+    return () => clearInterval(interval);
+  }, [fetchAvailability]);
+
+  useEffect(() => {
+    setCalendarData(buildCalendarDataFromAvailability(availability, currentDate, viewMode));
+  }, [availability, currentDate, viewMode]);
 
   const navigateDate = (direction: 'prev' | 'next') => {
     const newDate = new Date(currentDate);
@@ -253,7 +193,7 @@ export const IntelligentCalendar: React.FC<IntelligentCalendarProps> = ({
   };
 
   const handleSlotClick = (slot: TimeSlot, date: Date) => {
-    if (slot.available && !slot.booked) {
+    if (slot.state === 'free') {
       onSlotSelect?.(slot, date);
     }
   };
@@ -377,6 +317,26 @@ const WeekView: React.FC<{
     }
   };
 
+  const getSlotClasses = (slot: TimeSlot) => {
+    if (slot.state === 'unavailable') {
+      return 'bg-gray-100 border-gray-300 text-gray-500 cursor-not-allowed';
+    }
+
+    if (slot.state === 'occupied') {
+      return 'bg-red-50 border-red-300 text-red-800 cursor-not-allowed';
+    }
+
+    return slot.surge
+      ? 'bg-orange-50 border-orange-300 text-orange-800 hover:bg-orange-100'
+      : 'bg-green-50 border-green-300 text-green-800 hover:bg-green-100';
+  };
+
+  const getSlotLabel = (slot: TimeSlot) => {
+    if (slot.state === 'occupied') return 'Occupé';
+    if (slot.state === 'unavailable') return 'Indisponible';
+    return slot.price !== undefined && slot.price !== null ? `${slot.price}€` : 'Libre';
+  };
+
   return (
     <div className="space-y-4">
       {data.map((day) => (
@@ -421,16 +381,8 @@ const WeekView: React.FC<{
                   <button
                     key={slot.id}
                     onClick={() => onSlotClick(slot, day.date)}
-                    disabled={!slot.available || slot.booked}
-                    className={`p-3 rounded-lg border transition-all duration-200 text-left ${
-                      slot.booked
-                        ? 'bg-gray-100 border-gray-300 text-gray-500 cursor-not-allowed'
-                        : slot.available
-                        ? slot.surge
-                          ? 'bg-orange-50 border-orange-300 text-orange-800 hover:bg-orange-100'
-                          : 'bg-green-50 border-green-300 text-green-800 hover:bg-green-100'
-                        : 'bg-gray-100 border-gray-300 text-gray-500 cursor-not-allowed'
-                    }`}
+                    disabled={slot.state !== 'free'}
+                    className={`p-3 rounded-lg border transition-all duration-200 text-left ${getSlotClasses(slot)}`}
                   >
                     <div className="flex items-center justify-between mb-1">
                       <span className="font-medium">{slot.time}</span>
@@ -441,11 +393,10 @@ const WeekView: React.FC<{
                       )}
                     </div>
                     <div className="text-sm">
-                      {slot.booked
-                        ? 'Réservé'
-                        : slot.price !== undefined && slot.price !== null
-                          ? `${slot.price}€`
-                          : 'Disponible'}
+                      {getSlotLabel(slot)}
+                      {slot.conflict && (
+                        <span className="ml-2 text-xs text-red-700 font-semibold">Conflit</span>
+                      )}
                     </div>
                   </button>
                 ))}

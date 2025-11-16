@@ -1,0 +1,8 @@
+Bonjour {{userName}},
+
+Votre rendez-vous TapHair a été annulé.
+Prestation : {{serviceName}}
+Date : {{bookingDate}} à {{bookingTime}}
+Motif : {{reason}}
+
+Contactez votre coiffeur ou reprenez rendez-vous depuis TapHair si nécessaire.

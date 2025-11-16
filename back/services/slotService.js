@@ -1,6 +1,7 @@
 import WorkingSlot from '../models/WorkingSlot.js';
 import User from '../models/User.js';
 import Service from '../models/Service.js';
+import Booking from '../models/Booking.js';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -23,6 +24,12 @@ const formatTime = (value) => {
   const hours = Math.floor(value);
   const minutes = Math.round((value - hours) * 60);
   return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+};
+
+const parseTimeString = (timeString) => {
+  if (!timeString) return { hours: 0, minutes: 0 };
+  const [hours, minutes] = timeString.split(':').map((part) => Number.parseInt(part, 10));
+  return { hours: Number.isFinite(hours) ? hours : 0, minutes: Number.isFinite(minutes) ? minutes : 0 };
 };
 
 const slotSupportsMode = (slot, mode) => {
@@ -69,7 +76,9 @@ const buildSlotOccurrences = (slot, options) => {
       ? ['salon', 'domicile']
       : [slot.availableAt];
     const durationMinutes = Math.max(0, Math.round((slot.endTime - slot.startTime) * 60));
-    const remainingCapacity = Math.max(0, (slot.maxBookings ?? 1) - (slot.currentBookings ?? 0));
+    const remainingCapacity = typeof slot.getRemainingCapacity === 'function'
+      ? slot.getRemainingCapacity()
+      : Math.max(0, (slot.maxBookings ?? 1) - (slot.currentBookings ?? 0));
 
     occurrences.push({
       id: `${slot._id.toString()}-${formatDate(occurrenceDate)}`,
@@ -89,6 +98,109 @@ const buildSlotOccurrences = (slot, options) => {
   }
 
   return occurrences;
+};
+
+const endOfDay = (date) => {
+  const d = new Date(date);
+  d.setHours(23, 59, 59, 999);
+  return d;
+};
+
+const computeAvailabilityState = (occurrence, overlappingBookings) => {
+  if (['maintenance', 'unavailable'].includes(occurrence.status)) {
+    return 'unavailable';
+  }
+
+  const effectiveRemaining = Math.max(
+    0,
+    (occurrence.remainingCapacity ?? occurrence.maxCapacity ?? 1) - overlappingBookings.length
+  );
+
+  const capacity = occurrence.maxCapacity ?? 1;
+  const conflict = overlappingBookings.length > capacity;
+
+  return {
+    availability: effectiveRemaining > 0 ? 'free' : 'occupied',
+    remainingCapacity: effectiveRemaining,
+    conflict,
+  };
+};
+
+const filterOverlappingBookings = (occurrence, bookings = []) => {
+  const { hours: startHours, minutes: startMinutes } = parseTimeString(occurrence.startTime);
+  const { hours: endHours, minutes: endMinutes } = parseTimeString(occurrence.endTime);
+
+  const slotStart = new Date(`${occurrence.date}T00:00:00.000Z`);
+  slotStart.setUTCHours(startHours, startMinutes, 0, 0);
+  const slotEnd = new Date(`${occurrence.date}T00:00:00.000Z`);
+  slotEnd.setUTCHours(endHours, endMinutes, 0, 0);
+
+  return bookings
+    .filter((booking) => booking && booking.date)
+    .filter((booking) => !['cancelled', 'completed'].includes(booking.status))
+    .filter((booking) => {
+      const bookingStart = new Date(booking.date);
+      const bookingEnd = new Date(bookingStart.getTime() + (booking.duration ?? 0) * 60000);
+
+      return bookingStart < slotEnd && bookingEnd > slotStart;
+    })
+    .map((booking) => {
+      const bookingStart = new Date(booking.date);
+      const bookingEnd = new Date(bookingStart.getTime() + (booking.duration ?? 0) * 60000);
+
+      return {
+        _id: booking._id?.toString?.() ?? booking._id,
+        slotId: booking.slotId?.toString?.() ?? booking.slotId,
+        status: booking.status,
+        start: bookingStart,
+        end: bookingEnd,
+        client: booking.client,
+        service: booking.service,
+      };
+    });
+};
+
+export const mergeAvailability = (occurrences = [], bookings = []) => {
+  return occurrences.map((occurrence) => {
+    const overlappingBookings = filterOverlappingBookings(occurrence, bookings);
+    const { availability, remainingCapacity, conflict } = computeAvailabilityState(
+      occurrence,
+      overlappingBookings
+    );
+
+    return {
+      ...occurrence,
+      overlappingBookings,
+      remainingCapacity,
+      availability,
+      conflict,
+    };
+  });
+};
+
+export const getAvailabilityWithBookings = async (coiffeurId, options = {}) => {
+  const {
+    startDate = new Date(),
+    endDate = addDays(new Date(), 13),
+    mode,
+  } = options;
+
+  const occurrences = await getCoiffeurAvailableSlots(coiffeurId, {
+    startDate,
+    endDate,
+    mode,
+  });
+
+  const bookings = await Booking.find({
+    coiffeur: coiffeurId,
+    status: { $nin: ['cancelled', 'completed'] },
+    date: {
+      $gte: toStartOfDay(startDate),
+      $lte: endOfDay(endDate),
+    },
+  }).lean();
+
+  return mergeAvailability(occurrences, bookings);
 };
 
 export const getCoiffeurAvailableSlots = async (coiffeurId, options = {}) => {
@@ -157,4 +269,6 @@ export default {
   getCoiffeurAvailableSlots,
   ensureServiceDurationFitsSlot,
   fetchServiceForBooking,
+  mergeAvailability,
+  getAvailabilityWithBookings,
 };

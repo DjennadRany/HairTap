@@ -1,6 +1,5 @@
 export default {
   testEnvironment: 'node',
-  extensionsToTreatAsEsm: ['.js'],
-  setupFilesAfterEnv: ['./jest.setup.js'],
-  transform: {}
+  transform: {},
+  roots: ['<rootDir>/__tests__', '<rootDir>/services/__tests__'],
 };
