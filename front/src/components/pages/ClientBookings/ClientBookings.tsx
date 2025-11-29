@@ -10,7 +10,7 @@ import { getImageUrl, handleImageError, DEFAULT_USER_IMAGE } from '../../../util
 import { formatDate, formatTime, canConfirmServiceStart, canConfirmServiceEnd } from '../../../utils/dateUtils';
 import CancelBookingModal from '../../modals/CancelBookingModal';
 import TimeChangeModal from '../../modals/TimeChangeModal';
-import ReviewForm from '../../shared/forms/ReviewForm';
+import ReviewForm from '../../ReviewForm';
 import Modal from '../../ui/Modal';
 import ConfirmationModal from '../../modals/ConfirmationModal';
 import GeolocationCheckModal from '../../modals/GeolocationCheckModal';
@@ -18,18 +18,20 @@ import IncidentReportForm from '../../modals/IncidentReportForm';
 import RegularizationModal from '../../modals/RegularizationModal'; // ✅ NOUVEAU: Modal de régularisation côté client
 import RetardPenaltyModal from '../../modals/RetardPenaltyModal'; // ✅ NOUVEAU: Modal de pénalité pour retards
 import { BookingAlertsList } from '../../booking/BookingAlert'; // ✅ NOUVEAU: Composant d'alertes
-import bookingValidationService, { BookingAlert as BookingAlertType } from '../../../services/api/bookingValidations'; // ✅ NOUVEAU: Service d'alertes
+import bookingValidationService from '../../../services/api/bookingValidations'; // ✅ NOUVEAU: Service d'alertes
+import { bookingEventService, type BookingEvent } from '../../../services/api/bookingEvents'; // ✅ NOUVEAU: Service SSE temps réel
 import { incidentService } from '../../../services/api/incidents';
+import { IntelligentCalendar } from '../../calendar/IntelligentCalendar'; // ✅ NOUVEAU: Calendrier
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import type { User } from '../../../types/models';
 import { markBookingAlertRead, selectBookingAlerts, setBookingAlerts } from '../../../store/slices/bookingAlertSlice';
 
-// Interface pour les réservations
-interface Booking {
+// Interface pour les réservations (étendue pour inclure les champs supplémentaires)
+interface ClientBooking {
   _id: string;
   coiffeur: User;
-  service: {
+  service: string | {
     _id: string;
     name: string;
     description?: string;
@@ -71,10 +73,11 @@ const ClientBookings: React.FC<ClientBookingsProps> = ({
   const dispatch = useAppDispatch();
   const user = useAppSelector(selectCurrentUser) as User | null;
   const alerts = useAppSelector(selectBookingAlerts);
-  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [bookings, setBookings] = useState<ClientBooking[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'upcoming' | 'past'>(defaultViewMode);
+  const [displayMode, setDisplayMode] = useState<'list' | 'calendar'>('list'); // ✅ NOUVEAU: Liste ou Calendrier
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [sortOrder, setSortOrder] = useState<'date-asc' | 'date-desc' | 'price-asc' | 'price-desc' | 'created-desc'>(defaultSortOrder);
   const [showCancelModal, setShowCancelModal] = useState(false);
@@ -87,8 +90,8 @@ const ClientBookings: React.FC<ClientBookingsProps> = ({
   const [showRetardPenaltyModal, setShowRetardPenaltyModal] = useState(false); // ✅ NOUVEAU: Modal de pénalité pour retards
   const [delayInfo, setDelayInfo] = useState<{ delayMinutes: number; penaltyPercentage: number; penaltyAmount: number; requiresGeolocation: boolean } | null>(null); // ✅ NOUVEAU: Informations de retard
   const [confirmationType, setConfirmationType] = useState<'service_start' | 'service_end'>('service_start');
-  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
-  const [pendingRegularizations, setPendingRegularizations] = useState<Booking[]>([]); // ✅ NOUVEAU: File d'attente pour les régularisations
+  const [selectedBooking, setSelectedBooking] = useState<ClientBooking | null>(null);
+  const [pendingRegularizations, setPendingRegularizations] = useState<ClientBooking[]>([]); // ✅ NOUVEAU: File d'attente pour les régularisations
   const [isProcessingRegularization, setIsProcessingRegularization] = useState(false); // ✅ NOUVEAU: Éviter les ouvertures récursives
   const [hasCheckedPastBookings, setHasCheckedPastBookings] = useState(false);
 
@@ -114,27 +117,116 @@ const ClientBookings: React.FC<ClientBookingsProps> = ({
     if (user) {
       loadAlerts();
       // ✅ OPTIMISATION: Rafraîchir les alertes toutes les 2 minutes (au lieu de 30 secondes)
+      // Note: Le rafraîchissement temps réel via SSE remplace en grande partie ce polling
       const alertInterval = setInterval(loadAlerts, 120000);
       return () => clearInterval(alertInterval);
     }
-  }, [user]);
+  }, [user, dispatch]);
 
-  // ✅ NOUVEAU: Gérer l'ouverture séquentielle des modals de régularisation (sans récursion)
+  // Connexion SSE pour synchronisation temps réel des alertes
   useEffect(() => {
-    // ✅ CORRECTION: Éviter les ouvertures récursives et les boucles infinies
-    // Ne s'exécute que si :
-    // 1. La modal est fermée
-    // 2. Il y a des régularisations en attente
-    // 3. Aucune réservation n'est sélectionnée
-    // 4. On n'est pas en train de traiter une régularisation
+    const token = localStorage.getItem('token');
+    if (!token || !user?._id) {
+      return;
+    }
+
+    console.log('🔌 [ClientBookings] Connexion SSE pour client:', user._id);
+
+    // Handler pour les événements
+    const handleEvent = async (event: BookingEvent) => {
+      console.log('📨 [ClientBookings] Événement reçu:', event);
+
+      // Vérifier que l'événement concerne ce client
+      if (event.clientId !== user._id) {
+        return;
+      }
+
+      // Rafraîchir les alertes automatiquement
+      try {
+        const response = await bookingValidationService.getClientAlerts(user._id);
+        if (response.success && response.data) {
+          dispatch(setBookingAlerts(response.data));
+        }
+      } catch (error) {
+        console.error('❌ [ClientBookings] Erreur lors du rafraîchissement des alertes:', error);
+      }
+
+      // Rafraîchir les réservations
+      try {
+        const bookingsData = await bookingService.getClientBookings();
+        setBookings(bookingsData as ClientBooking[]);
+      } catch (error) {
+        console.error('❌ [ClientBookings] Erreur lors du rafraîchissement des réservations:', error);
+      }
+
+      // Afficher notifications selon le type d'événement
+      switch (event.type) {
+        case 'booking:confirmed':
+          toast.success(
+            <>
+              <div className="font-semibold">Votre réservation est confirmée</div>
+              <div className="text-sm mt-1">50% ont été prélevés</div>
+              <div className="text-sm">Remboursement complet en cas d'annulation ou non-présentation du coiffeur</div>
+            </>,
+            { 
+              position: 'top-right', 
+              autoClose: 7000 
+            }
+          );
+          break;
+
+        case 'booking:cancelled':
+          toast.warning('Votre réservation a été annulée', { 
+            position: 'top-right', 
+            autoClose: 5000 
+          });
+          break;
+
+        case 'booking:completed':
+          toast.success(
+            <>
+              <div className="font-semibold">Service terminé</div>
+              <div className="text-sm mt-1">Le solde a été prélevé</div>
+              <div className="text-sm">Laissez un avis</div>
+            </>,
+            { 
+              position: 'top-right', 
+              autoClose: 7000 
+            }
+          );
+          break;
+
+        case 'booking:created':
+          toast.info('Réservation créée. En attente de confirmation du coiffeur.', { 
+            position: 'top-right', 
+            autoClose: 4000 
+          });
+          break;
+
+        case 'connected':
+          console.log('✅ [ClientBookings] Connexion SSE établie');
+          break;
+      }
+    };
+
+    // Se connecter au flux SSE
+    bookingEventService.connect(token, handleEvent);
+
+    // Nettoyer à la déconnexion
+    return () => {
+      console.log('🔌 [ClientBookings] Retrait du handler SSE');
+      bookingEventService.removeHandler(handleEvent);
+    };
+  }, [user?._id, dispatch]);
+
+  // Gérer l'ouverture séquentielle des modals de régularisation (sans récursion)
+  useEffect(() => {
     if (!showRegularizationModal && 
         pendingRegularizations.length > 0 && 
         !selectedBooking && 
         !isProcessingRegularization) {
       const nextBooking = pendingRegularizations[0];
-      // ✅ CORRECTION: Utiliser une fonction de mise à jour pour éviter les boucles
       setPendingRegularizations(prev => {
-        // Vérifier que la réservation n'est pas déjà en cours de traitement
         if (prev.length === 0 || prev[0]._id !== nextBooking._id) {
           return prev;
         }
@@ -207,7 +299,7 @@ const ClientBookings: React.FC<ClientBookingsProps> = ({
   }, [user, hasCheckedPastBookings]);
 
   // ✅ CORRECTION: Fonction utilitaire pour convertir _id en chaîne
-  const getBookingId = (booking: Booking | null): string => {
+  const getBookingId = (booking: ClientBooking | null): string => {
     if (!booking || !booking._id) {
       return '';
     }
@@ -222,7 +314,7 @@ const ClientBookings: React.FC<ClientBookingsProps> = ({
   };
 
   // ✅ AMÉLIORATION UX: Fonctions pour les badges de statut (plus visibles)
-  const getStatusColor = (status: Booking['status']) => {
+  const getStatusColor = (status: ClientBooking['status']) => {
     switch (status) {
       case 'pending':
         return 'bg-yellow-100 text-yellow-800 border-yellow-300';
@@ -237,7 +329,7 @@ const ClientBookings: React.FC<ClientBookingsProps> = ({
     }
   };
 
-  const getStatusIcon = (status: Booking['status']) => {
+  const getStatusIcon = (status: ClientBooking['status']) => {
     switch (status) {
       case 'pending':
         return <FaClock className="h-4 w-4" />;
@@ -252,7 +344,7 @@ const ClientBookings: React.FC<ClientBookingsProps> = ({
     }
   };
 
-  const getStatusText = (status: Booking['status']) => {
+  const getStatusText = (status: ClientBooking['status']) => {
     switch (status) {
       case 'pending':
         return 'En attente';
@@ -337,7 +429,7 @@ const ClientBookings: React.FC<ClientBookingsProps> = ({
   }).length;
 
   // Handlers
-  const handleCancelBooking = (booking: Booking) => {
+  const handleCancelBooking = (booking: ClientBooking) => {
     setSelectedBooking(booking);
     setShowCancelModal(true);
   };
@@ -367,7 +459,7 @@ const ClientBookings: React.FC<ClientBookingsProps> = ({
     }
   };
 
-  const handleEditBooking = (booking: Booking) => {
+  const handleEditBooking = (booking: ClientBooking) => {
     setSelectedBooking(booking);
     setShowEditModal(true);
   };
@@ -377,7 +469,7 @@ const ClientBookings: React.FC<ClientBookingsProps> = ({
     const loadBookings = async () => {
       try {
         const bookingsData = await bookingService.getClientBookings();
-        setBookings(bookingsData);
+        setBookings(bookingsData as ClientBooking[]);
       } catch (error) {
         console.error('Erreur lors du rechargement:', error);
       }
@@ -521,12 +613,60 @@ const ClientBookings: React.FC<ClientBookingsProps> = ({
             </select>
           </div>
         </div>
+
+        {/* ✅ NOUVEAU: Toggle Liste/Calendrier */}
+        <div className="flex gap-2">
+          <button
+            onClick={() => setDisplayMode('list')}
+            className={`px-4 py-2 rounded-lg transition-colors ${
+              displayMode === 'list' 
+                ? 'bg-blue-500 text-white' 
+                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+            }`}
+          >
+            Liste
+          </button>
+          <button
+            onClick={() => setDisplayMode('calendar')}
+            className={`px-4 py-2 rounded-lg transition-colors ${
+              displayMode === 'calendar' 
+                ? 'bg-blue-500 text-white' 
+                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+            }`}
+          >
+            <FaCalendarAlt className="inline mr-2" />
+            Calendrier
+          </button>
+        </div>
       </div>
 
-      {/* ✅ NOUVEAU: Layout en deux colonnes : Liste des réservations à gauche, Module d'alertes à droite */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Colonne de gauche : Liste des réservations */}
-        <div className="lg:col-span-2">
+      {/* ✅ NOUVEAU: Vue Calendrier ou Liste */}
+      {displayMode === 'calendar' ? (
+        <div className="space-y-6">
+          <Card className="p-6">
+            <h3 className="text-lg font-semibold mb-4">Agenda des réservations</h3>
+            {bookings.length > 0 && bookings[0]?.coiffeur?._id ? (
+              <IntelligentCalendar
+                coiffeurId={bookings[0].coiffeur._id}
+                isClient={true}
+                mode="salon"
+                onSlotSelect={(slot: any) => {
+                  if (slot.booking) {
+                    const booking = bookings.find(b => b._id === slot.booking?._id);
+                    if (booking) setSelectedBooking(booking);
+                  }
+                }}
+                onDateSelect={() => {}}
+              />
+            ) : (
+              <p className="text-gray-600 text-center py-8">Aucune réservation pour afficher le calendrier</p>
+            )}
+          </Card>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Colonne de gauche : Liste des réservations */}
+          <div className="lg:col-span-2">
       {filteredBookings.length === 0 ? (
         <Card className="p-12 text-center">
           <div className="text-gray-400 mb-4">
@@ -568,7 +708,7 @@ const ClientBookings: React.FC<ClientBookingsProps> = ({
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex-1">
                       <h3 className="text-xl font-semibold text-gray-900 mb-1">
-                        {booking.service.name}
+                        {typeof booking.service === 'string' ? booking.service : booking.service.name}
                       </h3>
                       {booking.coiffeur?.name && (
                         <p className="text-gray-700 text-sm font-medium mb-1">
@@ -711,8 +851,8 @@ const ClientBookings: React.FC<ClientBookingsProps> = ({
       )}
         </div>
 
-        {/* ✅ NOUVEAU: Colonne de droite : Module d'alertes */}
-        <div className="lg:col-span-1">
+          {/* ✅ NOUVEAU: Colonne de droite : Module d'alertes */}
+          <div className="lg:col-span-1">
           <Card className="p-4 sticky top-4">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
               Alertes ({alerts.length})
@@ -759,8 +899,9 @@ const ClientBookings: React.FC<ClientBookingsProps> = ({
               </div>
             )}
           </Card>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Modals */}
       <CancelBookingModal
@@ -770,8 +911,8 @@ const ClientBookings: React.FC<ClientBookingsProps> = ({
           setSelectedBooking(null);
         }}
         onConfirm={handleConfirmCancel}
-        bookingInfo={selectedBooking ? {
-          serviceName: selectedBooking.service.name,
+          bookingInfo={selectedBooking ? {
+          serviceName: typeof selectedBooking.service === 'string' ? selectedBooking.service : selectedBooking.service.name,
           date: selectedBooking.date,
           coiffeurName: selectedBooking.coiffeur.name
         } : undefined}
@@ -784,7 +925,7 @@ const ClientBookings: React.FC<ClientBookingsProps> = ({
           setSelectedBooking(null);
         }}
         onSuccess={handleEditSuccess}
-        booking={selectedBooking!}
+        booking={selectedBooking as any}
         mode="edit"
       />
 
@@ -827,14 +968,12 @@ const ClientBookings: React.FC<ClientBookingsProps> = ({
                 // TODO: Créer l'API confirmServiceStart si elle n'existe pas
                 // Pour l'instant, on peut utiliser completeBooking avec les données
                 await bookingService.completeBooking(selectedBooking._id, {
-                  clientSatisfied: data.satisfied,
-                  notes: data.problemDescription || undefined
+                  notes: (data as any).problemDescription || undefined
                 });
                 toast.success('Début de prestation confirmé avec succès !');
               } else if (confirmationType === 'service_end') {
                 await bookingService.completeBooking(selectedBooking._id, {
-                  clientSatisfied: data.satisfied,
-                  notes: data.problemDescription || undefined
+                  notes: (data as any).problemDescription || undefined
                 });
                 toast.success('Fin de prestation confirmée avec succès !');
               }
@@ -852,7 +991,7 @@ const ClientBookings: React.FC<ClientBookingsProps> = ({
           }}
           type={confirmationType}
           bookingInfo={{
-            serviceName: selectedBooking.service.name,
+            serviceName: typeof selectedBooking.service === 'string' ? selectedBooking.service : selectedBooking.service.name,
             date: selectedBooking.date,
             coiffeurName: selectedBooking.coiffeur.name
           }}
@@ -907,7 +1046,7 @@ const ClientBookings: React.FC<ClientBookingsProps> = ({
             }
           }}
           bookingInfo={{
-            serviceName: selectedBooking.service?.name || 'Service',
+            serviceName: typeof selectedBooking.service === 'string' ? selectedBooking.service : (selectedBooking.service?.name || 'Service'),
             date: selectedBooking.date,
             coiffeurName: selectedBooking.coiffeur?.name
           }}
@@ -937,7 +1076,7 @@ const ClientBookings: React.FC<ClientBookingsProps> = ({
           }}
           bookingId={selectedBooking._id}
           bookingInfo={{
-            serviceName: selectedBooking.service.name,
+            serviceName: typeof selectedBooking.service === 'string' ? selectedBooking.service : selectedBooking.service.name,
             date: selectedBooking.date,
             coiffeurName: selectedBooking.coiffeur.name
           }}
@@ -966,9 +1105,9 @@ const ClientBookings: React.FC<ClientBookingsProps> = ({
               // Selon l'action, mettre à jour le statut de la réservation
               switch (action) {
                 case 'completed':
-                  // ✅ NOUVEAU: Gérer les retards et pénalités
-                  if (delayInfoParam) {
-                    const { delayMinutes, penaltyPercentage, penaltyAmount } = delayInfoParam;
+                    // ✅ NOUVEAU: Gérer les retards et pénalités
+                    if (delayInfoParam) {
+                      const { delayMinutes } = delayInfoParam;
                     
                     // Retard ≥ 45 min : Annulation automatique
                     if (delayMinutes >= 45) {
@@ -1015,12 +1154,7 @@ const ClientBookings: React.FC<ClientBookingsProps> = ({
                     }
                     const completeResponse = await bookingService.completeBooking(bookingId);
                     if (completeResponse.success) {
-                      // ✅ NOUVEAU: Vérifier si on attend la confirmation du coiffeur
-                      if (completeResponse.awaitingCoiffeurConfirmation) {
-                        toast.info('Régularisation enregistrée. En attente de confirmation du coiffeur.');
-                      } else {
-                        toast.success('Réservation marquée comme terminée');
-                      }
+                      toast.success('Réservation marquée comme terminée');
                       
                       // Recharger les réservations
                       const bookingsData = await bookingService.getClientBookings();
@@ -1140,7 +1274,7 @@ const ClientBookings: React.FC<ClientBookingsProps> = ({
             setDelayInfo(null);
             setShowRegularizationModal(true); // Revenir à la modal de régularisation
           }}
-          onConfirm={async (geolocation) => {
+          onConfirm={async (_geolocation) => {
             try {
               const bookingId = getBookingId(selectedBooking);
               if (!bookingId) {
@@ -1194,7 +1328,7 @@ const ClientBookings: React.FC<ClientBookingsProps> = ({
             }
           }}
           bookingInfo={{
-            serviceName: selectedBooking.service?.name || 'Service',
+            serviceName: typeof selectedBooking.service === 'string' ? selectedBooking.service : (selectedBooking.service?.name || 'Service'),
             date: selectedBooking.date,
             coiffeurName: selectedBooking.coiffeur?.name
           }}
@@ -1273,7 +1407,7 @@ const ClientBookings: React.FC<ClientBookingsProps> = ({
             }
           }}
           bookingInfo={{
-            serviceName: selectedBooking.service?.name || 'Service',
+            serviceName: typeof selectedBooking.service === 'string' ? selectedBooking.service : (selectedBooking.service?.name || 'Service'),
             date: selectedBooking.date,
             coiffeurName: selectedBooking.coiffeur?.name,
             clientName: user?.name,
