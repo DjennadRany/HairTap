@@ -217,11 +217,11 @@ const CoiffeurCard: React.FC<CoiffeurCardProps> = ({
           <button
             onClick={handleFavoriteToggle}
             className={`absolute top-3 left-3 p-2 rounded-full transition-all duration-300 ${
-              isFavorite 
+              favoriteState 
                 ? 'bg-red-500 text-white hover:bg-red-600 hover:scale-110'
                 : 'bg-gray-600 text-white hover:bg-black hover:scale-110'
             }`}
-            title={isFavorite ? "Retirer des favoris" : "Ajouter aux favoris"}
+            title={favoriteState ? "Retirer des favoris" : "Ajouter aux favoris"}
           >
             <FaHeart className="text-sm" />
           </button>

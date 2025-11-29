@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { ChevronLeftIcon, ChevronRightIcon, CalendarIcon, ClockIcon } from '@heroicons/react/24/outline';
+import { ChevronLeftIcon, ChevronRightIcon, CalendarIcon } from '@heroicons/react/24/outline';
 import availabilityService, {
   type AvailabilitySlot,
   type AvailabilityState,
 } from '../../services/api/availability';
+import { bookingEventService, type BookingEvent } from '../../services/api/bookingEvents';
+import { formatTime, isValidTimeFormat } from '../../utils/timeUtils';
 
 interface TimeSlot {
   id: string;
@@ -26,7 +28,7 @@ interface DayData {
 interface IntelligentCalendarProps {
   coiffeurId?: string;
   isClient?: boolean;
-  mode?: 'salon' | 'domicile' | 'both';
+  mode?: 'salon' | 'domicile';
   coiffeur?: {
     salonAddress?: string;
     homeServiceAddress?: string;
@@ -57,12 +59,34 @@ const groupAvailabilityByDate = (
   rangeEnd: Date
 ): Record<string, AvailabilitySlot[]> => {
   return availability.reduce<Record<string, AvailabilitySlot[]>>((acc, slot) => {
-    const slotDate = new Date(slot.date);
-    if (slotDate < rangeStart || slotDate > rangeEnd) {
+    // Le backend retourne date comme string "YYYY-MM-DD" ou ISO string
+    let slotDate: Date;
+    if (typeof slot.date === 'string') {
+      // Si c'est au format "YYYY-MM-DD", créer une date locale
+      if (slot.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        const [year, month, day] = slot.date.split('-').map(Number);
+        slotDate = new Date(year, month - 1, day);
+      } else {
+        // Sinon, c'est probablement une ISO string
+        slotDate = new Date(slot.date);
+      }
+    } else {
+      slotDate = new Date(slot.date);
+    }
+    
+    // Normaliser les dates pour la comparaison (ignorer l'heure)
+    const slotDateNormalized = new Date(slotDate);
+    slotDateNormalized.setHours(0, 0, 0, 0);
+    const rangeStartNormalized = new Date(rangeStart);
+    rangeStartNormalized.setHours(0, 0, 0, 0);
+    const rangeEndNormalized = new Date(rangeEnd);
+    rangeEndNormalized.setHours(0, 0, 0, 0);
+    
+    if (slotDateNormalized < rangeStartNormalized || slotDateNormalized > rangeEndNormalized) {
       return acc;
     }
 
-    const key = slotDate.toDateString();
+    const key = slotDateNormalized.toDateString();
     if (!acc[key]) {
       acc[key] = [];
     }
@@ -70,6 +94,8 @@ const groupAvailabilityByDate = (
     return acc;
   }, {});
 };
+
+// ✅ CORRECTION: Utiliser formatTime() partagée depuis timeUtils
 
 const buildCalendarDataFromAvailability = (
   availability: AvailabilitySlot[],
@@ -81,6 +107,7 @@ const buildCalendarDataFromAvailability = (
   const { start, end } = toDateRange(referenceDate, viewMode);
   const grouped = groupAvailabilityByDate(availability, start, end);
   const data: DayData[] = [];
+  const now = new Date();
 
   for (
     const cursor = new Date(start.getTime());
@@ -88,25 +115,46 @@ const buildCalendarDataFromAvailability = (
     cursor.setDate(cursor.getDate() + 1)
   ) {
     const slotsForDay = grouped[cursor.toDateString()] ?? [];
-    const timeSlots: TimeSlot[] = slotsForDay.map((slot) => ({
-      id: slot.id,
-      time: slot.startTime,
-      available: slot.availability === 'free',
-      surge: false,
-      booked: slot.availability === 'occupied',
-      state: slot.availability,
-      conflict: slot.conflict,
-    }));
-
-    const totalBookings = slotsForDay.reduce(
-      (total, slot) => total + (slot.overlappingBookings?.length ?? 0),
-      0
-    );
+    
+    // CORRECTION: Filtrer strictement les créneaux "00:00" et ceux sans heure valide
+    const timeSlots: TimeSlot[] = slotsForDay
+      .filter((slot) => {
+        // Ignorer les créneaux sans startTime
+        if (!slot.startTime && slot.startTime !== 0) return false;
+        
+        // Formater l'heure
+        const slotTime = formatTime(slot.startTime);
+        
+        // EXCLURE TOUJOURS "00:00" (c'est une valeur par défaut, pas une vraie heure)
+        if (slotTime === '00:00') {
+          return false;
+        }
+        
+        // Vérifier que le format est valide
+        if (!isValidTimeFormat(slotTime)) return false;
+        
+        // Filtrer les créneaux passés
+        const [hours, minutes] = slotTime.split(':').map(Number);
+        if (isNaN(hours) || isNaN(minutes)) return false;
+        
+        const slotDateTime = new Date(cursor);
+        slotDateTime.setHours(hours, minutes, 0, 0);
+        return slotDateTime.getTime() > now.getTime();
+      })
+      .map((slot) => ({
+        id: slot.id,
+        time: formatTime(slot.startTime),
+        available: slot.availability === 'free',
+        surge: false,
+        booked: slot.availability === 'occupied',
+        state: slot.availability,
+        conflict: slot.conflict,
+      }));
 
     data.push({
       date: new Date(cursor),
       slots: timeSlots,
-      totalBookings,
+      totalBookings: 0,
       revenue: 0,
     });
   }
@@ -117,7 +165,7 @@ const buildCalendarDataFromAvailability = (
 export const IntelligentCalendar: React.FC<IntelligentCalendarProps> = ({
   coiffeurId,
   isClient = false,
-  mode = 'both',
+  mode = 'salon',
   onSlotSelect,
   onDateSelect
 }) => {
@@ -144,10 +192,11 @@ export const IntelligentCalendar: React.FC<IntelligentCalendarProps> = ({
     const { start, end } = toDateRange(currentDate, viewMode);
 
     try {
+      // CORRECTION: Toujours passer le mode explicitement pour l'agenda coiffeur
       const response = await availabilityService.fetchAvailability(coiffeurId, {
         startDate: start.toISOString(),
         endDate: end.toISOString(),
-        mode,
+        mode: mode || 'salon', // Mode explicite pour filtrer les créneaux
       });
 
       if (response.success && Array.isArray(response.data)) {
@@ -157,6 +206,7 @@ export const IntelligentCalendar: React.FC<IntelligentCalendarProps> = ({
         setError(response.message ?? 'Impossible de récupérer les disponibilités');
       }
     } catch (err: any) {
+      console.error('❌ [IntelligentCalendar] Erreur fetchAvailability:', err);
       setAvailability([]);
       setError(err?.message ?? 'Erreur lors de la récupération des disponibilités');
     } finally {
@@ -164,15 +214,48 @@ export const IntelligentCalendar: React.FC<IntelligentCalendarProps> = ({
     }
   }, [coiffeurId, currentDate, viewMode, mode]);
 
+  // ✅ CORRECTION: Utiliser SSE au lieu de polling pour synchronisation temps réel
   useEffect(() => {
+    // Fetch initial
     fetchAvailability();
-    const interval = setInterval(fetchAvailability, 20000);
 
-    return () => clearInterval(interval);
-  }, [fetchAvailability]);
+    // Connexion SSE pour rafraîchissement temps réel
+    const token = localStorage.getItem('token');
+    if (!token) {
+      // Fallback vers polling si pas de token
+      const interval = setInterval(fetchAvailability, 30000);
+      return () => clearInterval(interval);
+    }
+
+    // Handler pour les événements de réservation
+    const handleEvent = (event: BookingEvent) => {
+      console.log('📨 [IntelligentCalendar] Événement reçu, rafraîchissement:', event.type);
+      
+      // Vérifier que l'événement concerne ce coiffeur
+      if (coiffeurId && event.coiffeurId === coiffeurId) {
+        // Rafraîchir les disponibilités immédiatement
+        fetchAvailability();
+      } else if (isClient && event.clientId) {
+        // Pour les clients, rafraîchir si c'est leur réservation
+        fetchAvailability();
+      }
+    };
+
+    // Se connecter au service SSE
+    bookingEventService.connect(token, handleEvent);
+
+    // Cleanup: retirer le handler et garder un polling de backup (toutes les 5 minutes)
+    const backupInterval = setInterval(fetchAvailability, 300000); // 5 minutes en backup
+
+    return () => {
+      bookingEventService.removeHandler(handleEvent);
+      clearInterval(backupInterval);
+    };
+  }, [fetchAvailability, coiffeurId, isClient]);
 
   useEffect(() => {
-    setCalendarData(buildCalendarDataFromAvailability(availability, currentDate, viewMode));
+    const calendarData = buildCalendarDataFromAvailability(availability, currentDate, viewMode);
+    setCalendarData(calendarData);
   }, [availability, currentDate, viewMode]);
 
   const navigateDate = (direction: 'prev' | 'next') => {
@@ -317,6 +400,32 @@ const WeekView: React.FC<{
     }
   };
 
+  // ✅ NOUVEAU: Fonction pour obtenir la couleur selon le statut de réservation
+  // Exportée pour utilisation future dans l'affichage des bookings
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const getStatusColor = (status: string): string => {
+    switch (status) {
+      case 'late':
+        return 'bg-orange-500 text-white';
+      case 'processing':
+        return 'bg-blue-500 text-white';
+      case 'expired':
+        return 'bg-gray-400 text-white';
+      case 'rescheduled':
+        return 'bg-yellow-500 text-white';
+      case 'pending':
+        return 'bg-yellow-400 text-white';
+      case 'confirmed':
+        return 'bg-green-500 text-white';
+      case 'completed':
+        return 'bg-green-600 text-white';
+      case 'cancelled':
+        return 'bg-red-500 text-white';
+      default:
+        return 'bg-green-500 text-white';
+    }
+  };
+
   const getSlotClasses = (slot: TimeSlot) => {
     if (slot.state === 'unavailable') {
       return 'bg-gray-100 border-gray-300 text-gray-500 cursor-not-allowed';
@@ -359,17 +468,6 @@ const WeekView: React.FC<{
                 </span>
               </div>
               
-              <div className="flex items-center space-x-4 text-sm">
-                <div className="flex items-center space-x-1">
-                  <ClockIcon className="h-4 w-4" />
-                  <span>{day.totalBookings} réservations</span>
-                </div>
-                {!isClient && (
-                  <div className="text-green-600 font-medium">
-                    {day.revenue}€
-                  </div>
-                )}
-              </div>
             </div>
           </div>
 
@@ -439,18 +537,6 @@ const MonthView: React.FC<{
           <div className="text-sm font-medium mb-1">
             {day.date.getDate()}
           </div>
-          
-          {day.totalBookings > 0 && (
-            <div className="text-xs opacity-75">
-              {day.totalBookings} réservations
-            </div>
-          )}
-          
-          {!isClient && day.revenue > 0 && (
-            <div className="text-xs text-green-600 font-medium">
-              {day.revenue}€
-            </div>
-          )}
         </div>
       ))}
     </div>
