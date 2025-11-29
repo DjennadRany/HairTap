@@ -119,8 +119,8 @@ const buildCalendarDataFromAvailability = (
     // CORRECTION: Filtrer strictement les créneaux "00:00" et ceux sans heure valide
     const timeSlots: TimeSlot[] = slotsForDay
       .filter((slot) => {
-        // Ignorer les créneaux sans startTime
-        if (!slot.startTime && slot.startTime !== 0) return false;
+        // Ignorer les créneaux sans startTime (null, undefined, ou string vide)
+        if (slot.startTime === null || slot.startTime === undefined || slot.startTime === '') return false;
         
         // Formater l'heure
         const slotTime = formatTime(slot.startTime);
