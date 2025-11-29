@@ -127,12 +127,12 @@ const handlePaymentRefunded = async (paymentIntent) => {
 // Créer un Payment Intent pour une réservation
 router.post('/create-payment-intent', auth, async (req, res) => {
   try {
-    const { bookingId, amount } = req.body;
+    const { bookingId } = req.body; // amount n'est plus requis, calculé côté serveur
 
-    if (!bookingId || !amount) {
+    if (!bookingId) {
       return res.status(400).json({
         success: false,
-        message: 'bookingId et amount sont requis'
+        message: 'bookingId est requis'
       });
     }
 
@@ -171,9 +171,13 @@ router.post('/create-payment-intent', auth, async (req, res) => {
       id: client._id.toString()
     });
 
+    // SÉCURITÉ : Ignorer le montant fourni par le client et toujours utiliser booking.price
+    // Cela empêche la manipulation du montant de paiement
+    const paymentAmount = booking.price;
+    
     // Créer le Payment Intent
     const paymentData = await createPaymentIntent({
-      amount: amount || booking.price,
+      amount: paymentAmount, // Toujours utiliser booking.price, ignorer amount du client
       customerId: customerId,
       bookingId: bookingId,
       metadata: {

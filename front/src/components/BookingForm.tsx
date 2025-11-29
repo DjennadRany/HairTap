@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom';
 import { selectCurrentUser } from '../store/slices/authSlice';
 import { Card } from './ui/card';
-import { format, addDays } from 'date-fns';
+import { addDays } from 'date-fns';
 import {
   FaMapMarkerAlt,
   FaUser,
@@ -13,7 +13,8 @@ import {
 } from 'react-icons/fa';
 import { bookingService, type CreateBookingData } from '../services/api/bookings';
 import { userService } from '../services/api/users';
-import { coiffeurService, type CoiffeurSlotDTO } from '../services/api/coiffeurs';
+import { type CoiffeurSlotDTO, type CoiffeurSlotMode } from '../services/api/coiffeurs';
+import availabilityService, { type AvailabilitySlot } from '../services/api/availability';
 import StripePaymentModal from './modals/StripePaymentModal';
 import type { User } from '../types/models';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
@@ -24,6 +25,7 @@ import BookingSummary from './booking/BookingSummary';
 import BookingActionBar from './booking/BookingActionBar';
 import { useNotification } from './ui/NotificationManager';
 import { cn } from '../lib/utils';
+import { formatTime, isValidTimeFormat } from '../utils/timeUtils';
 
 // Type étendu pour les adresses
 interface UserWithAddresses extends User {
@@ -77,12 +79,6 @@ const BookingForm: React.FC<BookingFormProps> = ({
   const { showNotification } = useNotification();
   const errorRef = useRef<HTMLDivElement>(null);
   
-  // Debug: Vérifier les données reçues
-  console.log('🔍 [BookingForm] Données reçues:', {
-    coiffeur: coiffeur?.name,
-    selectedService: selectedService,
-    hasSelectedService: !!selectedService
-  });
   const [userWithAddresses, setUserWithAddresses] = useState<UserWithAddresses | null>(null);
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedTime, setSelectedTime] = useState<string>('');
@@ -123,12 +119,9 @@ const BookingForm: React.FC<BookingFormProps> = ({
     const loadUserData = async () => {
       if (user?._id) {
         try {
-          console.log('🔄 [BookingForm] Chargement des données complètes de l\'utilisateur...');
           const userData = await userService.getUser(user._id);
           setUserWithAddresses(userData);
-          console.log('✅ [BookingForm] Données utilisateur chargées:', userData);
         } catch (error) {
-          console.error('❌ [BookingForm] Erreur lors du chargement des données utilisateur:', error);
           setUserWithAddresses(user);
         }
       }
@@ -140,20 +133,14 @@ const BookingForm: React.FC<BookingFormProps> = ({
   // Charger l'adresse selon le type sélectionné
   useEffect(() => {
     const currentUser = userWithAddresses || user;
-    console.log('🔍 [BookingForm] User complet:', currentUser);
-    console.log('🏠 [BookingForm] Type d\'adresse sélectionné:', addressType);
     
     if (currentUser?.addresses) {
-      console.log('🏠 [BookingForm] Adresses utilisateur disponibles:', currentUser.addresses);
-      
       // Charger l'adresse selon le type sélectionné
       let selectedAddress = null;
       if (addressType === 'home' && currentUser.addresses.home) {
         selectedAddress = currentUser.addresses.home;
-        console.log('🏠 [BookingForm] Adresse domicile chargée:', selectedAddress);
       } else if (addressType === 'office' && currentUser.addresses.office) {
         selectedAddress = currentUser.addresses.office;
-        console.log('🏢 [BookingForm] Adresse bureau chargée:', selectedAddress);
       }
       
       if (selectedAddress) {
@@ -168,9 +155,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
           additionalInfo: selectedAddress.additionalInfo || ''
         };
         setClientAddress(newAddress);
-        console.log('✅ [BookingForm] Adresse chargée dans clientAddress:', newAddress);
       } else {
-        console.log('❌ [BookingForm] Aucune adresse trouvée pour le type:', addressType);
         // Réinitialiser les champs si pas d'adresse
         setClientAddress({
           street: '',
@@ -185,7 +170,6 @@ const BookingForm: React.FC<BookingFormProps> = ({
       }
     } else if (currentUser?.address && addressType === 'home') {
       // FALLBACK: Utiliser l'ancienne adresse si pas de addresses
-      console.log('🏠 [BookingForm] Utilisation de l\'ancienne adresse:', currentUser.address);
       const newAddress = {
         street: currentUser.address.street || '',
         streetNumber: currentUser.address.streetNumber || '',
@@ -197,11 +181,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
         additionalInfo: currentUser.address.additionalInfo || ''
       };
       setClientAddress(newAddress);
-      console.log('✅ [BookingForm] Ancienne adresse chargée dans clientAddress:', newAddress);
     } else {
-      console.log('❌ [BookingForm] Pas d\'adresses trouvées dans user:', currentUser);
-      console.log('🔍 [BookingForm] Structure user:', JSON.stringify(currentUser, null, 2));
-      
       // Réinitialiser les champs si pas d'adresse
       setClientAddress({
         street: '',
@@ -213,11 +193,10 @@ const BookingForm: React.FC<BookingFormProps> = ({
         buildingCode: '',
         additionalInfo: ''
       });
-      
-      console.log('⚠️ [BookingForm] Champs d\'adresse réinitialisés');
     }
   }, [userWithAddresses, user, addressType]);
   const [coiffeurBookings, setCoiffeurBookings] = useState<any[]>([]);
+  const [clientBookings, setClientBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [availableSlots, setAvailableSlots] = useState<CoiffeurSlotDTO[]>([]);
@@ -243,7 +222,8 @@ const BookingForm: React.FC<BookingFormProps> = ({
     if (!createdBooking) {
       return undefined;
     }
-    return createdBooking._id || createdBooking?.data?._id || createdBooking?.bookingId;
+    // createdBooking est déjà un Booking (pas un BookingResponse)
+    return createdBooking._id;
   }, [createdBooking]);
 
   const handlePaymentStatusChange = useCallback(
@@ -264,6 +244,7 @@ const BookingForm: React.FC<BookingFormProps> = ({
 
   const slotsByDate = useMemo(() => {
     const grouped: Record<string, CoiffeurSlotDTO[]> = {};
+    
     availableSlots.forEach((slot) => {
       if (!grouped[slot.date]) {
         grouped[slot.date] = [];
@@ -275,15 +256,20 @@ const BookingForm: React.FC<BookingFormProps> = ({
       grouped[dateKey].sort((a, b) => a.startTime.localeCompare(b.startTime));
     });
 
+
     return grouped;
-  }, [availableSlots]);
+  }, [availableSlots, bookingMode]);
 
   const availableDates = useMemo(() => Object.keys(slotsByDate).sort(), [slotsByDate]);
   const slotsForSelectedDate = selectedDate ? slotsByDate[selectedDate] || [] : [];
 
-  // ✅ CORRECTION: Définir useBookingValidation AVANT getSlotValidation
-  const { validateBooking, canUseSlot } = useBookingValidation({
-    existingBookings: coiffeurBookings,
+  // Combiner les réservations du coiffeur ET du client pour vérifier les conflits
+  const allExistingBookings = useMemo(() => {
+    return [...coiffeurBookings, ...clientBookings];
+  }, [coiffeurBookings, clientBookings]);
+
+  const { validateBooking } = useBookingValidation({
+    existingBookings: allExistingBookings,
     coiffeurModes,
   });
 
@@ -292,15 +278,37 @@ const BookingForm: React.FC<BookingFormProps> = ({
       if (!selectedService) {
         return { isValid: false, errors: ['Sélectionnez un service'] };
       }
-      return canUseSlot(slot, bookingMode, selectedService.duration || 0);
+      
+      // Utiliser conflict et availability du backend (source de vérité)
+      if (slot.conflict === true) {
+        return { isValid: false, errors: ['Ce créneau chevauche une réservation existante.'] };
+      }
+      if (slot.availability === 'occupied') {
+        return { isValid: false, errors: ['Ce créneau n\'est plus disponible.'] };
+      }
+      // Vérifier seulement les autres règles (modes, durée, capacité)
+      const errors: string[] = [];
+      
+      if (!slot.supportedModes.includes(bookingMode)) {
+        errors.push('Ce créneau ne permet pas la réservation dans ce mode.');
+      }
+      
+      if (slot.durationMinutes < selectedService.duration) {
+        errors.push('La durée du service dépasse la durée disponible du créneau.');
+      }
+      
+      if (slot.remainingCapacity !== undefined && slot.remainingCapacity <= 0) {
+        errors.push('Ce créneau n\'est plus disponible.');
+      }
+      
+      return { isValid: errors.length === 0, errors };
     },
-    [bookingMode, canUseSlot, selectedService]
+    [bookingMode, selectedService]
   );
 
   useEffect(() => {
     const fetchCoiffeurBookings = async () => {
       if (!coiffeur._id) {
-        console.error('Coiffeur ID is undefined');
         return;
       }
 
@@ -308,12 +316,31 @@ const BookingForm: React.FC<BookingFormProps> = ({
         const bookings = await bookingService.getCoiffeurBookings(coiffeur._id);
         setCoiffeurBookings(bookings);
       } catch (error) {
-        console.error('Error fetching coiffeur bookings:', error);
       }
     };
 
     fetchCoiffeurBookings();
-  }, [coiffeur._id]);
+    
+    // Récupérer aussi les réservations du client pour vérifier les conflits
+    const fetchClientBookings = async () => {
+      if (!user?._id) return;
+      try {
+        const bookings = await bookingService.getClientBookings();
+        setClientBookings(bookings || []);
+      } catch (error) {
+        console.error('Erreur lors de la récupération des réservations client:', error);
+      }
+    };
+    
+    fetchClientBookings();
+    
+    // Fallback polling si SSE indisponible (5 minutes)
+    const interval = setInterval(() => {
+      fetchCoiffeurBookings();
+      fetchClientBookings();
+    }, 300000);
+    return () => clearInterval(interval);
+  }, [coiffeur._id, user?._id]);
 
   const fetchSlots = useCallback(async () => {
     if (!coiffeur._id) {
@@ -324,24 +351,119 @@ const BookingForm: React.FC<BookingFormProps> = ({
     setSlotsError(null);
 
     try {
-      const start = format(new Date(), 'yyyy-MM-dd');
-      const end = format(addDays(new Date(), 13), 'yyyy-MM-dd');
-      const slots = await coiffeurService.getCoiffeurSlots(coiffeur._id, {
-        startDate: start,
-        endDate: end,
+      const start = new Date();
+      const end = addDays(new Date(), 13);
+      
+      const response = await availabilityService.fetchAvailability(coiffeur._id, {
+        startDate: start.toISOString(),
+        endDate: end.toISOString(),
+        mode: bookingMode,
       });
-      setAvailableSlots(slots);
+      
+      if (!response.success || !response.data) {
+        throw new Error(response.message || 'Erreur lors de la récupération des disponibilités');
+      }
+
+      const now = new Date();
+      const convertedSlots: CoiffeurSlotDTO[] = response.data
+        .filter((slot: AvailabilitySlot) => {
+          if (!slot.startTime || !slot.date) return false;
+          
+          const formattedTime = formatTime(slot.startTime);
+          if (!isValidTimeFormat(formattedTime) || formattedTime === '00:00') {
+            return false;
+          }
+          
+          const [hours, minutes] = formattedTime.split(':').map(Number);
+          if (isNaN(hours) || isNaN(minutes)) return false;
+          
+          const slotDate = new Date(slot.date);
+          slotDate.setHours(hours, minutes, 0, 0);
+          return slotDate.getTime() > now.getTime();
+        })
+        .map((slot: AvailabilitySlot) => {
+          const startTime = formatTime(slot.startTime);
+          const endTime = formatTime(slot.endTime);
+          
+          if (startTime === '00:00' || endTime === '00:00') {
+            return null;
+          }
+          
+          const [startHours, startMinutes] = startTime.split(':').map(Number);
+          const [endHours, endMinutes] = endTime.split(':').map(Number);
+          
+          const startTotalMinutes = (startHours * 60) + startMinutes;
+          const endTotalMinutes = (endHours * 60) + endMinutes;
+          const calculatedDuration = endTotalMinutes - startTotalMinutes;
+          const durationMinutes = calculatedDuration > 0 ? calculatedDuration : 60;
+          
+          const totalBookings = slot.overlappingBookings?.length || 0;
+          const maxCapacity = Math.max(slot.remainingCapacity + totalBookings, 1);
+          
+          const supportedModes: CoiffeurSlotMode[] = slot.supportedModes && slot.supportedModes.length > 0
+            ? (slot.supportedModes as CoiffeurSlotMode[])
+            : (bookingMode ? [bookingMode] : ['salon', 'domicile']);
+          
+          return {
+            id: slot.id,
+            slotId: slot.slotId,
+            date: slot.date,
+            startTime,
+            endTime,
+            durationMinutes,
+            supportedModes,
+            maxCapacity,
+            remainingCapacity: slot.remainingCapacity,
+            isRecurring: false,
+            status: slot.status || 'available',
+            dayOfWeek: new Date(slot.date).getDay(),
+            serviceTypes: [],
+            conflict: slot.conflict,
+            availability: slot.availability,
+          };
+        })
+        .filter((slot) => slot !== null) as CoiffeurSlotDTO[];
+      
+      setAvailableSlots(convertedSlots);
     } catch (err) {
-      console.error('❌ [BookingForm] Erreur lors du chargement des créneaux:', err);
       setSlotsError('Impossible de récupérer les créneaux disponibles pour le moment.');
     } finally {
       setSlotsLoading(false);
     }
-  }, [coiffeur._id]);
+  }, [coiffeur._id, bookingMode]);
 
+  // Recharger les créneaux quand le mode change
   useEffect(() => {
     fetchSlots();
   }, [fetchSlots]);
+
+  // SSE pour synchronisation temps réel
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      const interval = setInterval(fetchSlots, 300000);
+      return () => clearInterval(interval);
+    }
+
+    let bookingEventServiceInstance: any = null;
+
+    const handleEvent = (event: any) => {
+      if (event.coiffeurId === coiffeur._id) {
+        fetchSlots();
+      }
+    };
+
+    import('../services/api/bookingEvents').then(({ bookingEventService }) => {
+      bookingEventServiceInstance = bookingEventService;
+      bookingEventService.connect(token, handleEvent);
+    });
+
+    return () => {
+      if (bookingEventServiceInstance) {
+        bookingEventServiceInstance.removeHandler(handleEvent);
+      }
+    };
+  }, [fetchSlots, coiffeur._id]);
 
   useEffect(() => {
     if (!selectedDate && availableDates.length > 0) {
@@ -451,50 +573,47 @@ const BookingForm: React.FC<BookingFormProps> = ({
             ...clientAddress
           };
           
-          console.log('📍 [BookingForm] Sauvegarde de l\'adresse de réservation:', addressData);
-          
           await userService.addBookingAddress(user._id, addressData);
-          console.log('✅ [BookingForm] Adresse de réservation sauvegardée');
         } catch (error) {
-          console.error('❌ [BookingForm] Erreur lors de la sauvegarde de l\'adresse:', error);
           // Ne pas bloquer la réservation si l'adresse ne peut pas être sauvegardée
         }
       }
       
-      // Vérifier si la réservation a été créée avec succès
-      if (booking && (booking.success || booking.data || booking._id)) {
-        const bookingData = booking.data || booking;
-        const bookingId = bookingData._id || booking._id;
-
-        console.log('✅ [BookingForm] Réservation créée avec succès:', bookingId);
-
+      // Vérifier explicitement le succès de l'API
+      if (!booking || booking.success !== true || !booking.data) {
+        const errorMsg = booking?.message || 'Erreur lors de la création de la réservation';
+        setError(errorMsg);
         showNotification({
-          type: 'success',
-          title: 'Créneau réservé',
-          message: 'Finalisez le paiement pour confirmer votre réservation.',
+          type: 'error',
+          title: 'Erreur de réservation',
+          message: errorMsg,
         });
-
-        // Afficher le modal de paiement Stripe
-        setCreatedBooking(bookingData);
-        setLocalPaymentStatus('initiated');
-        dispatch(setGlobalPaymentStatus({ bookingId, status: 'initiated' }));
-        setShowRecoveryScreen(false);
-        setShowPaymentModal(true);
-      } else {
-        // Si pas de paiement requis ou erreur, rediriger normalement
-        if (onSuccess) {
-          onSuccess();
-        } else {
-          navigate('/client/bookings');
+        if (onCancel) {
+          onCancel();
         }
-        showNotification({
-          type: 'success',
-          title: 'Réservation confirmée',
-          message: 'Votre rendez-vous a bien été enregistré.',
-        });
+        return;
       }
+
+      const bookingData = booking.data;
+      const bookingId = bookingData._id;
+
+      if (!bookingId) {
+        throw new Error('ID de réservation manquant dans la réponse');
+      }
+
+      showNotification({
+        type: 'success',
+        title: 'Réservation créée',
+        message: 'En attente de confirmation du coiffeur.',
+      });
+
+      // Afficher le modal de paiement Stripe
+      setCreatedBooking(bookingData);
+      setLocalPaymentStatus('initiated');
+      dispatch(setGlobalPaymentStatus({ bookingId, status: 'initiated' }));
+      setShowRecoveryScreen(false);
+      setShowPaymentModal(true);
     } catch (error: any) {
-      console.error('Error creating booking:', error);
 
       if (error.response?.status === 409) {
         setError('Ce créneau n\'est plus disponible. Veuillez choisir un autre horaire.');
@@ -512,7 +631,6 @@ const BookingForm: React.FC<BookingFormProps> = ({
   };
 
   const handlePaymentSuccess = async () => {
-    console.log('✅ [BookingForm] Paiement réussi');
     await handlePaymentStatusChange('confirmed');
     setShowPaymentModal(false);
     setShowRecoveryScreen(false);
@@ -764,7 +882,6 @@ const BookingForm: React.FC<BookingFormProps> = ({
                             });
                           }
                         } catch (geoError) {
-                          console.error('Erreur géolocalisation:', geoError);
                           alert('Impossible de récupérer votre position.');
                         }
                       } else {

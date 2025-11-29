@@ -18,6 +18,7 @@ import userRoutes from './routes/users.js';
 import coiffeurRoutes from './routes/coiffeurs.js';
 import authRoutes from './routes/auth.js';
 import bookingRoutes from './routes/bookings.js';
+import bookingEventsRoutes from './routes/bookings-events.js';
 import serviceRoutes from './routes/services.js';
 import chatRoutes from './routes/chat.js';
 import favoriteRoutes from './routes/favorites.js';
@@ -34,6 +35,8 @@ import timeChangeRequestRoutes from './routes/time-change-requests.js'; // ✅ N
 import notificationRoutes from './routes/notifications.js'; // ✅ NOUVELLES ROUTES NOTIFICATIONS
 import commentRoutes from './routes/comments.js'; // ✅ ROUTES COMMENTAIRES
 import paymentRoutes from './routes/payments.js'; // ✅ ROUTES PAIEMENTS STRIPE
+import bookingValidationRoutes from './routes/booking-validations.js'; // ✅ ROUTES VALIDATION RÉSERVATIONS
+import webhookRoutes from './routes/webhooks.js'; // ✅ ROUTES WEBHOOKS MAKE.COM
 // imageRoutes removed - simplified photo system
 
 const envPath = path.resolve(process.cwd(), '.env');
@@ -119,7 +122,49 @@ const limiter = rateLimit({
 
 app.use(limiter);
 
-// Body Parser
+// SÉCURITÉ : Webhook Stripe doit être monté AVANT le body-parser JSON
+// pour recevoir le corps brut nécessaire à la vérification de signature
+// Le webhook utilise express.raw() pour recevoir le body brut
+app.use('/api/payments/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  try {
+    const signature = req.headers['stripe-signature'];
+    const { handleWebhook } = await import('./services/stripeService.js');
+    const { event } = await handleWebhook(req.body, signature);
+
+    // Traiter différents types d'événements
+    const Booking = (await import('./models/Booking.js')).default;
+    const Payment = (await import('./models/Payment.js')).default;
+    
+    switch (event.type) {
+      case 'payment_intent.succeeded':
+        const booking = await Booking.findOne({ stripePaymentIntentId: event.data.object.id });
+        if (booking) {
+          booking.paymentStatus = 'confirmed';
+          booking.status = booking.status === 'pending' ? 'confirmed' : booking.status;
+          await booking.save();
+          await Payment.updateOne(
+            { stripePaymentIntentId: event.data.object.id },
+            { status: 'completed', paidAt: new Date() }
+          );
+        }
+        break;
+      case 'payment_intent.payment_failed':
+        const booking2 = await Booking.findOne({ stripePaymentIntentId: event.data.object.id });
+        if (booking2) {
+          booking2.paymentStatus = 'failed';
+          await booking2.save();
+        }
+        break;
+    }
+
+    res.json({ received: true });
+  } catch (error) {
+    console.error('❌ [Webhook Stripe] Erreur:', error);
+    res.status(400).send(`Webhook Error: ${error.message}`);
+  }
+});
+
+// Body Parser (après le webhook pour que le webhook reçoive le body brut)
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -155,7 +200,10 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 app.use('/api/users', userRoutes);
 app.use('/api/coiffeurs', coiffeurRoutes);
 app.use('/api/auth', authRoutes);
+// Routes SSE AVANT bookingRoutes pour éviter les conflits
+app.use('/api/bookings', bookingEventsRoutes);
 app.use('/api/bookings', bookingRoutes);
+app.use('/api/webhooks', webhookRoutes); // ✅ NOUVEAU: Routes webhooks Make.com
 app.use('/api/services', serviceRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/favorites', favoriteRoutes);
@@ -172,6 +220,7 @@ app.use('/api/time-change-requests', timeChangeRequestRoutes); // ✅ MONTAGE RO
 app.use('/api/notifications', notificationRoutes); // ✅ MONTAGE ROUTES NOTIFICATIONS
 app.use('/api/comments', commentRoutes); // ✅ MONTAGE ROUTES COMMENTAIRES
 app.use('/api/payments', paymentRoutes); // ✅ MONTAGE ROUTES PAIEMENTS STRIPE
+app.use('/api/booking-validations', bookingValidationRoutes); // ✅ MONTAGE ROUTES VALIDATION RÉSERVATIONS
 // app.use('/api/images', imageRoutes); // Removed - simplified photo system
 
 // Configuration pour servir les fichiers statiques avec CORS

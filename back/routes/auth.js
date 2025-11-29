@@ -106,11 +106,13 @@ router.post('/register', validateAuth, async (req, res) => {
     // SUPPRIMÉ : Contrôle d'email de fin - cause de problèmes
 
     // Créer le nouvel utilisateur avec TOUTES les données
+    // SÉCURITÉ : Forcer role='user' pour éviter l'escalade de privilèges
+    // Les promotions (coiffeur, admin) doivent être faites via back-office uniquement
     const userData = {
       name,
       email,
       password,
-      role: role || 'user'
+      role: 'user' // Toujours 'user' à l'inscription, ignore le rôle fourni par le client
     };
 
     // Ajouter les champs optionnels s'ils existent et ne sont pas vides
@@ -340,14 +342,18 @@ router.post('/change-password', auth, async (req, res) => {
 // Réinitialiser le mot de passe
 router.post('/forgot-password', async (req, res) => {
   try {
+    console.log('📧 [FORGOT-PASSWORD] Requête reçue:', { email: req.body?.email, body: req.body });
     const { email } = req.body;
 
     if (!email) {
+      console.log('❌ [FORGOT-PASSWORD] Email manquant');
       return res.status(400).json({ message: 'Email requis' });
     }
 
-    const normalizedEmail = email.toLowerCase();
+    const normalizedEmail = email.toLowerCase().trim();
+    console.log('🔍 [FORGOT-PASSWORD] Recherche utilisateur avec email:', normalizedEmail);
     const user = await User.findOne({ email: normalizedEmail });
+    console.log('👤 [FORGOT-PASSWORD] Utilisateur trouvé:', user ? { id: user._id, email: user.email } : 'Aucun');
 
     if (!user) {
       return res.json({ message: 'Si un compte existe pour cet email, un lien de réinitialisation a été envoyé.' });
@@ -378,20 +384,51 @@ router.post('/forgot-password', async (req, res) => {
     const baseUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
     const resetUrl = `${baseUrl.replace(/\/$/, '')}/reset-password?token=${jwtResetToken}`;
 
+    console.log('🔗 [FORGOT-PASSWORD] URL de réinitialisation générée:', resetUrl);
+
     try {
+      console.log('📧 [FORGOT-PASSWORD] Envoi de l\'email...');
       await sendPasswordResetEmail({
         email: user.email,
         resetUrl,
         expiresInMinutes: 60
       });
+      
+      // ✅ MODE TEST : Afficher le lien dans les logs si en mode test
+      console.log('✅ [FORGOT-PASSWORD] Email envoyé (mode test)');
+      console.log('📧 [MODE TEST] Lien de réinitialisation généré:');
+      console.log('🔗 URL:', resetUrl);
+      console.log('⏰ Expire dans: 60 minutes');
+      console.log('👤 Pour l\'utilisateur:', user.email);
     } catch (emailError) {
-      await PasswordResetToken.deleteMany({ user: user._id, tokenHash });
-      throw emailError;
+      // En mode test, ne pas supprimer le token si l'email échoue
+      // car l'email est simulé et ne devrait pas échouer
+      console.error('⚠️ Erreur lors de l\'envoi de l\'email (mode test):', emailError);
+      // Ne pas supprimer le token en mode test pour permettre le test
+      if (process.env.EMAIL_ENABLED === 'true') {
+        await PasswordResetToken.deleteMany({ user: user._id, tokenHash });
+        throw emailError;
+      }
     }
 
-    res.json({ message: 'Un lien de réinitialisation a été envoyé par email.' });
+    const responseData = { 
+      message: 'Un lien de réinitialisation a été envoyé par email.',
+      // ✅ MODE TEST : Retourner aussi le lien en mode développement pour faciliter les tests
+      ...(process.env.NODE_ENV === 'development' && process.env.EMAIL_ENABLED !== 'true' && {
+        resetUrl: resetUrl,
+        note: 'Mode test: le lien est affiché dans les logs du serveur'
+      })
+    };
+    
+    console.log('✅ [FORGOT-PASSWORD] Réponse envoyée:', { 
+      message: responseData.message, 
+      hasResetUrl: !!responseData.resetUrl 
+    });
+    
+    res.json(responseData);
   } catch (error) {
-    console.error('Forgot password error:', error);
+    console.error('❌ [FORGOT-PASSWORD] Erreur:', error);
+    console.error('❌ [FORGOT-PASSWORD] Stack:', error.stack);
     res.status(500).json({ message: 'Erreur lors de la demande de réinitialisation de mot de passe' });
   }
 });

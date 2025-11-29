@@ -1,14 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Card } from './ui/card';
 import { Button } from './ui/Button';
-import { FaCalendarAlt, FaUser, FaPhone, FaEnvelope, FaCheck, FaTimes, FaClock, FaMapMarkerAlt } from 'react-icons/fa';
+import { FaCalendarAlt, FaUser, FaPhone, FaEnvelope, FaMapMarkerAlt, FaClock } from 'react-icons/fa';
 import { bookingService } from '../services/api/bookings';
 import { coiffeurService } from '../services/api/coiffeurs';
 import { IntelligentCalendar } from './calendar/IntelligentCalendar';
-import ConfirmationModal from './modals/ConfirmationModal'; // ✅ NOUVEAU: Modal de confirmation
-import IncidentReportForm from './modals/IncidentReportForm'; // ✅ NOUVEAU: Modal d'incident
-import { canConfirmServiceStart, canConfirmServiceEnd } from '../utils/dateUtils'; // ✅ NOUVEAU: Utilitaires de confirmation
+import BookingActionModal from './modals/BookingActionModal';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import type { User } from '../types/models';
+import { formatTime } from '../utils/timeUtils';
 
 interface Booking {
   _id: string;
@@ -21,6 +22,7 @@ interface Booking {
     duration: number;
   };
   date: string;
+  time?: string; // ✅ CORRECTION: Ajouter le champ time
   duration: number;
   price: number;
   status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
@@ -51,31 +53,32 @@ const CoiffeurBookings: React.FC<CoiffeurBookingsProps> = ({ coiffeurId }) => {
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [calendarMode, setCalendarMode] = useState<'salon' | 'domicile'>('salon');
-  // ✅ NOUVEAU: États pour modals (v0.7.17)
-  const [showConfirmationModal, setShowConfirmationModal] = useState(false);
-  const [showIncidentModal, setShowIncidentModal] = useState(false);
-  const [confirmationType, setConfirmationType] = useState<'service_start' | 'service_end'>('service_start');
-
-  // ✅ NOUVEAU: Récupérer les réservations ET les données du coiffeur
+  const [showActionModal, setShowActionModal] = useState(false);
   useEffect(() => {
     const fetchData = async () => {
-      if (!coiffeurId) return;
+      if (!coiffeurId) {
+        setError('ID du coiffeur manquant');
+        setLoading(false);
+        return;
+      }
 
       try {
         setLoading(true);
         setError(null);
-
-        // Récupérer les réservations et les données du coiffeur en parallèle
         const [bookingsData, coiffeurData] = await Promise.all([
-          bookingService.getCoiffeurBookings(coiffeurId),
+          bookingService.getCoiffeurBookings(coiffeurId).catch(() => []),
           coiffeurService.getCoiffeur(coiffeurId).catch(() => null)
         ]);
 
-        setBookings(bookingsData);
+        setBookings(bookingsData || []);
         setCoiffeur(coiffeurData);
-      } catch (err) {
-        console.error('Error fetching data:', err);
-        setError('Erreur lors du chargement des données');
+      } catch (err: any) {
+        const errorMessage = err?.response?.data?.message || 'Erreur lors du chargement des données';
+        setError(errorMessage);
+        toast.error(`Erreur: ${errorMessage}`, {
+          position: 'top-right',
+          autoClose: 5000
+        });
       } finally {
         setLoading(false);
       }
@@ -84,51 +87,77 @@ const CoiffeurBookings: React.FC<CoiffeurBookingsProps> = ({ coiffeurId }) => {
     fetchData();
   }, [coiffeurId]);
 
-  const handleConfirmBooking = async (bookingId: string) => {
+  const handleActionComplete = useCallback(async () => {
     try {
-      await bookingService.confirmBooking(bookingId);
-      // ✅ NOUVEAU: Recharger les données depuis la base pour synchronisation
-      await refreshData();
-      if (selectedBooking?._id === bookingId) {
-        const updated = bookings.find(b => b._id === bookingId);
-        setSelectedBooking(updated ? { ...updated, status: 'confirmed' as const } : null);
-      }
-    } catch (error) {
-      console.error('Error confirming booking:', error);
-      alert('Erreur lors de la confirmation de la réservation');
-    }
-  };
-
-  const handleCancelBooking = async (bookingId: string) => {
-    if (window.confirm('Êtes-vous sûr de vouloir annuler cette réservation ?')) {
-      try {
-        await bookingService.cancelBooking(bookingId, 'Annulé par le coiffeur');
-        // ✅ NOUVEAU: Recharger les données depuis la base pour synchronisation
-        await refreshData();
-        if (selectedBooking?._id === bookingId) {
-          setSelectedBooking(null);
+      const bookingsData = await bookingService.getCoiffeurBookings(coiffeurId);
+      setBookings(bookingsData || []);
+      if (selectedBooking) {
+        const updated = bookingsData?.find(b => b._id === selectedBooking._id);
+        if (updated) {
+          setSelectedBooking(updated);
         }
-      } catch (error) {
-        console.error('Error cancelling booking:', error);
-        alert('Erreur lors de l\'annulation de la réservation');
       }
+    } catch (error: any) {
+      console.error('Erreur lors du rafraîchissement:', error);
     }
-  };
+  }, [coiffeurId, selectedBooking]);
 
-  const handleCompleteBooking = async (bookingId: string) => {
-    try {
-      await bookingService.completeBooking(bookingId);
-      // ✅ NOUVEAU: Recharger les données depuis la base pour synchronisation
-      await refreshData();
-      if (selectedBooking?._id === bookingId) {
-        const updated = bookings.find(b => b._id === bookingId);
-        setSelectedBooking(updated ? { ...updated, status: 'completed' as const } : null);
-      }
-    } catch (error) {
-      console.error('Error completing booking:', error);
-      alert('Erreur lors de la finalisation de la réservation');
+  // SSE pour synchronisation temps réel
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token || !coiffeurId) {
+      return;
     }
-  };
+
+    const handleEvent = async (event: any) => {
+      if (event.coiffeurId !== coiffeurId) {
+        return;
+      }
+
+      // Rafraîchir les réservations
+      try {
+        const bookingsData = await bookingService.getCoiffeurBookings(coiffeurId);
+        setBookings(bookingsData || []);
+      } catch (error) {
+        console.error('Erreur lors du rafraîchissement:', error);
+      }
+
+      // Afficher notifications selon le type d'événement
+      switch (event.type) {
+        case 'booking:created':
+          toast.info('Nouvelle réservation en attente', {
+            position: 'top-right',
+            autoClose: 4000
+          });
+          break;
+
+        case 'booking:cancelled':
+          toast.warning('Réservation annulée par le client', {
+            position: 'top-right',
+            autoClose: 5000
+          });
+          break;
+
+        case 'booking:updated':
+          toast.info('Réservation mise à jour', {
+            position: 'top-right',
+            autoClose: 3000
+          });
+          break;
+      }
+    };
+
+    import('../services/api/bookingEvents').then(({ bookingEventService }) => {
+      bookingEventService.connect(token, handleEvent);
+    });
+
+    return () => {
+      import('../services/api/bookingEvents').then(({ bookingEventService }) => {
+        bookingEventService.removeHandler(handleEvent);
+      });
+    };
+  }, [coiffeurId]);
+
 
   const handleDateSelect = (date: Date) => {
     setSelectedDate(date);
@@ -142,53 +171,59 @@ const CoiffeurBookings: React.FC<CoiffeurBookingsProps> = ({ coiffeurId }) => {
     }
   };
 
-  const handleSlotSelect = (slot: any, date: Date) => {
-    console.log('Créneau sélectionné:', slot, date);
-    // Si le créneau a une réservation, l'afficher
+  const handleSlotSelect = (slot: any) => {
     if (slot.booking) {
       setSelectedBooking(slot.booking);
     }
   };
 
-  // ✅ NOUVEAU: Recharger les données après modification
-  const refreshData = async () => {
-    if (!coiffeurId) return;
 
-    try {
-      const [bookingsData, coiffeurData] = await Promise.all([
-        bookingService.getCoiffeurBookings(coiffeurId),
-        coiffeurService.getCoiffeur(coiffeurId).catch(() => null)
-      ]);
-
-      setBookings(bookingsData);
-      setCoiffeur(coiffeurData);
+  const filteredBookings = useMemo(() => {
+    return bookings.filter(booking => {
+      // Filtre par statut
+      if (filter !== 'all' && booking.status !== filter) {
+        return false;
+      }
       
-      // ✅ NOUVEAU: Forcer le rafraîchissement de l'agenda si en mode calendrier
-      // L'IntelligentCalendar se rafraîchira automatiquement via ses dépendances
-    } catch (err) {
-      console.error('Error refreshing data:', err);
-    }
-  };
+      // Filtre par date si une date est sélectionnée
+      if (selectedDate) {
+        const bookingDate = new Date(booking.date);
+        const selected = new Date(selectedDate);
+        bookingDate.setHours(0, 0, 0, 0);
+        selected.setHours(0, 0, 0, 0);
+        if (bookingDate.getTime() !== selected.getTime()) {
+          return false;
+        }
+      }
+      
+      // Filtre par mode (salon/domicile) si en mode calendrier
+      if (viewMode === 'calendar' && calendarMode) {
+        if (booking.mode !== calendarMode) {
+          return false;
+        }
+      }
+      
+      return true;
+    });
+  }, [bookings, filter, selectedDate, viewMode, calendarMode]);
 
-  const filteredBookings = bookings.filter(booking => {
-    if (filter !== 'all' && booking.status !== filter) {
-      return false;
-    }
-    if (selectedDate) {
-      const bookingDate = new Date(booking.date);
-      return bookingDate.toDateString() === selectedDate.toDateString();
-    }
-    return true;
-  });
+  const bookingCounts = useMemo(() => {
+    return {
+      all: bookings.length,
+      pending: bookings.filter(b => b.status === 'pending').length,
+      confirmed: bookings.filter(b => b.status === 'confirmed').length,
+      completed: bookings.filter(b => b.status === 'completed').length
+    };
+  }, [bookings]);
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'confirmed': return 'bg-green-100 text-green-800';
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'cancelled': return 'bg-red-100 text-red-800';
-      case 'completed': return 'bg-blue-100 text-blue-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
+  const getStatusBadge = (status: string) => {
+    const styles = {
+      pending: 'bg-yellow-100 text-yellow-800 border-yellow-300',
+      confirmed: 'bg-green-100 text-green-800 border-green-300',
+      completed: 'bg-blue-100 text-blue-800 border-blue-300',
+      cancelled: 'bg-red-100 text-red-800 border-red-300'
+    };
+    return `px-3 py-1 rounded-full text-xs font-semibold border ${styles[status as keyof typeof styles] || 'bg-gray-100 text-gray-800 border-gray-300'}`;
   };
 
   const getStatusText = (status: string) => {
@@ -199,6 +234,17 @@ const CoiffeurBookings: React.FC<CoiffeurBookingsProps> = ({ coiffeurId }) => {
       case 'completed': return 'Terminé';
       default: return status;
     }
+  };
+
+  const getActionButtonClass = (status: string) => {
+    const base = 'flex-1 transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed';
+    const styles = {
+      pending: `${base} bg-yellow-500 hover:bg-yellow-600 text-white`,
+      confirmed: `${base} bg-blue-500 hover:bg-blue-600 text-white`,
+      completed: `${base} bg-gray-500 hover:bg-gray-600 text-white`,
+      cancelled: `${base} bg-gray-400 text-white cursor-not-allowed`
+    };
+    return styles[status as keyof typeof styles] || `${base} bg-gray-400 text-white`;
   };
 
   const getServiceName = (service: string | { name: string }): string => {
@@ -218,12 +264,16 @@ const CoiffeurBookings: React.FC<CoiffeurBookingsProps> = ({ coiffeurId }) => {
     });
   };
 
-  const formatTime = (dateString: string): string => {
-    const date = new Date(dateString);
-    return date.toLocaleTimeString('fr-FR', { 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    });
+  // ✅ CORRECTION: Utiliser booking.time si disponible, sinon extraire de booking.date
+  const getBookingTime = (booking: Booking): string => {
+    if (booking.time) {
+      return formatTime(booking.time);
+    }
+    // Extraire l'heure de booking.date (qui contient déjà l'heure complète)
+    const bookingDate = new Date(booking.date);
+    const hours = bookingDate.getHours();
+    const minutes = bookingDate.getMinutes();
+    return formatTime(hours + (minutes / 60));
   };
 
   if (loading) {
@@ -260,7 +310,7 @@ const CoiffeurBookings: React.FC<CoiffeurBookingsProps> = ({ coiffeurId }) => {
               filter === 'all' ? 'bg-fashion-dark-gray text-white' : 'bg-gray-100 text-gray-700'
             }`}
           >
-            Toutes ({bookings.length})
+            Toutes ({bookingCounts.all})
           </button>
           <button
             onClick={() => setFilter('pending')}
@@ -268,7 +318,7 @@ const CoiffeurBookings: React.FC<CoiffeurBookingsProps> = ({ coiffeurId }) => {
               filter === 'pending' ? 'bg-fashion-dark-gray text-white' : 'bg-gray-100 text-gray-700'
             }`}
           >
-            En attente ({bookings.filter(b => b.status === 'pending').length})
+            En attente ({bookingCounts.pending})
           </button>
           <button
             onClick={() => setFilter('confirmed')}
@@ -276,7 +326,7 @@ const CoiffeurBookings: React.FC<CoiffeurBookingsProps> = ({ coiffeurId }) => {
               filter === 'confirmed' ? 'bg-fashion-dark-gray text-white' : 'bg-gray-100 text-gray-700'
             }`}
           >
-            Confirmées ({bookings.filter(b => b.status === 'confirmed').length})
+            Confirmées ({bookingCounts.confirmed})
           </button>
           <button
             onClick={() => setFilter('completed')}
@@ -284,17 +334,19 @@ const CoiffeurBookings: React.FC<CoiffeurBookingsProps> = ({ coiffeurId }) => {
               filter === 'completed' ? 'bg-fashion-dark-gray text-white' : 'bg-gray-100 text-gray-700'
             }`}
           >
-            Terminées ({bookings.filter(b => b.status === 'completed').length})
+            Terminées ({bookingCounts.completed})
           </button>
         </div>
 
         {/* Toggle vue et mode */}
         <div className="flex gap-2">
-          {/* ✅ NOUVEAU: Toggle mode salon/domicile (v0.7.17) */}
+          {/* Toggle mode salon/domicile */}
           {viewMode === 'calendar' && (
             <div className="flex gap-2 mr-4">
               <button
-                onClick={() => setCalendarMode('salon')}
+                onClick={() => {
+                  setCalendarMode('salon');
+                }}
                 className={`px-4 py-2 rounded-lg transition-colors ${
                   calendarMode === 'salon' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'
                 }`}
@@ -302,7 +354,9 @@ const CoiffeurBookings: React.FC<CoiffeurBookingsProps> = ({ coiffeurId }) => {
                 Salon
               </button>
               <button
-                onClick={() => setCalendarMode('domicile')}
+                onClick={() => {
+                  setCalendarMode('domicile');
+                }}
                 className={`px-4 py-2 rounded-lg transition-colors ${
                   calendarMode === 'domicile' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700'
                 }`}
@@ -343,22 +397,66 @@ const CoiffeurBookings: React.FC<CoiffeurBookingsProps> = ({ coiffeurId }) => {
               onSlotSelect={handleSlotSelect}
               onDateSelect={handleDateSelect}
               mode={calendarMode}
-              coiffeur={coiffeur ? {
-                salonAddress: coiffeur.salonAddress
-              } : undefined}
+              key={`calendar-${calendarMode}`}
             />
           </Card>
 
+          {/* Détails des réservations du jour sélectionné */}
+          {selectedDate && (
+            <Card className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-semibold">
+                  Réservations du {formatDate(selectedDate.toISOString())}
+                </h3>
+                <span className="text-sm text-gray-600">
+                  {filteredBookings.filter(b => {
+                    const bookingDate = new Date(b.date);
+                    return bookingDate.toDateString() === selectedDate.toDateString();
+                  }).length} réservation(s)
+                </span>
+              </div>
+              
+              {/* Liste de toutes les réservations du jour */}
+              <div className="space-y-4">
+                {filteredBookings
+                  .filter(b => {
+                    const bookingDate = new Date(b.date);
+                    return bookingDate.toDateString() === selectedDate.toDateString();
+                  })
+                  .map((booking) => (
+                    <div
+                      key={booking._id}
+                      className={`border rounded-lg p-4 cursor-pointer transition-colors ${
+                        selectedBooking?._id === booking._id
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                      onClick={() => setSelectedBooking(booking)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-semibold">{getServiceName(booking.service)}</p>
+                          <p className="text-sm text-gray-600">{getBookingTime(booking)}</p>
+                          <p className="text-xs text-gray-500 capitalize">{booking.status}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-medium">{booking.price}€</p>
+                          <p className="text-xs text-gray-500 capitalize">{booking.mode}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </Card>
+          )}
+          
           {/* Détails de la réservation sélectionnée */}
-          {selectedBooking && (
+          {selectedBooking && !selectedDate && (
             <Card className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-xl font-semibold">
                   Réservation #{selectedBooking._id.slice(-6)}
                 </h3>
-                <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(selectedBooking.status)}`}>
-                  {getStatusText(selectedBooking.status)}
-                </span>
               </div>
 
               <div className="space-y-4">
@@ -399,7 +497,7 @@ const CoiffeurBookings: React.FC<CoiffeurBookingsProps> = ({ coiffeurId }) => {
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <h4 className="font-semibold mb-2">Date et heure</h4>
                   <p>{formatDate(selectedBooking.date)}</p>
-                  <p>{formatTime(selectedBooking.date)}</p>
+                  <p>{getBookingTime(selectedBooking)}</p>
                 </div>
 
                 <div className="bg-gray-50 p-4 rounded-lg">
@@ -422,72 +520,22 @@ const CoiffeurBookings: React.FC<CoiffeurBookingsProps> = ({ coiffeurId }) => {
                   </div>
                 )}
 
-                {/* Actions */}
-                <div className="flex gap-2 pt-4">
-                  {selectedBooking.status === 'pending' && (
-                    <>
-                      <Button
-                        onClick={() => handleConfirmBooking(selectedBooking._id)}
-                        className="flex-1 bg-green-600 hover:bg-green-700"
-                      >
-                        <FaCheck className="mr-2" />
-                        Confirmer
-                      </Button>
-                      <Button
-                        onClick={() => handleCancelBooking(selectedBooking._id)}
-                        className="flex-1 bg-red-600 hover:bg-red-700"
-                      >
-                        <FaTimes className="mr-2" />
-                        Refuser
-                      </Button>
-                    </>
-                  )}
-                  
-                  {selectedBooking.status === 'confirmed' && (
-                    <>
-                      {/* ✅ NOUVEAU: Boutons de confirmation début/fin (v0.7.17) */}
-                      {canConfirmServiceStart(selectedBooking.date, selectedBooking.duration) && (
-                        <Button
-                          onClick={() => {
-                            setConfirmationType('service_start');
-                            setShowConfirmationModal(true);
-                          }}
-                          className="flex-1 bg-blue-600 hover:bg-blue-700"
-                        >
-                          <FaCheck className="mr-2" />
-                          Confirmer le début
-                        </Button>
-                      )}
-                      {canConfirmServiceEnd(selectedBooking.date, selectedBooking.duration) && (
-                        <Button
-                          onClick={() => {
-                            setConfirmationType('service_end');
-                            setShowConfirmationModal(true);
-                          }}
-                          className="flex-1 bg-blue-600 hover:bg-blue-700"
-                        >
-                          <FaCheck className="mr-2" />
-                          Confirmer la fin
-                        </Button>
-                      )}
-                      <Button
-                        onClick={() => handleCompleteBooking(selectedBooking._id)}
-                        className="flex-1 bg-blue-600 hover:bg-blue-700"
-                      >
-                        <FaCheck className="mr-2" />
-                        Terminer
-                      </Button>
-                    </>
-                  )}
-                  
-                  {/* ✅ NOUVEAU: Bouton signaler incident (v0.7.17) */}
-                  {selectedBooking.status === 'completed' && (
+                <div className="flex flex-col gap-2 pt-4">
+                  <p className="text-sm text-gray-600 font-medium">La réservation est :</p>
+                  {selectedBooking.status !== 'cancelled' && (
                     <Button
-                      onClick={() => setShowIncidentModal(true)}
-                      className="flex-1 bg-orange-600 hover:bg-orange-700"
+                      onClick={() => {
+                        setShowActionModal(true);
+                      }}
+                      className={getActionButtonClass(selectedBooking.status)}
                     >
-                      Signaler un incident
+                      {getStatusText(selectedBooking.status)}
                     </Button>
+                  )}
+                  {selectedBooking.status === 'cancelled' && (
+                    <span className={getStatusBadge(selectedBooking.status)}>
+                      {getStatusText(selectedBooking.status)}
+                    </span>
                   )}
                 </div>
               </div>
@@ -507,8 +555,7 @@ const CoiffeurBookings: React.FC<CoiffeurBookingsProps> = ({ coiffeurId }) => {
             filteredBookings.map((booking) => (
               <Card 
                 key={booking._id} 
-                className="p-6 cursor-pointer hover:shadow-md transition-shadow"
-                onClick={() => setSelectedBooking(booking)}
+                className="p-6 hover:shadow-md transition-shadow"
               >
                 <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                   {/* Informations de base */}
@@ -518,7 +565,7 @@ const CoiffeurBookings: React.FC<CoiffeurBookingsProps> = ({ coiffeurId }) => {
                       <div>
                         <h3 className="font-semibold text-lg">{getServiceName(booking.service)}</h3>
                         <p className="text-gray-600">
-                          {formatDate(booking.date)} à {formatTime(booking.date)}
+                          {formatDate(booking.date)} à {getBookingTime(booking)}
                         </p>
                       </div>
                     </div>
@@ -572,51 +619,25 @@ const CoiffeurBookings: React.FC<CoiffeurBookingsProps> = ({ coiffeurId }) => {
                     </div>
                   </div>
 
-                  {/* Actions */}
                   <div className="flex flex-col gap-2 min-w-[200px]">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium text-center ${getStatusColor(booking.status)}`}>
-                      {getStatusText(booking.status)}
-                    </span>
-                    
-                    <div className="flex gap-2">
-                      {booking.status === 'pending' && (
-                        <>
-                          <Button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleConfirmBooking(booking._id);
-                            }}
-                            className="flex-1 bg-green-600 hover:bg-green-700"
-                          >
-                            <FaCheck className="mr-2" />
-                            Confirmer
-                          </Button>
-                          <Button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleCancelBooking(booking._id);
-                            }}
-                            className="flex-1 bg-red-600 hover:bg-red-700"
-                          >
-                            <FaTimes className="mr-2" />
-                            Refuser
-                          </Button>
-                        </>
-                      )}
-                      
-                      {booking.status === 'confirmed' && (
-                        <Button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleCompleteBooking(booking._id);
-                          }}
-                          className="flex-1 bg-blue-600 hover:bg-blue-700"
-                        >
-                          <FaCheck className="mr-2" />
-                          Terminer
-                        </Button>
-                      )}
-                    </div>
+                    <p className="text-sm text-gray-600 font-medium">La réservation est :</p>
+                    {booking.status !== 'cancelled' && (
+                      <Button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedBooking(booking);
+                          setShowActionModal(true);
+                        }}
+                        className={getActionButtonClass(booking.status)}
+                      >
+                        {getStatusText(booking.status)}
+                      </Button>
+                    )}
+                    {booking.status === 'cancelled' && (
+                      <span className={getStatusBadge(booking.status)}>
+                        {getStatusText(booking.status)}
+                      </span>
+                    )}
                   </div>
                 </div>
               </Card>
@@ -625,203 +646,32 @@ const CoiffeurBookings: React.FC<CoiffeurBookingsProps> = ({ coiffeurId }) => {
         </div>
       )}
 
-      {/* Modal détails réservation (pour vue liste) */}
-      {viewMode === 'list' && selectedBooking && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onClick={() => setSelectedBooking(null)}>
-          <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold">Détails de la réservation</h2>
-                <button
-                  onClick={() => setSelectedBooking(null)}
-                  className="text-gray-500 hover:text-gray-700 text-2xl"
-                >
-                  ✕
-                </button>
-              </div>
 
-              <div className="space-y-4">
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <h4 className="font-semibold mb-2 flex items-center gap-2">
-                    <FaUser className="text-accent" />
-                    Informations client
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-                    <div>
-                      <span className="font-medium">Nom:</span> {typeof selectedBooking.client === 'object' ? selectedBooking.client.name : 'N/A'}
-                    </div>
-                    <div>
-                      <FaEnvelope className="inline mr-2 text-gray-500" />
-                      {typeof selectedBooking.client === 'object' ? selectedBooking.client.email : 'N/A'}
-                    </div>
-                    {typeof selectedBooking.client === 'object' && selectedBooking.client.phone && (
-                      <div>
-                        <FaPhone className="inline mr-2 text-gray-500" />
-                        {selectedBooking.client.phone}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <h4 className="font-semibold mb-2">Service</h4>
-                  <p className="text-lg font-medium">{getServiceName(selectedBooking.service)}</p>
-                  <p className="text-sm text-gray-600">{selectedBooking.duration} min - {selectedBooking.price}€</p>
-                  {selectedBooking.platformFee && selectedBooking.coiffeurAmount && (
-                    <div className="mt-2 text-xs text-gray-600">
-                      <div>Commission TapHair (10%): -{selectedBooking.platformFee.toFixed(2)}€</div>
-                      <div className="font-semibold text-green-600">Montant net à recevoir: {selectedBooking.coiffeurAmount.toFixed(2)}€</div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <h4 className="font-semibold mb-2">Date et heure</h4>
-                  <p>{formatDate(selectedBooking.date)}</p>
-                  <p>{formatTime(selectedBooking.date)}</p>
-                </div>
-
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <h4 className="font-semibold mb-2 flex items-center gap-2">
-                    <FaMapMarkerAlt className="text-accent" />
-                    Mode
-                  </h4>
-                  <p className="capitalize">{selectedBooking.mode}</p>
-                  {selectedBooking.mode === 'domicile' && selectedBooking.address && (
-                    <p className="text-sm text-gray-600 mt-1">
-                      {selectedBooking.address.street}, {selectedBooking.address.city} {selectedBooking.address.postalCode}
-                    </p>
-                  )}
-                </div>
-
-                {selectedBooking.notes && (
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <h4 className="font-semibold mb-2">Notes</h4>
-                    <p className="text-sm text-gray-700">{selectedBooking.notes}</p>
-                  </div>
-                )}
-
-                {/* Actions */}
-                <div className="flex gap-2 pt-4">
-                  {selectedBooking.status === 'pending' && (
-                    <>
-                      <Button
-                        onClick={() => {
-                          handleConfirmBooking(selectedBooking._id);
-                          setSelectedBooking(null);
-                        }}
-                        className="flex-1 bg-green-600 hover:bg-green-700"
-                      >
-                        <FaCheck className="mr-2" />
-                        Confirmer
-                      </Button>
-                      <Button
-                        onClick={() => {
-                          handleCancelBooking(selectedBooking._id);
-                          setSelectedBooking(null);
-                        }}
-                        className="flex-1 bg-red-600 hover:bg-red-700"
-                      >
-                        <FaTimes className="mr-2" />
-                        Refuser
-                      </Button>
-                    </>
-                  )}
-                  
-                  {selectedBooking.status === 'confirmed' && (
-                    <>
-                      {/* ✅ NOUVEAU: Boutons de confirmation début/fin (v0.7.17) */}
-                      {canConfirmServiceStart(selectedBooking.date, selectedBooking.duration) && (
-                        <Button
-                          onClick={() => {
-                            setConfirmationType('service_start');
-                            setShowConfirmationModal(true);
-                          }}
-                          className="flex-1 bg-blue-600 hover:bg-blue-700"
-                        >
-                          <FaCheck className="mr-2" />
-                          Confirmer le début
-                        </Button>
-                      )}
-                      {canConfirmServiceEnd(selectedBooking.date, selectedBooking.duration) && (
-                        <Button
-                          onClick={() => {
-                            setConfirmationType('service_end');
-                            setShowConfirmationModal(true);
-                          }}
-                          className="flex-1 bg-blue-600 hover:bg-blue-700"
-                        >
-                          <FaCheck className="mr-2" />
-                          Confirmer la fin
-                        </Button>
-                      )}
-                      <Button
-                        onClick={() => {
-                          handleCompleteBooking(selectedBooking._id);
-                          setSelectedBooking(null);
-                        }}
-                        className="flex-1 bg-blue-600 hover:bg-blue-700"
-                      >
-                        <FaCheck className="mr-2" />
-                        Terminer
-                      </Button>
-                    </>
-                  )}
-                  
-                  {/* ✅ NOUVEAU: Bouton signaler incident (v0.7.17) */}
-                  {selectedBooking.status === 'completed' && (
-                    <Button
-                      onClick={() => setShowIncidentModal(true)}
-                      className="flex-1 bg-orange-600 hover:bg-orange-700"
-                    >
-                      Signaler un incident
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </div>
-          </Card>
-        </div>
-      )}
-
-      {/* ✅ NOUVEAU: Modals (v0.7.17) */}
-      {showConfirmationModal && selectedBooking && (
-        <ConfirmationModal
-          isOpen={showConfirmationModal}
-          onClose={() => setShowConfirmationModal(false)}
-          bookingInfo={{
-            serviceName: getServiceName(selectedBooking.service),
-            date: selectedBooking.date,
-            coiffeurName: coiffeur?.name,
-            clientName: typeof selectedBooking.client === 'object' ? selectedBooking.client.name : 'N/A'
+      {showActionModal && selectedBooking && (
+        <BookingActionModal
+          isOpen={showActionModal}
+          onClose={() => {
+            setShowActionModal(false);
+            setSelectedBooking(null);
           }}
-          type={confirmationType}
-          onConfirm={async (data) => {
-            // Logique de confirmation à implémenter selon le type
-            console.log('Confirmation:', confirmationType, data);
-            setShowConfirmationModal(false);
-            await refreshData();
-          }}
+          booking={selectedBooking}
+          coiffeurName={coiffeur?.name}
+          onActionComplete={handleActionComplete}
         />
       )}
 
-      {showIncidentModal && selectedBooking && (
-        <IncidentReportForm
-          isOpen={showIncidentModal}
-          onClose={() => setShowIncidentModal(false)}
-          bookingId={selectedBooking._id}
-          onSuccess={async () => {
-            setShowIncidentModal(false);
-            await refreshData();
-          }}
-          bookingInfo={{
-            serviceName: getServiceName(selectedBooking.service),
-            date: selectedBooking.date,
-            coiffeurName: coiffeur?.name,
-            clientName: typeof selectedBooking.client === 'object' ? selectedBooking.client.name : 'N/A'
-          }}
-        />
-      )}
+      {/* Toast notifications */}
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+      />
     </div>
   );
 };

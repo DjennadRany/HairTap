@@ -58,6 +58,7 @@ const BookingSlotList: React.FC<BookingSlotListProps> = ({
         <div>
           <h3 className="text-lg font-semibold text-fashion-black">Choisissez votre créneau</h3>
           <p className="text-sm text-fashion-gray-600">Sélectionnez d'abord une date, puis un horaire disponible.</p>
+          <p className="text-xs text-fashion-gray-500 mt-1">Les créneaux sont disponibles pour les 13 prochains jours.</p>
         </div>
       </div>
 
