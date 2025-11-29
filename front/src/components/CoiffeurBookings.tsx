@@ -161,13 +161,16 @@ const CoiffeurBookings: React.FC<CoiffeurBookingsProps> = ({ coiffeurId }) => {
 
   const handleDateSelect = (date: Date) => {
     setSelectedDate(date);
-    // Filtrer les réservations par date
-    const bookingOnDate = bookings.find(booking => {
+    // Filtrer TOUTES les réservations du jour (pas seulement la première)
+    const bookingsOnDate = bookings.filter(booking => {
       const bookingDate = new Date(booking.date);
       return bookingDate.toDateString() === date.toDateString();
     });
-    if (bookingOnDate) {
-      setSelectedBooking(bookingOnDate);
+    // Sélectionner la première réservation du jour, ou null si aucune
+    if (bookingsOnDate.length > 0) {
+      setSelectedBooking(bookingsOnDate[0]);
+    } else {
+      setSelectedBooking(null);
     }
   };
 
@@ -450,8 +453,8 @@ const CoiffeurBookings: React.FC<CoiffeurBookingsProps> = ({ coiffeurId }) => {
             </Card>
           )}
           
-          {/* Détails de la réservation sélectionnée */}
-          {selectedBooking && !selectedDate && (
+          {/* Détails de la réservation sélectionnée (affiché si une réservation est sélectionnée) */}
+          {selectedBooking && (
             <Card className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-xl font-semibold">
