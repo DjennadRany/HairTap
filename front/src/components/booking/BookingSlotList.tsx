@@ -58,7 +58,14 @@ const BookingSlotList: React.FC<BookingSlotListProps> = ({
         <div>
           <h3 className="text-lg font-semibold text-fashion-black">Choisissez votre créneau</h3>
           <p className="text-sm text-fashion-gray-600">Sélectionnez d'abord une date, puis un horaire disponible.</p>
-          <p className="text-xs text-fashion-gray-500 mt-1">Les créneaux sont disponibles pour les 13 prochains jours.</p>
+          <div className="mt-2 rounded-lg bg-blue-50 border border-blue-200 px-3 py-2">
+            <p className="text-xs text-blue-800 font-medium">
+              📅 Créneaux disponibles : {dates.length > 0 ? `du ${formatDateLabel(dates[0])} au ${formatDateLabel(dates[dates.length - 1])}` : '13 prochains jours'}
+            </p>
+            <p className="text-xs text-blue-600 mt-1">
+              Les créneaux sont limités aux 13 prochains jours. Pour réserver au-delà, veuillez contacter directement le coiffeur.
+            </p>
+          </div>
         </div>
       </div>
 

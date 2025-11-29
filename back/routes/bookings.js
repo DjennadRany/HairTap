@@ -211,7 +211,7 @@ router.post('/:id/cancel', auth, async (req, res) => {
         bookingDate: new Date(booking.date).toLocaleDateString('fr-FR'),
         bookingTime: booking.time,
         serviceName: booking.service,
-        reason: req.body.reason || 'Annulation TapHair'
+        reason: req.body.reason || 'Annulation TapeHair'
       });
     } catch (emailError) {
       console.error('Erreur lors de l\'envoi de l\'email d\'annulation:', emailError);
@@ -642,9 +642,16 @@ router.post('/', auth, async (req, res) => {
       return res.status(400).json({ success: false, message: 'Durée de service invalide' });
     }
 
-    const resolvedPrice = typeof price === 'number' ? price : service.price;
-    if (resolvedPrice === undefined || resolvedPrice === null) {
-      return res.status(400).json({ success: false, message: 'Prix de la réservation manquant' });
+    // SÉCURITÉ: Toujours utiliser le prix du service, ignorer le prix fourni par le client
+    // Cela empêche la manipulation du montant de paiement
+    const resolvedPrice = service.price;
+    if (resolvedPrice === undefined || resolvedPrice === null || resolvedPrice <= 0) {
+      return res.status(400).json({ success: false, message: 'Prix de service invalide ou manquant' });
+    }
+    
+    // Log si le client a tenté d'envoyer un prix différent (pour audit)
+    if (typeof price === 'number' && price !== service.price) {
+      console.warn(`⚠️ [SECURITY] Tentative de manipulation de prix détectée: client=${price}, service=${service.price}, bookingId=${serviceId}`);
     }
 
     let slot = null;
@@ -689,6 +696,7 @@ router.post('/', auth, async (req, res) => {
 
     const bookingEndTime = new Date(bookingDate.getTime() + resolvedDuration * 60000);
 
+    // SÉCURITÉ: Vérifier les chevauchements côté coiffeur
     const overlappingBookings = await Booking.find({
       coiffeur: coiffeurId,
       status: { $nin: ['cancelled', 'completed'] },
@@ -707,6 +715,30 @@ router.post('/', auth, async (req, res) => {
         message: 'Créneau non disponible, veuillez choisir un autre horaire'
       });
     }
+
+    // SÉCURITÉ: Vérifier les chevauchements côté client (éviter double réservation)
+    const clientOverlappingBookings = await Booking.find({
+      client: req.user.id,
+      status: { $nin: ['cancelled', 'completed'] },
+      date: { $lt: bookingEndTime },
+      $expr: {
+        $gt: [
+          { $add: ['$date', { $multiply: ['$duration', 60000] }] },
+          bookingDate
+        ]
+      }
+    });
+
+    if (clientOverlappingBookings.length > 0) {
+      return res.status(409).json({
+        success: false,
+        message: 'Vous avez déjà une réservation à cet horaire. Veuillez choisir un autre créneau.'
+      });
+    }
+
+    // NOTE: Pour éviter les doubles réservations concurrentes, on devrait utiliser une transaction MongoDB
+    // ou un findOneAndUpdate conditionnel. Pour l'instant, la vérification ci-dessus réduit le risque,
+    // mais une solution transactionnelle complète nécessiterait un refactoring plus important.
 
     // Stocker l'adresse selon le mode
     // - Pour 'domicile' : adresse du client (où se déroule la prestation)
